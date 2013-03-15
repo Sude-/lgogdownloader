@@ -27,7 +27,7 @@ namespace bpo = boost::program_options;
 int main(int argc, char *argv[])
 {
     Config config;
-    config.sVersionString = "LGOGDownloader 2.2";
+    config.sVersionString = "LGOGDownloader 2.2+git";
     config.sHome = (std::string)getenv("HOME");
     config.sCookiePath = config.sHome + "/.gogdownloader/cookies.txt";
     config.sConfigFilePath = config.sHome + "/.gogdownloader/config.cfg";

@@ -43,8 +43,8 @@ class gameFile {
 
 class gameDetails {
     public:
-        std::vector<gameFile *> extras;
-        std::vector<gameFile *> installers;
+        std::vector<gameFile> extras;
+        std::vector<gameFile> installers;
         std::string gamename;
         std::string title;
         std::string icon;

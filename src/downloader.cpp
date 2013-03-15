@@ -234,9 +234,9 @@ void Downloader::listGames()
                 std::cout << "installers: " << std::endl;
                 for (unsigned int j = 0; j < games[i].installers.size(); ++j)
                 {
-                    std::cout   << "\tid: " << games[i].installers[j]->id << std::endl
-                                << "\tpath: " << games[i].installers[j]->path << std::endl
-                                << "\tsize: " << games[i].installers[j]->size << std::endl
+                    std::cout   << "\tid: " << games[i].installers[j].id << std::endl
+                                << "\tpath: " << games[i].installers[j].path << std::endl
+                                << "\tsize: " << games[i].installers[j].size << std::endl
                                 << std::endl;
                 }
             }
@@ -246,10 +246,10 @@ void Downloader::listGames()
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
                 {
-                    std::cout   << "\tid: " << games[i].extras[j]->id << std::endl
-                                << "\tname: " << games[i].extras[j]->name << std::endl
-                                << "\tpath: " << games[i].extras[j]->path << std::endl
-                                << "\tsize: " << games[i].extras[j]->size << std::endl
+                    std::cout   << "\tid: " << games[i].extras[j].id << std::endl
+                                << "\tname: " << games[i].extras[j].name << std::endl
+                                << "\tpath: " << games[i].extras[j].path << std::endl
+                                << "\tsize: " << games[i].extras[j].size << std::endl
                                 << std::endl;
                 }
             }
@@ -282,13 +282,13 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j]->path, games[i].gamename);
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
 
                 // Get XML data
                 std::string XML = "";
                 if (!config.bNoRemoteXML)
                 {
-                    XML = gogAPI->getXML(games[i].gamename, games[i].installers[j]->id);
+                    XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
                     {
                         std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -300,7 +300,7 @@ void Downloader::repair()
                 // Repair
                 if (!XML.empty() || config.bNoRemoteXML)
                 {
-                    std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j]->id);
+                    std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
                     {
                         std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -319,9 +319,9 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j]->path, games[i].gamename);
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename);
 
-                std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j]->id);
+                std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
                 {
                     std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -357,7 +357,7 @@ void Downloader::download()
             // std::string directory = config.sDirectory + games[i].gamename + "/";
 
             // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
-            std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0]->path, games[i].gamename);
+            std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
 
             // Get base directory from filepath
             boost::match_results<std::string::const_iterator> what;
@@ -373,7 +373,7 @@ void Downloader::download()
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
                 // Get link
-                std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j]->id);
+                std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                 if (gogAPI->getError())
                 {
                     std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -381,7 +381,7 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j]->path, games[i].gamename);
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
 
                 // Download
                 if (!url.empty())
@@ -398,7 +398,7 @@ void Downloader::download()
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
                 // Get link
-                std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j]->id);
+                std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
                 {
                     std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -406,13 +406,13 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j]->path, games[i].gamename);
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename);
 
                 // Download
                 if (!url.empty())
                 {
-                    if (!games[i].extras[j]->name.empty())
-                        std::cout << "Dowloading: " << games[i].extras[j]->name << std::endl;
+                    if (!games[i].extras[j].name.empty())
+                        std::cout << "Dowloading: " << games[i].extras[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     CURLcode result = downloadFile(url, filepath);
                     std::cout << std::endl;

@@ -321,12 +321,12 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     Json::Value installer = installers[i][index];
 
                     game.installers.push_back(
-                                                new gameFile(   installer["#updated"].isBool() ? installer["id"].asBool() : false,
-                                                                installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
-                                                                std::string(), // empty string because installer doesn't have "name"
-                                                                installer["link"].asString(),
-                                                                installer["size"].asString()
-                                                             )
+                                                gameFile(   installer["#updated"].isBool() ? installer["id"].asBool() : false,
+                                                            installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
+                                                            std::string(), // empty string because installer doesn't have "name"
+                                                            installer["link"].asString(),
+                                                            installer["size"].asString()
+                                                         )
                                             );
                 }
             }
@@ -338,12 +338,12 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 Json::Value extra = extras[index];
 
                 game.extras.push_back(
-                                        new gameFile(   false, /* extras don't have "updated" flag */
-                                                        extra["id"].isInt() ? std::to_string(extra["id"].asInt()) : extra["id"].asString(),
-                                                        extra["name"].asString(),
-                                                        extra["link"].asString(),
-                                                        extra["size_mb"].asString()
-                                                     )
+                                        gameFile(   false, /* extras don't have "updated" flag */
+                                                    extra["id"].isInt() ? std::to_string(extra["id"].asInt()) : extra["id"].asString(),
+                                                    extra["name"].asString(),
+                                                    extra["link"].asString(),
+                                                    extra["size_mb"].asString()
+                                                 )
                                     );
             }
 
