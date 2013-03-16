@@ -282,7 +282,7 @@ void Downloader::listGames()
                 }
             }
             // List extras
-            if (!config.bNoExtras)
+            if (!config.bNoExtras && !config.bUpdateCheck)
             {
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
