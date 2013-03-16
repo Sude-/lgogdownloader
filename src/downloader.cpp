@@ -275,6 +275,7 @@ void Downloader::listGames()
                         std::cout   << "\tid: " << games[i].installers[j].id << std::endl
                                     << "\tpath: " << games[i].installers[j].path << std::endl
                                     << "\tsize: " << games[i].installers[j].size << std::endl
+                                    << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
                                     << std::endl;
                     }
                 }
