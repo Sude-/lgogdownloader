@@ -52,7 +52,7 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
@@ -955,6 +955,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
     curl_easy_perform(curlhandle);
     memory.str(std::string());
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
