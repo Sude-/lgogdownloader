@@ -32,10 +32,10 @@ gameFile::~gameFile()
 
 }
 
-API::API(const std::string& token, const std::string& secret)
+API::API(const std::string& token, const std::string& secret, const bool& verbose)
 {
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, verbose);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);

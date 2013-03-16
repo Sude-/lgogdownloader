@@ -85,7 +85,7 @@ class API
         apiConfig config;
         userDetails user;
 
-        API(const std::string& token,const std::string& secret);
+        API(const std::string& token,const std::string& secret, const bool& verbose = false);
         int init();
         int login(const std::string& email, const std::string& password);
         int getAPIConfig();

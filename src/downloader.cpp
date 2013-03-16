@@ -62,7 +62,7 @@ int Downloader::init()
     if (config.bVerbose)
         curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 1);
 
-    gogAPI = new API(config.sToken, config.sSecret);
+    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose);
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
     if (config.bLogin || !gogAPI->init())
