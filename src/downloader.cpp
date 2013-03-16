@@ -71,10 +71,11 @@ int Downloader::init()
             return 1;
     }
 
-    if (!config.bNoCover && config.bDownload)
+    if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/GOG_covers_v2.xml");
 
-    this->getGameList();
+    if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
+        this->getGameList();
 
     return 0;
 }
@@ -155,6 +156,25 @@ void Downloader::updateCheck()
     {
         std::cout << "No updated games" << std::endl;
     }
+
+    if (gogAPI->user.notifications_games)
+    {
+        config.sGameRegex = ".*"; // Always check all games
+        if (config.bList || config.bListDetails || config.bDownload)
+        {
+            this->getGameList();
+            if (config.bDownload)
+            {
+                this->download();
+            }
+            else
+            {
+                config.bListDetails = true; // Always list details
+                this->listGames();
+            }
+
+        }
+    }
 }
 
 void Downloader::getGameList()
@@ -208,7 +228,23 @@ int Downloader::getGameDetails()
         std::cout << "Getting game info " << i+1 << " / " << gameNames.size() << "\r" << std::flush;
         game = gogAPI->getGameDetails(gameNames[i], config.iInstallerType, config.iInstallerLanguage);
         if (!gogAPI->getError())
-            games.push_back(game);
+        {
+            if (!config.bUpdateCheck)
+                games.push_back(game);
+            else
+            { // Update check, only add games that have updated files
+                for (unsigned int j = 0; j < game.installers.size(); ++j)
+                {
+                    if (game.installers[j].updated)
+                        games.push_back(game);
+                }
+                if (i >= static_cast<unsigned int>(gogAPI->user.notifications_games))
+                { // Gone through all updated games. No need to go through the rest.
+                    std::cout << std::endl << "Got info for all updated games. Moving on..." << std::endl;
+                    break;
+                }
+            }
+        }
         else
         {
             std::cout << gogAPI->getErrorMessage() << std::endl;
@@ -234,10 +270,13 @@ void Downloader::listGames()
                 std::cout << "installers: " << std::endl;
                 for (unsigned int j = 0; j < games[i].installers.size(); ++j)
                 {
-                    std::cout   << "\tid: " << games[i].installers[j].id << std::endl
-                                << "\tpath: " << games[i].installers[j].path << std::endl
-                                << "\tsize: " << games[i].installers[j].size << std::endl
-                                << std::endl;
+                    if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
+                    {
+                        std::cout   << "\tid: " << games[i].installers[j].id << std::endl
+                                    << "\tpath: " << games[i].installers[j].path << std::endl
+                                    << "\tsize: " << games[i].installers[j].size << std::endl
+                                    << std::endl;
+                    }
                 }
             }
             // List extras
@@ -351,7 +390,7 @@ void Downloader::download()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
-        if (!config.bNoCover)
+        if (!config.bNoCover || !config.bUpdateCheck)
         {
             // Doesn't work as intended unless we use "games[i].gamename" as base directory for installers and extras
             // std::string directory = config.sDirectory + games[i].gamename + "/";
@@ -372,6 +411,10 @@ void Downloader::download()
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
+                // Not updated, skip to next installer
+                if (config.bUpdateCheck && !games[i].installers[j].updated)
+                    continue;
+
                 // Get link
                 std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                 if (gogAPI->getError())
@@ -393,8 +436,8 @@ void Downloader::download()
             }
         }
         // Download extras
-        if (!config.bNoExtras)
-        {
+        if (!config.bNoExtras && !config.bUpdateCheck)
+        { // Save some time and don't process extras when running update check. Extras don't have updated flag, all of them would be skipped anyway.
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
                 // Get link
