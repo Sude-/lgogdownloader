@@ -66,10 +66,7 @@ int Downloader::init()
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
     if (config.bLogin || !gogAPI->init())
-    {
-        if (this->login())
-            return 1;
-    }
+        return this->login();
 
     if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/GOG_covers_v2.xml");
