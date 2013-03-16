@@ -172,14 +172,14 @@ int main(int argc, char *argv[])
 
     if (config.bLogin)
         return result;
+    else if (config.bUpdateCheck) // Update check has priority over download and list
+        downloader.updateCheck();
     else if (config.bDownload) // Download games
         downloader.download();
     else if (config.bRepair) // Repair file
         downloader.repair();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
         downloader.listGames();
-    else if (config.bUpdateCheck) // Detailed list of games/extras
-        downloader.updateCheck();
     else
     {   // Show help message
         std::cout   << config.sVersionString << std::endl
