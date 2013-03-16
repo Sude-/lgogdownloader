@@ -276,6 +276,7 @@ void Downloader::listGames()
                     if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
                         std::cout   << "\tid: " << games[i].installers[j].id << std::endl
+                                    << "\tname: " << games[i].installers[j].name << std::endl
                                     << "\tpath: " << games[i].installers[j].path << std::endl
                                     << "\tsize: " << games[i].installers[j].size << std::endl
                                     << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
@@ -433,6 +434,8 @@ void Downloader::download()
                 // Download
                 if (!url.empty())
                 {
+                    if (!games[i].installers[j].name.empty())
+                        std::cout << "Dowloading: " << games[i].installers[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     this->downloadFile(url, filepath);
                     std::cout << std::endl;

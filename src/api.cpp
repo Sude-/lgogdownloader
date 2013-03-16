@@ -323,7 +323,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     game.installers.push_back(
                                                 gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
-                                                            std::string(), // empty string because installer doesn't have "name"
+                                                            installer["#name"].asString(),
                                                             installer["link"].asString(),
                                                             installer["size"].asString()
                                                          )
