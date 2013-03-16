@@ -236,7 +236,10 @@ int Downloader::getGameDetails()
                 for (unsigned int j = 0; j < game.installers.size(); ++j)
                 {
                     if (game.installers[j].updated)
+                    {
                         games.push_back(game);
+                        break; // add the game only once
+                    }
                 }
                 if (i >= static_cast<unsigned int>(gogAPI->user.notifications_games))
                 { // Gone through all updated games. No need to go through the rest.
