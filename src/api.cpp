@@ -38,7 +38,7 @@ API::API(const std::string& token, const std::string& secret)
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 0);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, 0);
