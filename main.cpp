@@ -33,24 +33,24 @@ int main(int argc, char *argv[])
     config.sConfigFilePath = config.sHome + "/.gogdownloader/config.cfg";
     config.sXMLDirectory = config.sHome + "/.gogdownloader/xml";
 
-	// Create gogdownloader directories
-	boost::filesystem::path path = config.sXMLDirectory;
-	if (!boost::filesystem::exists(path))
-	{
-		if (!boost::filesystem::create_directories(path))
-		{
-			std::cout << "Failed to create directory: " << path << std::endl;
-			return 1;
-		}
-	}
+    // Create gogdownloader directories
+    boost::filesystem::path path = config.sXMLDirectory;
+    if (!boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return 1;
+        }
+    }
 
     // Create help text for --platform option
-	std::string platform_text = "Select which installers are downloaded\n"
+    std::string platform_text = "Select which installers are downloaded\n"
                                  + std::to_string(INSTALLER_WINDOWS) + " = Windows\n"
                                  + std::to_string(INSTALLER_MAC) + " = Mac\n"
                                  + std::to_string(INSTALLER_WINDOWS | INSTALLER_MAC) + " = Both";
     // Create help text for --language option
-	std::string language_text = "Select which language installers are downloaded\n"
+    std::string language_text = "Select which language installers are downloaded\n"
                                  + std::to_string(LANGUAGE_EN) + " = English\n"
                                  + std::to_string(LANGUAGE_DE) + " = German\n"
                                  + std::to_string(LANGUAGE_FR) + " = French\n"
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
     // Make sure that directory has trailing slash
     if (!config.sDirectory.empty())
         if (config.sDirectory.at(config.sDirectory.length()-1)!='/')
-			config.sDirectory += "/";
+            config.sDirectory += "/";
 
     Downloader downloader(config);
     int result = downloader.init();

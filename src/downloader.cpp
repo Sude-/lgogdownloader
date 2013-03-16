@@ -482,70 +482,70 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
 {
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
-	FILE *outfile;
-	size_t offset=0;
+    FILE *outfile;
+    size_t offset=0;
 
     // Get directory from filepath
-	boost::filesystem::path pathname = filepath;
-	std::string directory = pathname.parent_path().string();
+    boost::filesystem::path pathname = filepath;
+    std::string directory = pathname.parent_path().string();
 
-	// Check that directory exists and create subdirectories
-	boost::filesystem::path path = directory;
-	if (boost::filesystem::exists(path))
-	{
-		if (!boost::filesystem::is_directory(path))
-		{
-			std::cout << path << " is not directory" << std::endl;
-			return res;
-		}
-	}
-	else
-	{
-		if (!boost::filesystem::create_directories(path))
-		{
-			std::cout << "Failed to create directory: " << path << std::endl;
-			return res;
-		}
-	}
+    // Check that directory exists and create subdirectories
+    boost::filesystem::path path = directory;
+    if (boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::is_directory(path))
+        {
+            std::cout << path << " is not directory" << std::endl;
+            return res;
+        }
+    }
+    else
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return res;
+        }
+    }
 
-	// Check if file exists
-	if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
-	{
-		// File exists, resume
-		if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
-		{
-		    bResume = true;
-			fseek(outfile, 0, SEEK_END);
-			offset = ftell(outfile);
-			curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
-			this->resume_position = offset;
-		}
-		else
-		{
-			std::cout << "Failed to reopen " << filepath << std::endl;
-			return res;
-		}
-	}
-	else
-	{
+    // Check if file exists
+    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
+    {
+        // File exists, resume
+        if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
+        {
+            bResume = true;
+            fseek(outfile, 0, SEEK_END);
+            offset = ftell(outfile);
+            curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
+            this->resume_position = offset;
+        }
+        else
+        {
+            std::cout << "Failed to reopen " << filepath << std::endl;
+            return res;
+        }
+    }
+    else
+    {
         // File doesn't exist, create new file
         if ((outfile=fopen(filepath.c_str(), "w"))!=NULL)
         {
             curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset); // start downloading from the beginning of file
-			this->resume_position = 0;
+            this->resume_position = 0;
         }
         else
         {
             std::cout << "Failed to create " << filepath << std::endl;
             return res;
         }
-	}
+    }
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
     res = this->beginDownload();
 
-	fclose(outfile);
+    fclose(outfile);
 
     // Download failed and was not a resume attempt so delete the file
     if (res != CURLE_OK && !bResume)
@@ -556,16 +556,16 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
                 std::cout << "Failed to delete " << path << std::endl;
     }
 
-	return res;
+    return res;
 }
 
 // Repair file
 int Downloader::repairFile(std::string url, std::string filepath, std::string xml_data, std::string xml_dir)
 {
     int res = 0;
-	FILE *outfile;
-	size_t offset=0;
-	if (xml_dir.empty())
+    FILE *outfile;
+    size_t offset=0;
+    if (xml_dir.empty())
         xml_dir = config.sHome + "/.gogdownloader/xml";
 
     size_t from_offset, to_offset;
@@ -584,11 +584,11 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
     boost::filesystem::path pathname = filepath;
     std::string filename = pathname.filename().string();
 
-	TiXmlDocument xml;
-	if (!xml_data.empty()) {
-		std::cout << "XML: Using remote file" << std::endl;
-		xml.Parse(xml_data.c_str());
-	}
+    TiXmlDocument xml;
+    if (!xml_data.empty()) {
+        std::cout << "XML: Using remote file" << std::endl;
+        xml.Parse(xml_data.c_str());
+    }
     else
     {
         std::string xml_file = xml_dir + "/" + filename + ".xml";
@@ -596,34 +596,34 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
         xml.LoadFile(xml_file);
     }
 
-	TiXmlNode *fileNode = xml.FirstChild("file");
-	if (!fileNode)
-	{
-	    std::cout << "XML: Parsing failed / not valid XML" << std::endl;
-		return res;
-	}
-	else
-	{
-		std::cout << "XML: Valid XML" << std::endl;
-		TiXmlElement *fileElem = fileNode->ToElement();
-		info.filename = fileElem->Attribute("name");
-		info.hash = fileElem->Attribute("md5");
-		std::stringstream(fileElem->Attribute("chunks")) >> info.chunks;
-		std::stringstream(fileElem->Attribute("total_size")) >> info.size;
+    TiXmlNode *fileNode = xml.FirstChild("file");
+    if (!fileNode)
+    {
+        std::cout << "XML: Parsing failed / not valid XML" << std::endl;
+        return res;
+    }
+    else
+    {
+        std::cout << "XML: Valid XML" << std::endl;
+        TiXmlElement *fileElem = fileNode->ToElement();
+        info.filename = fileElem->Attribute("name");
+        info.hash = fileElem->Attribute("md5");
+        std::stringstream(fileElem->Attribute("chunks")) >> info.chunks;
+        std::stringstream(fileElem->Attribute("total_size")) >> info.size;
 
-		//Iterate through all chunk nodes
-		TiXmlNode *chunkNode = fileNode->FirstChild();
-		while (chunkNode)
-		{
-			TiXmlElement *chunkElem = chunkNode->ToElement();
-			std::stringstream(chunkElem->Attribute("from")) >> from_offset;
-			std::stringstream(chunkElem->Attribute("to")) >> to_offset;
-			info.chunk_from.push_back(from_offset);
-			info.chunk_to.push_back(to_offset);
-			info.chunk_hash.push_back(chunkElem->GetText());
-			chunkNode = fileNode->IterateChildren(chunkNode);
-		}
-	}
+        //Iterate through all chunk nodes
+        TiXmlNode *chunkNode = fileNode->FirstChild();
+        while (chunkNode)
+        {
+            TiXmlElement *chunkElem = chunkNode->ToElement();
+            std::stringstream(chunkElem->Attribute("from")) >> from_offset;
+            std::stringstream(chunkElem->Attribute("to")) >> to_offset;
+            info.chunk_from.push_back(from_offset);
+            info.chunk_to.push_back(to_offset);
+            info.chunk_hash.push_back(chunkElem->GetText());
+            chunkNode = fileNode->IterateChildren(chunkNode);
+        }
+    }
 
     std::cout   << "XML: Parsing finished" << std::endl << std::endl
                 << info.filename << std::endl
@@ -631,33 +631,33 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
                 << "\tChunks:\t" << info.chunks << std::endl
                 << "\tSize:\t" << info.size << " bytes" << std::endl << std::endl;
 
-	// Check if file exists
-	if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
-	{
-		// File exists
-		if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
-		{
-			fseek(outfile, 0, SEEK_END);
-			offset = ftell(outfile);
-		}
+    // Check if file exists
+    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
+    {
+        // File exists
+        if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
+        {
+            fseek(outfile, 0, SEEK_END);
+            offset = ftell(outfile);
+        }
         else
         {
-			std::cout << "Failed to reopen " << filepath << std::endl;
-			return res;
-		}
-	}
-	else
-	{
+            std::cout << "Failed to reopen " << filepath << std::endl;
+            return res;
+        }
+    }
+    else
+    {
         std::cout << "File doesn't exist " << filepath << std::endl;
         return res;
-	}
+    }
 
-	if (offset != info.size)
-	{
-		std::cout   << "Filesizes don't match" << std::endl
+    if (offset != info.size)
+    {
+        std::cout   << "Filesizes don't match" << std::endl
                     << "Incomplete download or different version" << std::endl;
-		return res;
-	}
+        return res;
+    }
 
     for (int i=0; i<info.chunks; i++)
     {
@@ -709,7 +709,7 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
         res = 1;
     }
 
-	fclose(outfile);
+    fclose(outfile);
 
     return res;
 }
@@ -718,57 +718,57 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
 int Downloader::downloadCovers(std::string gamename, std::string directory, std::string cover_xml_data)
 {
     int res = 0;
-	TiXmlDocument xml;
+    TiXmlDocument xml;
 
-	// Check that directory exists and create subdirectories
-	boost::filesystem::path path = directory;
-	if (boost::filesystem::exists(path))
-	{
-		if (!boost::filesystem::is_directory(path))
-		{
-			std::cout << path << " is not directory" << std::endl;
-			return res;
-		}
+    // Check that directory exists and create subdirectories
+    boost::filesystem::path path = directory;
+    if (boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::is_directory(path))
+        {
+            std::cout << path << " is not directory" << std::endl;
+            return res;
+        }
 
-	}
-	else
-	{
-		if (!boost::filesystem::create_directories(path))
-		{
-			std::cout << "Failed to create directory: " << path << std::endl;
-			return res;
-		}
-	}
+    }
+    else
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return res;
+        }
+    }
 
-	xml.Parse(cover_xml_data.c_str());
-	TiXmlElement *rootNode = xml.RootElement();
-	if (!rootNode)
-	{
-		std::cout << "Not valid XML" << std::endl;
-		return res;
-	}
-	else
-	{
-		TiXmlNode *gameNode = rootNode->FirstChild();
-		while (gameNode)
-		{
-			TiXmlElement *gameElem = gameNode->ToElement();
-			std::string game_name = gameElem->Attribute("name");
+    xml.Parse(cover_xml_data.c_str());
+    TiXmlElement *rootNode = xml.RootElement();
+    if (!rootNode)
+    {
+        std::cout << "Not valid XML" << std::endl;
+        return res;
+    }
+    else
+    {
+        TiXmlNode *gameNode = rootNode->FirstChild();
+        while (gameNode)
+        {
+            TiXmlElement *gameElem = gameNode->ToElement();
+            std::string game_name = gameElem->Attribute("name");
 
-			if (game_name == gamename)
-			{
-			    boost::match_results<std::string::const_iterator> what;
-				TiXmlNode *coverNode = gameNode->FirstChild();
-				while (coverNode)
-				{
-					TiXmlElement *coverElem = coverNode->ToElement();
-					std::string cover_url = coverElem->GetText();
-					// Get file extension for the image
-					boost::regex e1(".*(\\.\\w+)$", boost::regex::perl | boost::regex::icase);
-					boost::regex_search(cover_url, what, e1);
-					std::string file_extension = what[1];
-					std::string cover_name = std::string("cover_") + coverElem->Attribute("id") + file_extension;
-					std::string filepath = directory + "/" + cover_name;
+            if (game_name == gamename)
+            {
+                boost::match_results<std::string::const_iterator> what;
+                TiXmlNode *coverNode = gameNode->FirstChild();
+                while (coverNode)
+                {
+                    TiXmlElement *coverElem = coverNode->ToElement();
+                    std::string cover_url = coverElem->GetText();
+                    // Get file extension for the image
+                    boost::regex e1(".*(\\.\\w+)$", boost::regex::perl | boost::regex::icase);
+                    boost::regex_search(cover_url, what, e1);
+                    std::string file_extension = what[1];
+                    std::string cover_name = std::string("cover_") + coverElem->Attribute("id") + file_extension;
+                    std::string filepath = directory + "/" + cover_name;
 
                     std::cout << "Downloading cover " << filepath << std::endl;
                     CURLcode result = this->downloadFile(cover_url, filepath);
@@ -789,15 +789,15 @@ int Downloader::downloadCovers(std::string gamename, std::string directory, std:
                             std::cout << "failed to get error code: " << curl_easy_strerror(result) << std::endl;
                     }
 
-					coverNode = gameNode->IterateChildren(coverNode);
-				}
+                    coverNode = gameNode->IterateChildren(coverNode);
+                }
                 break; // Found cover for game, no need to go through rest of the game nodes
-			}
-			gameNode = rootNode->IterateChildren(gameNode);
-		}
-	}
+            }
+            gameNode = rootNode->IterateChildren(gameNode);
+        }
+    }
 
-	return res;
+    return res;
 }
 
 CURLcode Downloader::beginDownload()
@@ -928,31 +928,31 @@ size_t Downloader::getResumePosition()
 int Downloader::HTTP_Login(const std::string& email, const std::string& password)
 {
     int res = 0;
-	std::string postdata;
-	std::ostringstream memory;
-	std::string buk;
+    std::string postdata;
+    std::ostringstream memory;
+    std::string buk;
 
-	// Get "buk" for login form
-	std::string json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
+    // Get "buk" for login form
+    std::string json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
 
-	Json::Value root;
-	Json::Reader *jsonparser = new Json::Reader;
-	bool parsingSuccessful = jsonparser->parse(json, root);
-	if (!parsingSuccessful)
-	{
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    bool parsingSuccessful = jsonparser->parse(json, root);
+    if (!parsingSuccessful)
+    {
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << json << std::endl;
         #endif
-		std::cout << jsonparser->getFormatedErrorMessages();
-		return res = 0;
-	}
+        std::cout << jsonparser->getFormatedErrorMessages();
+        return res = 0;
+    }
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
     #endif
-	buk = root["buk"].asString();
+    buk = root["buk"].asString();
 
-	//Create postdata - escape characters in email/password to support special characters
-	postdata = "log_email=" + (std::string)curl_easy_escape(curlhandle, email.c_str(),email.size())
+    //Create postdata - escape characters in email/password to support special characters
+    postdata = "log_email=" + (std::string)curl_easy_escape(curlhandle, email.c_str(),email.size())
             + "&log_password=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
             + "&buk=" + (std::string)curl_easy_escape(curlhandle, buk.c_str(), buk.size());
     curl_easy_setopt(curlhandle, CURLOPT_URL, "https://secure.gog.com/login");
@@ -968,27 +968,27 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
     json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
 
-	parsingSuccessful = jsonparser->parse(json, root);
-	if (!parsingSuccessful)
-	{
+    parsingSuccessful = jsonparser->parse(json, root);
+    if (!parsingSuccessful)
+    {
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << json << std::endl;
         #endif
-		std::cout << jsonparser->getFormatedErrorMessages();
-		return res = 0;
-	}
+        std::cout << jsonparser->getFormatedErrorMessages();
+        return res = 0;
+    }
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
     #endif
 
-	if (root["user"]["email"].asString() == email)
-	    res = 1; // Login successful
-	else
-		res = 0; // Login failed
+    if (root["user"]["email"].asString() == email)
+        res = 1; // Login successful
+    else
+        res = 0; // Login failed
 
-	delete jsonparser;
+    delete jsonparser;
 
-	return res;
+    return res;
 }
 
 // Get list of games from account page
@@ -1026,25 +1026,25 @@ std::vector<std::string> Downloader::getGames()
     delete jsonparser;
 
     // Parse HTML to get game names
-	htmlcxx::HTML::ParserDom parser;
-	tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-	tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-	tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-	for (; it != end; ++it)
-	{
-		if (it->tagName()=="div")
-		{
-			it->parseAttributes();
-			std::string classname = it->attribute("class").second;
-			if (classname=="shelf_game")
-			{
-			    // Game name is contained in data-gameindex attribute
-				std::string game = it->attribute("data-gameindex").second;
-				if (!game.empty())
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="div")
+        {
+            it->parseAttributes();
+            std::string classname = it->attribute("class").second;
+            if (classname=="shelf_game")
+            {
+                // Game name is contained in data-gameindex attribute
+                std::string game = it->attribute("data-gameindex").second;
+                if (!game.empty())
                     games.push_back(game);
-			}
-		}
-	}
+            }
+        }
+    }
 
     return games;
 }
@@ -1056,25 +1056,25 @@ std::vector<std::string> Downloader::getFreeGames()
     std::string html = this->getResponse("https://secure.gog.com/catalogue/ajax?a=getGames&tab=all_genres&genre=all_genres&price=0&order=alph&publisher=&releaseDate=&availability=&gameMode=&rating=&search=&sort=vote&system=&language=&mixPage=1");
 
     // Parse HTML to get game names
-	htmlcxx::HTML::ParserDom parser;
-	tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-	tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-	tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-	for (; it != end; ++it)
-	{
-		if (it->tagName()=="a")
-		{
-			it->parseAttributes();
-			std::string classname = it->attribute("class").second;
-			if (classname=="game-title-link")
-			{
-				std::string game = it->attribute("href").second;
-				game.assign(game.begin()+game.find_last_of("/")+1,game.end());
-				if (!game.empty())
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="a")
+        {
+            it->parseAttributes();
+            std::string classname = it->attribute("class").second;
+            if (classname=="game-title-link")
+            {
+                std::string game = it->attribute("href").second;
+                game.assign(game.begin()+game.find_last_of("/")+1,game.end());
+                if (!game.empty())
                     games.push_back(game);
-			}
-		}
-	}
+            }
+        }
+    }
 
     return games;
 }

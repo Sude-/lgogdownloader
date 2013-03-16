@@ -159,7 +159,7 @@ int API::login(const std::string& email, const std::string& password)
     url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY, CONSUMER_SECRET, token.c_str(), secret.c_str());
     std::string token_resp = this->getResponse(url);
 
-	rc = oauth_split_url_parameters(token_resp.c_str(), &rv);
+    rc = oauth_split_url_parameters(token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
     if (rc == 2 && !strncmp(rv[0], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
         this->config.oauth_token = rv[0]+OAUTH_TOKEN_LENGTH+1;
