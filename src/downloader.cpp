@@ -162,17 +162,13 @@ void Downloader::updateCheck()
         config.sGameRegex = ".*"; // Always check all games
         if (config.bList || config.bListDetails || config.bDownload)
         {
+            if (config.bList)
+                config.bListDetails = true; // Always list details
             this->getGameList();
             if (config.bDownload)
-            {
                 this->download();
-            }
             else
-            {
-                config.bListDetails = true; // Always list details
                 this->listGames();
-            }
-
         }
     }
 }
@@ -223,6 +219,7 @@ void Downloader::getGameList()
 int Downloader::getGameDetails()
 {
     gameDetails game;
+    int updated = 0;
     for (unsigned int i = 0; i < gameNames.size(); ++i)
     {
         std::cout << "Getting game info " << i+1 << " / " << gameNames.size() << "\r" << std::flush;
@@ -238,10 +235,11 @@ int Downloader::getGameDetails()
                     if (game.installers[j].updated)
                     {
                         games.push_back(game);
+                        updated++;
                         break; // add the game only once
                     }
                 }
-                if (i >= static_cast<unsigned int>(gogAPI->user.notifications_games))
+                if (updated >= gogAPI->user.notifications_games)
                 { // Gone through all updated games. No need to go through the rest.
                     std::cout << std::endl << "Got info for all updated games. Moving on..." << std::endl;
                     break;
@@ -394,7 +392,7 @@ void Downloader::download()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
-        if (!config.bNoCover || !config.bUpdateCheck)
+        if (!config.bNoCover && !config.bUpdateCheck)
         {
             // Doesn't work as intended unless we use "games[i].gamename" as base directory for installers and extras
             // std::string directory = config.sDirectory + games[i].gamename + "/";
