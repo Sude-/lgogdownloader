@@ -321,7 +321,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     Json::Value installer = installers[i][index];
 
                     game.installers.push_back(
-                                                gameFile(   installer["#updated"].isBool() ? installer["id"].asBool() : false,
+                                                gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
                                                             std::string(), // empty string because installer doesn't have "name"
                                                             installer["link"].asString(),
