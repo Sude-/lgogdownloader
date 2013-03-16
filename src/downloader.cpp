@@ -957,10 +957,12 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
     curl_easy_perform(curlhandle);
     memory.str(std::string());
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
     json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
 
 	parsingSuccessful = jsonparser->parse(json, root);
