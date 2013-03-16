@@ -102,6 +102,10 @@ int Downloader::login()
             std::cout << "HTTP: Login failed" << std::endl;
             return 1;
         }
+        else
+        {
+            std::cout << "HTTP: Login successful" << std::endl;
+        }
         // Login to API
         if (!gogAPI->login(email, password))
         {
@@ -110,6 +114,7 @@ int Downloader::login()
         }
         else
         {
+            std::cout << "API: Login successful" << std::endl;
             // Save token and secret to config file
             std::ofstream ofs(config.sConfigFilePath.c_str());
             if (ofs)
