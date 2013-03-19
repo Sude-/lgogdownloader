@@ -48,6 +48,9 @@ all: debug release
 
 clean: clean_debug clean_release
 
+gen_version:
+	echo "#define VERSION_STRING \"LGOGDownloader $(shell grep VERSION_NUMBER < main.cpp | head -n 1 | sed -e 's/.*\([0-9]\+\.[0-9]\+\).*/\1/')$(shell if [ -e .git/HEAD ]; then if git status | grep -q 'modified:'; then echo -n 'M'; fi && echo -n ' git ' && git rev-parse --short HEAD; fi)\"" > version.h
+
 before_debug: 
 	test -d bin/Debug || mkdir -p bin/Debug
 	test -d $(OBJDIR_DEBUG) || mkdir -p $(OBJDIR_DEBUG)
@@ -55,7 +58,7 @@ before_debug:
 
 after_debug: 
 
-debug: before_debug out_debug after_debug
+debug: before_debug gen_version out_debug after_debug
 
 out_debug: $(OBJ_DEBUG) $(DEP_DEBUG)
 	$(LD) $(LDFLAGS_DEBUG) $(LIBDIR_DEBUG) $(OBJ_DEBUG) $(LIB_DEBUG) -o $(OUT_DEBUG)
@@ -80,6 +83,7 @@ clean_debug:
 	rm -rf bin/Debug
 	rm -rf $(OBJDIR_DEBUG)
 	rm -rf $(OBJDIR_DEBUG)/src
+	rm -f version.h
 
 before_release: 
 	test -d bin/Release || mkdir -p bin/Release
@@ -88,7 +92,7 @@ before_release:
 
 after_release: 
 
-release: before_release out_release after_release
+release: before_release gen_version out_release after_release
 
 out_release: $(OBJ_RELEASE) $(DEP_RELEASE)
 	$(LD) $(LDFLAGS_RELEASE) $(LIBDIR_RELEASE) $(OBJ_RELEASE) $(LIB_RELEASE) -o $(OUT_RELEASE)
@@ -113,6 +117,7 @@ clean_release:
 	rm -rf bin/Release
 	rm -rf $(OBJDIR_RELEASE)
 	rm -rf $(OBJDIR_RELEASE)/src
+	rm -f version.h
 
 install:
 	install $(OUT_RELEASE) /usr/bin
@@ -120,5 +125,5 @@ install:
 uninstall:
 	rm /usr/bin/lgogdownloader
 
-.PHONY: before_debug after_debug clean_debug before_release after_release clean_release
+.PHONY: gen_version before_debug after_debug clean_debug before_release after_release clean_release
 
