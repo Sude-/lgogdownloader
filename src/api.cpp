@@ -121,16 +121,16 @@ int API::login(const std::string& email, const std::string& password)
     std::string token, secret;
 
     // Get temporary request token
-    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY, CONSUMER_SECRET, NULL /* token */, NULL /* secret */);
+    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), NULL /* token */, NULL /* secret */);
 
     std::string request_token_resp = this->getResponse(url);
 
     char **rv = NULL;
     int rc = oauth_split_url_parameters(request_token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 3 && !strncmp(rv[1], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
-        token = rv[1]+OAUTH_TOKEN_LENGTH+1;
-        secret = rv[2]+OAUTH_SECRET_LENGTH+1;
+    if (rc == 3 && !strncmp(rv[1], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
+        token = rv[1]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
+        secret = rv[2]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
         rv = NULL;
     }
     else
@@ -140,14 +140,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Authorize temporary token and get verifier
     url = this->config.oauth_authorize_temp_token + "?username=" + oauth_url_escape(email.c_str()) + "&password=" + oauth_url_escape(password.c_str());
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY, CONSUMER_SECRET, token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string authorize_resp = this->getResponse(url);
 
     std::string verifier;
     rc = oauth_split_url_parameters(authorize_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", OAUTH_VERIFIER_LENGTH)) {
-        verifier = rv[1]+OAUTH_VERIFIER_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", GlobalConstants::OAUTH_VERIFIER_LENGTH)) {
+        verifier = rv[1]+GlobalConstants::OAUTH_VERIFIER_LENGTH+1;
         rv = NULL;
     }
     else
@@ -157,14 +157,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Get final token and secret
     url = this->config.oauth_get_token + "?oauth_verifier=" + verifier;
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY, CONSUMER_SECRET, token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string token_resp = this->getResponse(url);
 
     rc = oauth_split_url_parameters(token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[0], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
-        this->config.oauth_token = rv[0]+OAUTH_TOKEN_LENGTH+1;
-        this->config.oauth_secret = rv[1]+OAUTH_SECRET_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[0], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
+        this->config.oauth_token = rv[0]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
+        this->config.oauth_secret = rv[1]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
         free(rv);
         res = 1;
     }
@@ -260,7 +260,7 @@ std::string API::getResponseOAuth(const std::string& url)
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (API::getResponseOAuth)" << std::endl << "URL: " << url << std::endl;
     #endif
-    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY, CONSUMER_SECRET, this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
+    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
     std::string response = this->getResponse(url_oauth);
 
     return response;
@@ -289,60 +289,21 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             // Installer details
             std::vector<std::pair<Json::Value,unsigned int>> installers;
-            if (type & INSTALLER_WINDOWS)
+            for (unsigned int i = 0; i < GlobalConstants::INSTALLERS.size(); ++i)
             {
-                if (lang & LANGUAGE_EN)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_en"],LANGUAGE_EN));
-                if (lang & LANGUAGE_DE)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_de"],LANGUAGE_DE));
-                if (lang & LANGUAGE_FR)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_fr"],LANGUAGE_FR));
-                if (lang & LANGUAGE_PL)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_pl"],LANGUAGE_PL));
-                if (lang & LANGUAGE_RU)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_ru"],LANGUAGE_RU));
-                if (lang & LANGUAGE_CN)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_cn"],LANGUAGE_CN));
-                if (lang & LANGUAGE_CZ)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_cz"],LANGUAGE_CZ));
-                if (lang & LANGUAGE_ES)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_es"],LANGUAGE_ES));
-                if (lang & LANGUAGE_HU)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_hu"],LANGUAGE_HU));
-                if (lang & LANGUAGE_IT)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_it"],LANGUAGE_IT));
-                if (lang & LANGUAGE_JP)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_jp"],LANGUAGE_JP));
-                if (lang & LANGUAGE_TR)
-                    installers.push_back(std::make_pair(root["game"]["installer_win_tr"],LANGUAGE_TR));
+                if (type & GlobalConstants::INSTALLERS[i].installerId)
+                {
+                    std::string installer = "installer_" + GlobalConstants::INSTALLERS[i].installerCode + "_";
+                    for  (unsigned int j = 0; j < GlobalConstants::LANGUAGES.size(); ++j)
+                    {
+                        if (lang & GlobalConstants::LANGUAGES[j].languageId)
+                        {
+                            installers.push_back(std::make_pair(root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode],GlobalConstants::LANGUAGES[j].languageId));
+                        }
+                    }
+                }
             }
-            if (type & INSTALLER_MAC)
-            {
-                if (lang & LANGUAGE_EN)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_en"],LANGUAGE_EN));
-                if (lang & LANGUAGE_DE)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_de"],LANGUAGE_DE));
-                if (lang & LANGUAGE_FR)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_fr"],LANGUAGE_FR));
-                if (lang & LANGUAGE_PL)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_pl"],LANGUAGE_PL));
-                if (lang & LANGUAGE_RU)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_ru"],LANGUAGE_RU));
-                if (lang & LANGUAGE_CN)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_cn"],LANGUAGE_CN));
-                if (lang & LANGUAGE_CZ)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_cz"],LANGUAGE_CZ));
-                if (lang & LANGUAGE_ES)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_es"],LANGUAGE_ES));
-                if (lang & LANGUAGE_HU)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_hu"],LANGUAGE_HU));
-                if (lang & LANGUAGE_IT)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_it"],LANGUAGE_IT));
-                if (lang & LANGUAGE_JP)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_jp"],LANGUAGE_JP));
-                if (lang & LANGUAGE_TR)
-                    installers.push_back(std::make_pair(root["game"]["installer_mac_tr"],LANGUAGE_TR));
-            }
+
             for ( unsigned int i = 0; i < installers.size(); ++i )
             {
                 for ( unsigned int index = 0; index < installers[i].first.size(); ++index )

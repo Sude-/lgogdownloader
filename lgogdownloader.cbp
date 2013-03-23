@@ -51,6 +51,7 @@
 		<Unit filename="include/api.h" />
 		<Unit filename="include/config.h" />
 		<Unit filename="include/downloader.h" />
+		<Unit filename="include/globalconstants.h" />
 		<Unit filename="include/progressbar.h" />
 		<Unit filename="include/util.h" />
 		<Unit filename="main.cpp" />

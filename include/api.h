@@ -7,6 +7,8 @@
 #ifndef API_H
 #define API_H
 
+#include "globalconstants.h"
+
 #include <iostream>
 #include <vector>
 #include <curl/curl.h>
@@ -15,31 +17,9 @@ extern "C" {
 }
 #include <cstring>
 
-#define CONSUMER_KEY "1f444d14ea8ec776585524a33f6ecc1c413ed4a5"
-#define CONSUMER_SECRET "20d175147f9db9a10fc0584aa128090217b9cf88"
-#define OAUTH_VERIFIER_LENGTH 14
-#define OAUTH_TOKEN_LENGTH 11
-#define OAUTH_SECRET_LENGTH 18
-
-#define INSTALLER_WINDOWS 1
-#define INSTALLER_MAC 2
-
-#define LANGUAGE_EN 1
-#define LANGUAGE_DE 2
-#define LANGUAGE_FR 4
-#define LANGUAGE_PL 8
-#define LANGUAGE_RU 16
-#define LANGUAGE_CN 32
-#define LANGUAGE_CZ 64
-#define LANGUAGE_ES 128
-#define LANGUAGE_HU 256
-#define LANGUAGE_IT 512
-#define LANGUAGE_JP 1024
-#define LANGUAGE_TR 2048
-
 class gameFile {
     public:
-        gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = LANGUAGE_EN);
+        gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN);
         bool updated;
         std::string id;
         std::string name;
@@ -101,7 +81,7 @@ class API
         std::string getResponseOAuth(const std::string& url);
         int getUserDetails();
         int getGames();
-        gameDetails getGameDetails(const std::string& game_name, const unsigned int& type = INSTALLER_WINDOWS, const unsigned int& lang = LANGUAGE_EN);
+        gameDetails getGameDetails(const std::string& game_name, const unsigned int& type = GlobalConstants::INSTALLER_WINDOWS, const unsigned int& lang = GlobalConstants::LANGUAGE_EN);
         std::string getInstallerLink(const std::string& game_name, const std::string& id);
         std::string getExtraLink(const std::string& game_name, const std::string& id);
         std::string getXML(const std::string& game_name, const std::string& id);

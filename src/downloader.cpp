@@ -6,6 +6,7 @@
 
 #include "downloader.h"
 #include "util.h"
+#include "globalconstants.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -264,31 +265,17 @@ void Downloader::fixInstallerLanguagePath(gameDetails& game)
 {
     for (unsigned int i = 0; i < game.installers.size(); ++i)
     {
-        if (game.installers[i].language != LANGUAGE_EN)
+        if (game.installers[i].language != GlobalConstants::LANGUAGE_EN)
         {
             std::string lang;
-            if (game.installers[i].language == LANGUAGE_DE)
-                lang = "_de_";
-            else if (game.installers[i].language == LANGUAGE_FR)
-                lang = "_fr_";
-            else if (game.installers[i].language == LANGUAGE_PL)
-                lang = "_pl_";
-            else if (game.installers[i].language == LANGUAGE_RU)
-                lang = "_ru_";
-            else if (game.installers[i].language == LANGUAGE_CN)
-                lang = "_cn_";
-            else if (game.installers[i].language == LANGUAGE_CZ)
-                lang = "_cz_";
-            else if (game.installers[i].language == LANGUAGE_ES)
-                lang = "_es_";
-            else if (game.installers[i].language == LANGUAGE_HU)
-                lang = "_hu_";
-            else if (game.installers[i].language == LANGUAGE_IT)
-                lang = "_it_";
-            else if (game.installers[i].language == LANGUAGE_JP)
-                lang = "_jp_";
-            else if (game.installers[i].language == LANGUAGE_TR)
-                lang = "_tr_";
+            for (unsigned int j = 0; j < GlobalConstants::LANGUAGES.size(); ++j)
+            {
+                if (game.installers[i].language == GlobalConstants::LANGUAGES[j].languageId)
+                {
+                    lang = "_" + GlobalConstants::LANGUAGES[j].languageCode + "_";
+                    break;
+                }
+            }
             boost::match_results<std::string::const_iterator> what;
             boost::regex expression(lang, boost::regex::perl | boost::regex::icase);
             if (!boost::regex_search(game.installers[i].path, what, expression))
