@@ -29,6 +29,13 @@ extern "C" {
 #define LANGUAGE_FR 4
 #define LANGUAGE_PL 8
 #define LANGUAGE_RU 16
+#define LANGUAGE_CN 32
+#define LANGUAGE_CZ 64
+#define LANGUAGE_ES 128
+#define LANGUAGE_HU 256
+#define LANGUAGE_IT 512
+#define LANGUAGE_JP 1024
+#define LANGUAGE_TR 2048
 
 class gameFile {
     public:

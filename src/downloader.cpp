@@ -275,6 +275,20 @@ void Downloader::fixInstallerLanguagePath(gameDetails& game)
                 lang = "_pl_";
             else if (game.installers[i].language == LANGUAGE_RU)
                 lang = "_ru_";
+            else if (game.installers[i].language == LANGUAGE_CN)
+                lang = "_cn_";
+            else if (game.installers[i].language == LANGUAGE_CZ)
+                lang = "_cz_";
+            else if (game.installers[i].language == LANGUAGE_ES)
+                lang = "_es_";
+            else if (game.installers[i].language == LANGUAGE_HU)
+                lang = "_hu_";
+            else if (game.installers[i].language == LANGUAGE_IT)
+                lang = "_it_";
+            else if (game.installers[i].language == LANGUAGE_JP)
+                lang = "_jp_";
+            else if (game.installers[i].language == LANGUAGE_TR)
+                lang = "_tr_";
             boost::match_results<std::string::const_iterator> what;
             boost::regex expression(lang, boost::regex::perl | boost::regex::icase);
             if (!boost::regex_search(game.installers[i].path, what, expression))

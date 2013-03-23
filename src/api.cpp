@@ -301,6 +301,20 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     installers.push_back(std::make_pair(root["game"]["installer_win_pl"],LANGUAGE_PL));
                 if (lang & LANGUAGE_RU)
                     installers.push_back(std::make_pair(root["game"]["installer_win_ru"],LANGUAGE_RU));
+                if (lang & LANGUAGE_CN)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_cn"],LANGUAGE_CN));
+                if (lang & LANGUAGE_CZ)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_cz"],LANGUAGE_CZ));
+                if (lang & LANGUAGE_ES)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_es"],LANGUAGE_ES));
+                if (lang & LANGUAGE_HU)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_hu"],LANGUAGE_HU));
+                if (lang & LANGUAGE_IT)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_it"],LANGUAGE_IT));
+                if (lang & LANGUAGE_JP)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_jp"],LANGUAGE_JP));
+                if (lang & LANGUAGE_TR)
+                    installers.push_back(std::make_pair(root["game"]["installer_win_tr"],LANGUAGE_TR));
             }
             if (type & INSTALLER_MAC)
             {
@@ -314,6 +328,20 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     installers.push_back(std::make_pair(root["game"]["installer_mac_pl"],LANGUAGE_PL));
                 if (lang & LANGUAGE_RU)
                     installers.push_back(std::make_pair(root["game"]["installer_mac_ru"],LANGUAGE_RU));
+                if (lang & LANGUAGE_CN)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_cn"],LANGUAGE_CN));
+                if (lang & LANGUAGE_CZ)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_cz"],LANGUAGE_CZ));
+                if (lang & LANGUAGE_ES)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_es"],LANGUAGE_ES));
+                if (lang & LANGUAGE_HU)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_hu"],LANGUAGE_HU));
+                if (lang & LANGUAGE_IT)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_it"],LANGUAGE_IT));
+                if (lang & LANGUAGE_JP)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_jp"],LANGUAGE_JP));
+                if (lang & LANGUAGE_TR)
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_tr"],LANGUAGE_TR));
             }
             for ( unsigned int i = 0; i < installers.size(); ++i )
             {

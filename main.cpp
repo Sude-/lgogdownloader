@@ -61,9 +61,15 @@ int main(int argc, char *argv[])
                                  + std::to_string(LANGUAGE_FR) + " = French\n"
                                  + std::to_string(LANGUAGE_PL) + " = Polish\n"
                                  + std::to_string(LANGUAGE_RU) + " = Russian\n"
+                                 + std::to_string(LANGUAGE_CN) + " = Chinese\n"
+                                 + std::to_string(LANGUAGE_CZ) + " = Czech\n"
+                                 + std::to_string(LANGUAGE_ES) + " = Spanish\n"
+                                 + std::to_string(LANGUAGE_HU) + " = Hungarian\n"
+                                 + std::to_string(LANGUAGE_IT) + " = Italian\n"
+                                 + std::to_string(LANGUAGE_JP) + " = Japanese\n"
+                                 + std::to_string(LANGUAGE_TR) + " = Turkish\n"
                                  + "Add the values to download multiple languages\n"
-                                 + "All = " + std::to_string(LANGUAGE_EN) + "+" + std::to_string(LANGUAGE_DE) + "+" + std::to_string(LANGUAGE_FR) + "+" + std::to_string(LANGUAGE_PL) + "+" + std::to_string(LANGUAGE_RU) + " = "
-                                 + std::to_string(LANGUAGE_EN | LANGUAGE_DE | LANGUAGE_FR | LANGUAGE_PL | LANGUAGE_RU) + "\n"
+                                 + "All = " + std::to_string(LANGUAGE_EN | LANGUAGE_DE | LANGUAGE_FR | LANGUAGE_PL | LANGUAGE_RU | LANGUAGE_CN | LANGUAGE_CZ | LANGUAGE_ES | LANGUAGE_HU | LANGUAGE_IT | LANGUAGE_JP | LANGUAGE_TR) + "\n"
                                  + "French + Polish = " + std::to_string(LANGUAGE_FR) + "+" + std::to_string(LANGUAGE_PL) + " = " + std::to_string(LANGUAGE_FR | LANGUAGE_PL);
 
     bpo::variables_map vm;
