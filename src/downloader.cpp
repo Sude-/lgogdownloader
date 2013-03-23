@@ -228,6 +228,7 @@ int Downloader::getGameDetails()
         game = gogAPI->getGameDetails(gameNames[i], config.iInstallerType, config.iInstallerLanguage);
         if (!gogAPI->getError())
         {
+            this->fixInstallerLanguagePath(game);
             if (!config.bUpdateCheck)
                 games.push_back(game);
             else
@@ -256,6 +257,34 @@ int Downloader::getGameDetails()
     }
     std::cout << std::endl;
     return 0;
+}
+
+// Adds language to installer path if it is missing
+void Downloader::fixInstallerLanguagePath(gameDetails& game)
+{
+    for (unsigned int i = 0; i < game.installers.size(); ++i)
+    {
+        if (game.installers[i].language != LANGUAGE_EN)
+        {
+            std::string lang;
+            if (game.installers[i].language == LANGUAGE_DE)
+                lang = "_de_";
+            else if (game.installers[i].language == LANGUAGE_FR)
+                lang = "_fr_";
+            else if (game.installers[i].language == LANGUAGE_PL)
+                lang = "_pl_";
+            else if (game.installers[i].language == LANGUAGE_RU)
+                lang = "_ru_";
+            boost::match_results<std::string::const_iterator> what;
+            boost::regex expression(lang, boost::regex::perl | boost::regex::icase);
+            if (!boost::regex_search(game.installers[i].path, what, expression))
+            {
+                boost::regex expression("(.*)_(\\d+\\.\\d+.*$)", boost::regex::perl | boost::regex::icase);
+                boost::regex_search(game.installers[i].path,what,expression);
+                game.installers[i].path = what[1] + lang + what[2];
+            }
+        }
+    }
 }
 
 void Downloader::listGames()

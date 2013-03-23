@@ -59,6 +59,7 @@ class Downloader
         int downloadCovers(std::string gamename, std::string directory, std::string cover_xml_data);
         int login();
         int getGameDetails();
+        void fixInstallerLanguagePath(gameDetails& game);
         void getGameList();
         size_t getResumePosition();
         CURLcode beginDownload();

@@ -18,13 +18,14 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     return count;
 }
 
-gameFile::gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size)
+gameFile::gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language)
 {
     this->updated = t_updated;
     this->id = t_id;
     this->name = t_name;
     this->path = t_path;
     this->size = t_size;
+    this->language = t_language;
 }
 
 gameFile::~gameFile()
@@ -287,45 +288,47 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             game.icon = root["game"]["icon"].asString();
 
             // Installer details
-            std::vector<Json::Value> installers;
+            std::vector<std::pair<Json::Value,unsigned int>> installers;
             if (type & INSTALLER_WINDOWS)
             {
                 if (lang & LANGUAGE_EN)
-                    installers.push_back(root["game"]["installer_win_en"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_win_en"],LANGUAGE_EN));
                 if (lang & LANGUAGE_DE)
-                    installers.push_back(root["game"]["installer_win_de"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_win_de"],LANGUAGE_DE));
                 if (lang & LANGUAGE_FR)
-                    installers.push_back(root["game"]["installer_win_fr"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_win_fr"],LANGUAGE_FR));
                 if (lang & LANGUAGE_PL)
-                    installers.push_back(root["game"]["installer_win_pl"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_win_pl"],LANGUAGE_PL));
                 if (lang & LANGUAGE_RU)
-                    installers.push_back(root["game"]["installer_win_ru"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_win_ru"],LANGUAGE_RU));
             }
             if (type & INSTALLER_MAC)
             {
                 if (lang & LANGUAGE_EN)
-                    installers.push_back(root["game"]["installer_mac_en"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_en"],LANGUAGE_EN));
                 if (lang & LANGUAGE_DE)
-                    installers.push_back(root["game"]["installer_mac_de"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_de"],LANGUAGE_DE));
                 if (lang & LANGUAGE_FR)
-                    installers.push_back(root["game"]["installer_mac_fr"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_fr"],LANGUAGE_FR));
                 if (lang & LANGUAGE_PL)
-                    installers.push_back(root["game"]["installer_mac_pl"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_pl"],LANGUAGE_PL));
                 if (lang & LANGUAGE_RU)
-                    installers.push_back(root["game"]["installer_mac_ru"]);
+                    installers.push_back(std::make_pair(root["game"]["installer_mac_ru"],LANGUAGE_RU));
             }
             for ( unsigned int i = 0; i < installers.size(); ++i )
             {
-                for ( unsigned int index = 0; index < installers[i].size(); ++index )
+                for ( unsigned int index = 0; index < installers[i].first.size(); ++index )
                 {
-                    Json::Value installer = installers[i][index];
+                    Json::Value installer = installers[i].first[index];
+                    unsigned int language = installers[i].second;
 
                     game.installers.push_back(
                                                 gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
                                                             installer["#name"].asString(),
                                                             installer["link"].asString(),
-                                                            installer["size"].asString()
+                                                            installer["size"].asString(),
+                                                            language
                                                          )
                                             );
                 }

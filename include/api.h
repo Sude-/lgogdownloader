@@ -32,12 +32,13 @@ extern "C" {
 
 class gameFile {
     public:
-        gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size);
+        gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = LANGUAGE_EN);
         bool updated;
         std::string id;
         std::string name;
         std::string path;
         std::string size;
+        unsigned int language;
         virtual ~gameFile();
 };
 
