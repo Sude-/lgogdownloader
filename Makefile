@@ -18,6 +18,8 @@ LIBDIR =
 LIB =  -lcurl -loauth -ljsoncpp -lhtmlcxx -lboost_system -lboost_filesystem -lboost_regex -lboost_program_options -lboost_date_time -ltinyxml -lrhash
 LDFLAGS = 
 
+VERSION = -DVERSION_STRING="\"$(shell sh version.sh)\""
+
 INC_DEBUG =  $(INC)
 CFLAGS_DEBUG =  $(CFLAGS) -g -DDEBUG
 RESINC_DEBUG =  $(RESINC)
@@ -48,9 +50,6 @@ all: debug release
 
 clean: clean_debug clean_release
 
-gen_version:
-	echo "#define VERSION_STRING \"LGOGDownloader $(shell grep VERSION_NUMBER < main.cpp | head -n 1 | sed -e 's/.*\([0-9]\+\.[0-9]\+\).*/\1/')$(shell if [ -e .git/HEAD ]; then if git status | grep -q 'modified:'; then echo -n 'M'; fi && echo -n ' git ' && git rev-parse --short HEAD; fi)\"" > version.h
-
 before_debug: 
 	test -d bin/Debug || mkdir -p bin/Debug
 	test -d $(OBJDIR_DEBUG) || mkdir -p $(OBJDIR_DEBUG)
@@ -58,13 +57,13 @@ before_debug:
 
 after_debug: 
 
-debug: before_debug gen_version out_debug after_debug
+debug: before_debug out_debug after_debug
 
 out_debug: $(OBJ_DEBUG) $(DEP_DEBUG)
 	$(LD) $(LDFLAGS_DEBUG) $(LIBDIR_DEBUG) $(OBJ_DEBUG) $(LIB_DEBUG) -o $(OUT_DEBUG)
 
 $(OBJDIR_DEBUG)/main.o: main.cpp
-	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c main.cpp -o $(OBJDIR_DEBUG)/main.o
+	$(CXX) $(CFLAGS_DEBUG) $(VERSION) $(INC_DEBUG) -c main.cpp -o $(OBJDIR_DEBUG)/main.o
 
 $(OBJDIR_DEBUG)/src/api.o: src/api.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/api.cpp -o $(OBJDIR_DEBUG)/src/api.o
@@ -83,7 +82,6 @@ clean_debug:
 	rm -rf bin/Debug
 	rm -rf $(OBJDIR_DEBUG)
 	rm -rf $(OBJDIR_DEBUG)/src
-	rm -f version.h
 
 before_release: 
 	test -d bin/Release || mkdir -p bin/Release
@@ -92,13 +90,13 @@ before_release:
 
 after_release: 
 
-release: before_release gen_version out_release after_release
+release: before_release out_release after_release
 
 out_release: $(OBJ_RELEASE) $(DEP_RELEASE)
 	$(LD) $(LDFLAGS_RELEASE) $(LIBDIR_RELEASE) $(OBJ_RELEASE) $(LIB_RELEASE) -o $(OUT_RELEASE)
 
 $(OBJDIR_RELEASE)/main.o: main.cpp
-	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c main.cpp -o $(OBJDIR_RELEASE)/main.o
+	$(CXX) $(CFLAGS_RELEASE) $(VERSION) $(INC_RELEASE) -c main.cpp -o $(OBJDIR_RELEASE)/main.o
 
 $(OBJDIR_RELEASE)/src/api.o: src/api.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/api.cpp -o $(OBJDIR_RELEASE)/src/api.o
@@ -117,7 +115,6 @@ clean_release:
 	rm -rf bin/Release
 	rm -rf $(OBJDIR_RELEASE)
 	rm -rf $(OBJDIR_RELEASE)/src
-	rm -f version.h
 
 install:
 	install $(OUT_RELEASE) /usr/bin
@@ -125,5 +122,5 @@ install:
 uninstall:
 	rm /usr/bin/lgogdownloader
 
-.PHONY: gen_version before_debug after_debug clean_debug before_release after_release clean_release
+.PHONY: before_debug after_debug clean_debug before_release after_release clean_release
 
