@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
             ("list", bpo::value<bool>(&config.bList)->zero_tokens()->default_value(false), "List games")
             ("list-details", bpo::value<bool>(&config.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
             ("download", bpo::value<bool>(&config.bDownload)->zero_tokens()->default_value(false), "Download")
-            ("repair", bpo::value<bool>(&config.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files")
+            ("repair", bpo::value<bool>(&config.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). This will delete the old file")
             ("game", bpo::value<std::string>(&config.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)\nAliases: \"all\", \"free\"")
             ("directory", bpo::value<std::string>(&config.sDirectory)->default_value(""), "Set download directory")
             #ifndef ENVIRONMENT32
@@ -189,10 +189,10 @@ int main(int argc, char *argv[])
         return result;
     else if (config.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
-    else if (config.bDownload) // Download games
-        downloader.download();
     else if (config.bRepair) // Repair file
         downloader.repair();
+    else if (config.bDownload) // Download games
+        downloader.download();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
         downloader.listGames();
     else

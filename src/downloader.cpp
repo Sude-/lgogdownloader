@@ -657,6 +657,26 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
     {
         std::cout   << "Filesizes don't match" << std::endl
                     << "Incomplete download or different version" << std::endl;
+        if (this->config.bDownload)
+        {
+            fclose(outfile);
+            std::cout << "Redownloading file" << std::endl;
+            boost::filesystem::path path = filepath;
+            if (!boost::filesystem::remove(path))
+            {
+                std::cout << "Failed to delete " << path << std::endl;
+                res = 0;
+            }
+            else
+            {
+                CURLcode result = this->downloadFile(url, filepath);
+                std::cout << std::endl;
+                if (result == CURLE_OK)
+                    res = 1;
+                else
+                    res = 0;
+            }
+        }
         return res;
     }
 
