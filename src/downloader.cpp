@@ -657,9 +657,9 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
     {
         std::cout   << "Filesizes don't match" << std::endl
                     << "Incomplete download or different version" << std::endl;
+        fclose(outfile);
         if (this->config.bDownload)
         {
-            fclose(outfile);
             std::cout << "Redownloading file" << std::endl;
             boost::filesystem::path path = filepath;
             if (!boost::filesystem::remove(path))
