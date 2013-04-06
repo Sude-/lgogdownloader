@@ -690,7 +690,7 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
         std::string range = ss.str();
         ss.str(std::string());
 
-        std::cout << "\tChunk " << i << " (" << chunk_size << " bytes): ";
+        std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
         fseek(outfile, begin, SEEK_SET);
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
@@ -724,12 +724,12 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
         }
         else
         {
-            std::cout << "OK" << std::endl;
+            std::cout << "OK\r" << std::flush;
         }
         free(chunk);
         res = 1;
     }
-
+    std::cout << std::endl;
     fclose(outfile);
 
     return res;
