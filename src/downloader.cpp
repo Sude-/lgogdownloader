@@ -353,7 +353,7 @@ void Downloader::repair()
                         continue;
                     }
                     std::cout << "Repairing file " << filepath << std::endl;
-                    this->repairFile(url, filepath, XML, config.sXMLDirectory);
+                    this->repairFile(url, filepath, XML);
                     std::cout << std::endl;
                 }
             }
@@ -374,7 +374,7 @@ void Downloader::repair()
                     continue;
                 }
                 std::cout << "Repairing file " << filepath << std::endl;
-                this->repairFile(url, filepath, std::string(), config.sXMLDirectory);
+                this->repairFile(url, filepath);
                 std::cout << std::endl;
             }
         }
@@ -435,10 +435,13 @@ void Downloader::download()
                 // Download
                 if (!url.empty())
                 {
+                    std::string XML;
+                    if (!config.bNoRemoteXML)
+                        XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (!games[i].installers[j].name.empty())
                         std::cout << "Dowloading: " << games[i].installers[j].name << std::endl;
                     std::cout << filepath << std::endl;
-                    this->downloadFile(url, filepath);
+                    this->downloadFile(url, filepath, XML);
                     std::cout << std::endl;
                 }
             }
@@ -479,7 +482,7 @@ void Downloader::download()
 }
 
 // Download a file, resume if possible
-CURLcode Downloader::downloadFile(std::string url, std::string filepath)
+CURLcode Downloader::downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data)
 {
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
@@ -489,6 +492,39 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
     std::string directory = pathname.parent_path().string();
+    std::string filenameXML = pathname.filename().string() + ".xml";
+
+    // Using local XML data for version check before resuming
+    boost::filesystem::path local_xml_file;
+    if (config.sXMLDirectory.empty())
+        local_xml_file = config.sHome + "/.gogdownloader/xml/" + filenameXML;
+    else
+        local_xml_file = config.sXMLDirectory + "/" + filenameXML;
+
+    bool bSameVersion = true; // assume same version
+    bool bLocalXMLExists = boost::filesystem::exists(local_xml_file);
+
+    if (!xml_data.empty())
+    {
+        // Do version check if local XML file exists
+        if (bLocalXMLExists)
+        {
+            TiXmlDocument remote_xml, local_xml;
+            remote_xml.Parse(xml_data.c_str());
+            local_xml.LoadFile(local_xml_file.string());
+            TiXmlNode *fileNodeRemote = remote_xml.FirstChild("file");
+            TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
+            if (fileNodeRemote && fileNodeLocal)
+            {
+                TiXmlElement *fileElemRemote = fileNodeRemote->ToElement();
+                TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
+                std::string remoteHash = fileElemRemote->Attribute("md5");
+                std::string localHash = fileElemLocal->Attribute("md5");
+                if (remoteHash != localHash)
+                    bSameVersion = false;
+            }
+        }
+    }
 
     // Check that directory exists and create subdirectories
     boost::filesystem::path path = directory;
@@ -512,19 +548,60 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
     // Check if file exists
     if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
     {
-        // File exists, resume
-        if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
+        if (bSameVersion)
         {
-            bResume = true;
-            fseek(outfile, 0, SEEK_END);
-            offset = ftell(outfile);
-            curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
-            this->resume_position = offset;
+            // File exists, resume
+            if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
+            {
+                bResume = true;
+                fseek(outfile, 0, SEEK_END);
+                offset = ftell(outfile);
+                curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
+                this->resume_position = offset;
+            }
+            else
+            {
+                std::cout << "Failed to reopen " << filepath << std::endl;
+                return res;
+            }
         }
         else
         {
-            std::cout << "Failed to reopen " << filepath << std::endl;
-            return res;
+            fclose(outfile);
+            std::cout << "Remote file is different, renaming local file" << std::endl;
+            boost::filesystem::path new_name = filepath + ".old";
+            if (boost::filesystem::exists(new_name))
+            {
+                std::cout << "Old renamed file found, deleting old file" << std::endl;
+                if (!boost::filesystem::remove(new_name))
+                {
+                    std::cout << "Failed to delete " << new_name.string() << std::endl;
+                    std::cout << "Skipping file" << std::endl;
+                    return res;
+                }
+            }
+            boost::system::error_code ec;
+            boost::filesystem::rename(pathname, new_name, ec);
+            if (ec)
+            {
+                std::cout << "Failed to rename " << filepath << " to " << new_name.string() << std::endl;
+                std::cout << "Skipping file" << std::endl;
+                return res;
+            }
+            else
+            {
+                // Create new file
+                if ((outfile=fopen(filepath.c_str(), "w"))!=NULL)
+                {
+                    curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, 0); // start downloading from the beginning of file
+                    this->resume_position = 0;
+                }
+                else
+                {
+                    std::cout << "Failed to create " << filepath << std::endl;
+                    return res;
+                }
+            }
         }
     }
     else
@@ -532,13 +609,31 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
         // File doesn't exist, create new file
         if ((outfile=fopen(filepath.c_str(), "w"))!=NULL)
         {
-            curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset); // start downloading from the beginning of file
+            curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, 0); // start downloading from the beginning of file
             this->resume_position = 0;
         }
         else
         {
             std::cout << "Failed to create " << filepath << std::endl;
             return res;
+        }
+    }
+
+    // Save remote XML
+    if (!xml_data.empty())
+    {
+        if ((bLocalXMLExists && (!bSameVersion || config.bRepair)) || !bLocalXMLExists)
+        {
+            std::ofstream ofs(local_xml_file.string().c_str());
+            if (ofs)
+            {
+                ofs << xml_data;
+                ofs.close();
+            }
+            else
+            {
+                std::cout << "Can't create " << local_xml_file.string() << std::endl;
+            }
         }
     }
 
@@ -561,13 +656,11 @@ CURLcode Downloader::downloadFile(std::string url, std::string filepath)
 }
 
 // Repair file
-int Downloader::repairFile(std::string url, std::string filepath, std::string xml_data, std::string xml_dir)
+int Downloader::repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data)
 {
     int res = 0;
     FILE *outfile;
     size_t offset=0;
-    if (xml_dir.empty())
-        xml_dir = config.sHome + "/.gogdownloader/xml";
 
     size_t from_offset, to_offset;
 
@@ -592,7 +685,7 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
     }
     else
     {
-        std::string xml_file = xml_dir + "/" + filename + ".xml";
+        std::string xml_file = config.sXMLDirectory + "/" + filename + ".xml";
         std::cout << "XML: Using local file" << std::endl;
         xml.LoadFile(xml_file);
     }
@@ -669,7 +762,7 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
             }
             else
             {
-                CURLcode result = this->downloadFile(url, filepath);
+                CURLcode result = this->downloadFile(url, filepath, xml_data);
                 std::cout << std::endl;
                 if (result == CURLE_OK)
                     res = 1;
@@ -736,7 +829,7 @@ int Downloader::repairFile(std::string url, std::string filepath, std::string xm
 }
 
 // Download cover images
-int Downloader::downloadCovers(std::string gamename, std::string directory, std::string cover_xml_data)
+int Downloader::downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data)
 {
     int res = 0;
     TiXmlDocument xml;

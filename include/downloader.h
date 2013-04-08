@@ -54,9 +54,9 @@ class Downloader
         ProgressBar* progressbar;
     protected:
     private:
-        CURLcode downloadFile(std::string url, std::string filepath);
-        int repairFile(std::string url, std::string filepath, std::string xml_data = std::string(), std::string xml_dir = std::string());
-        int downloadCovers(std::string gamename, std::string directory, std::string cover_xml_data);
+        CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string());
+        int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string());
+        int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
         int login();
         int getGameDetails();
         void getGameList();
