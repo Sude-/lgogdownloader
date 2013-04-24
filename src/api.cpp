@@ -83,15 +83,15 @@ int API::getAPIConfig()
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getAPIConfig)" << std::endl << root << std::endl;
             #endif
-            this->config.oauth_authorize_temp_token = root["config"]["oauth_authorize_temp_token"].asString();
-            this->config.oauth_get_temp_token = root["config"]["oauth_get_temp_token"].asString();
-            this->config.oauth_get_token = root["config"]["oauth_get_token"].asString();
-            this->config.get_user_games = root["config"]["get_user_games"].asString();
-            this->config.get_user_details = root["config"]["get_user_details"].asString();
-            this->config.get_installer_link = root["config"]["get_installer_link"].asString();
-            this->config.get_game_details = root["config"]["get_game_details"].asString();
-            this->config.get_extra_link = root["config"]["get_extra_link"].asString();
-            this->config.set_app_status = root["config"]["set_app_status"].asString();
+            this->config.oauth_authorize_temp_token = root["config"]["oauth_authorize_temp_token"].asString() + "/";
+            this->config.oauth_get_temp_token = root["config"]["oauth_get_temp_token"].asString() + "/";
+            this->config.oauth_get_token = root["config"]["oauth_get_token"].asString() + "/";
+            this->config.get_user_games = root["config"]["get_user_games"].asString() + "/";
+            this->config.get_user_details = root["config"]["get_user_details"].asString() + "/";
+            this->config.get_installer_link = root["config"]["get_installer_link"].asString() + "/";
+            this->config.get_game_details = root["config"]["get_game_details"].asString() + "/";
+            this->config.get_extra_link = root["config"]["get_extra_link"].asString() + "/";
+            this->config.set_app_status = root["config"]["set_app_status"].asString() + "/";
             res = 1;
         }
         else
