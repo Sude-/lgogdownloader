@@ -50,7 +50,7 @@ namespace GlobalConstants
         { LANGUAGE_TR, "tr", "Turkish"   }
     };
 
-    // Installer constants
+    // Platform constants
     const unsigned int PLATFORM_WINDOWS = 1;
     const unsigned int PLATFORM_MAC     = 2;
 
