@@ -58,12 +58,12 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
 
     if (config.bVerbose)
         curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 1);
 
-    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose);
+    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer);
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
     if (config.bLogin || !gogAPI->init())
@@ -313,7 +313,7 @@ void Downloader::repair()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
     #ifndef ENVIRONMENT32
@@ -386,7 +386,7 @@ void Downloader::download()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
     #ifndef ENVIRONMENT32
@@ -806,7 +806,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
             curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-            curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, 0);
+            curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
             curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
             curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);

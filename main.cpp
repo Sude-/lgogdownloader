@@ -52,9 +52,9 @@ int main(int argc, char *argv[])
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
     unsigned int platform_sum = 0;
-    for (unsigned int i = 0; i < GlobalConstants::INSTALLERS.size(); ++i)
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        platform_text += std::to_string(GlobalConstants::INSTALLERS[i].installerId) + " = " + GlobalConstants::INSTALLERS[i].installerString + "\n";
+        platform_text += std::to_string(GlobalConstants::PLATFORMS[i].platformId) + " = " + GlobalConstants::PLATFORMS[i].platformString + "\n";
         platform_sum += GlobalConstants::LANGUAGES[i].languageId;
     }
     platform_text += std::to_string(platform_sum) + " = All";
@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     bpo::options_description config_file_options("Configuration");
     try
     {
+        bool bUnsecure = false;
         desc.add_options()
             ("help,h", "Print help message")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
             ("update-check", bpo::value<bool>(&config.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
-            ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::INSTALLER_WINDOWS), platform_text.c_str())
+            ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::PLATFORM_WINDOWS), platform_text.c_str())
             ("language", bpo::value<unsigned int>(&config.iInstallerLanguage)->default_value(GlobalConstants::LANGUAGE_EN), language_text.c_str())
             ("no-installers", bpo::value<bool>(&config.bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
             ("no-extras", bpo::value<bool>(&config.bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
             ("no-unicode", bpo::value<bool>(&config.bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&config.bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
+            ("unsecure", bpo::value<bool>(&bUnsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
         ;
 
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
@@ -139,6 +141,8 @@ int main(int argc, char *argv[])
 
         if (vm.count("limit-rate"))
             config.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
+
+        config.bVerifyPeer = !bUnsecure;
     }
     catch (std::exception& e)
     {
@@ -151,13 +155,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::INSTALLER_WINDOWS || config.iInstallerType > platform_sum)
+    if (config.iInstallerType < GlobalConstants::PLATFORMS[0].platformId || config.iInstallerType > platform_sum)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::LANGUAGE_EN || config.iInstallerType > language_sum)
+    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].languageId || config.iInstallerLanguage > language_sum)
     {
         std::cout << "Invalid value for --language" << std::endl;
         return 1;
