@@ -11,7 +11,7 @@ AR = ar
 LD = g++
 WINDRES = windres
 
-INC =  -Iinclude
+INC =  -Iinclude -I/usr/include/rhash
 CFLAGS =  -std=c++0x -Wall -fexceptions
 RESINC = 
 LIBDIR = 
