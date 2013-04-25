@@ -155,13 +155,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::PLATFORM_WINDOWS || config.iInstallerType > platform_sum)
+    if (config.iInstallerType < GlobalConstants::PLATFORMS[0].platformId || config.iInstallerType > platform_sum)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::LANGUAGE_EN || config.iInstallerType > language_sum)
+    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].languageId || config.iInstallerLanguage > language_sum)
     {
         std::cout << "Invalid value for --language" << std::endl;
         return 1;
