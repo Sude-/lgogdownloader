@@ -52,9 +52,9 @@ int main(int argc, char *argv[])
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
     unsigned int platform_sum = 0;
-    for (unsigned int i = 0; i < GlobalConstants::INSTALLERS.size(); ++i)
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        platform_text += std::to_string(GlobalConstants::INSTALLERS[i].installerId) + " = " + GlobalConstants::INSTALLERS[i].installerString + "\n";
+        platform_text += std::to_string(GlobalConstants::PLATFORMS[i].platformId) + " = " + GlobalConstants::PLATFORMS[i].platformString + "\n";
         platform_sum += GlobalConstants::LANGUAGES[i].languageId;
     }
     platform_text += std::to_string(platform_sum) + " = All";
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
             ("update-check", bpo::value<bool>(&config.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
-            ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::INSTALLER_WINDOWS), platform_text.c_str())
+            ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::PLATFORM_WINDOWS), platform_text.c_str())
             ("language", bpo::value<unsigned int>(&config.iInstallerLanguage)->default_value(GlobalConstants::LANGUAGE_EN), language_text.c_str())
             ("no-installers", bpo::value<bool>(&config.bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
             ("no-extras", bpo::value<bool>(&config.bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::INSTALLER_WINDOWS || config.iInstallerType > platform_sum)
+    if (config.iInstallerType < GlobalConstants::PLATFORM_WINDOWS || config.iInstallerType > platform_sum)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;

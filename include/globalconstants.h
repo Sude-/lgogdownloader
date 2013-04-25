@@ -51,14 +51,14 @@ namespace GlobalConstants
     };
 
     // Installer constants
-    const unsigned int INSTALLER_WINDOWS = 1;
-    const unsigned int INSTALLER_MAC     = 2;
+    const unsigned int PLATFORM_WINDOWS = 1;
+    const unsigned int PLATFORM_MAC     = 2;
 
-    struct installerStruct {const unsigned int installerId; const std::string installerCode; const std::string installerString;};
-    const std::vector<installerStruct> INSTALLERS =
+    struct platformStruct {const unsigned int platformId; const std::string platformCode; const std::string platformString;};
+    const std::vector<platformStruct> PLATFORMS =
     {
-        { INSTALLER_WINDOWS, "win", "Windows" },
-        { INSTALLER_MAC,     "mac", "Mac"     }
+        { PLATFORM_WINDOWS, "win", "Windows" },
+        { PLATFORM_MAC,     "mac", "Mac"     }
     };
 };
 

@@ -289,11 +289,11 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             // Installer details
             std::vector<std::pair<Json::Value,unsigned int>> installers;
-            for (unsigned int i = 0; i < GlobalConstants::INSTALLERS.size(); ++i)
+            for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
             {
-                if (type & GlobalConstants::INSTALLERS[i].installerId)
+                if (type & GlobalConstants::PLATFORMS[i].platformId)
                 {
-                    std::string installer = "installer_" + GlobalConstants::INSTALLERS[i].installerCode + "_";
+                    std::string installer = "installer_" + GlobalConstants::PLATFORMS[i].platformCode + "_";
                     for (unsigned int j = 0; j < GlobalConstants::LANGUAGES.size(); ++j)
                     {
                         if (lang & GlobalConstants::LANGUAGES[j].languageId)

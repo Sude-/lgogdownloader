@@ -81,7 +81,7 @@ class API
         std::string getResponseOAuth(const std::string& url);
         int getUserDetails();
         int getGames();
-        gameDetails getGameDetails(const std::string& game_name, const unsigned int& type = GlobalConstants::INSTALLER_WINDOWS, const unsigned int& lang = GlobalConstants::LANGUAGE_EN);
+        gameDetails getGameDetails(const std::string& game_name, const unsigned int& type = GlobalConstants::PLATFORM_WINDOWS, const unsigned int& lang = GlobalConstants::LANGUAGE_EN);
         std::string getInstallerLink(const std::string& game_name, const std::string& id);
         std::string getExtraLink(const std::string& game_name, const std::string& id);
         std::string getXML(const std::string& game_name, const std::string& id);
