@@ -29,6 +29,7 @@ class Config
         bool bNoExtras;
         bool bNoUnicode; // don't use Unicode in console output
         bool bNoColor;   // don't use colors
+        bool bVerifyPeer;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sXMLFile;

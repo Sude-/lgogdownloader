@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
     bpo::options_description config_file_options("Configuration");
     try
     {
+        bool bUnsecure = false;
         desc.add_options()
             ("help,h", "Print help message")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
@@ -100,6 +101,7 @@ int main(int argc, char *argv[])
             ("no-unicode", bpo::value<bool>(&config.bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&config.bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
+            ("unsecure", bpo::value<bool>(&bUnsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
         ;
 
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
@@ -139,6 +141,8 @@ int main(int argc, char *argv[])
 
         if (vm.count("limit-rate"))
             config.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
+
+        config.bVerifyPeer = !bUnsecure;
     }
     catch (std::exception& e)
     {
