@@ -49,7 +49,6 @@ int Downloader::init()
 
     curl_global_init(CURL_GLOBAL_ALL);
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 0);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
@@ -59,9 +58,10 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-
-    if (config.bVerbose)
-        curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
+    #ifdef ENVIRONMENT64
+        curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
+    #endif
 
     gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer);
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
@@ -313,12 +313,8 @@ void Downloader::repair()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-    #ifndef ENVIRONMENT32
-        curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
-    #endif
 
     for (unsigned int i = 0; i < games.size(); ++i)
     {
@@ -386,21 +382,14 @@ void Downloader::download()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-    #ifndef ENVIRONMENT32
-        curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
-    #endif
 
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
         if (!config.bNoCover && !config.bUpdateCheck)
         {
-            // Doesn't work as intended unless we use "games[i].gamename" as base directory for installers and extras
-            // std::string directory = config.sDirectory + games[i].gamename + "/";
-
             // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
             std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
 

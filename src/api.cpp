@@ -372,13 +372,6 @@ std::string API::getInstallerLink(const std::string& game_name, const std::strin
         Json::Reader *jsonparser = new Json::Reader;
         if (jsonparser->parse(json, root))
         {
-            /*
-            std::string result = root["result"].asString();
-            int timestamp = root["timestamp"].asInt();
-            int available = root["file"]["available"].asInt();
-            std::string link = root["file"]["link"].asString();
-            std::string message = root["file"]["message"].asString();
-            */
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getInstallerLink)" << std::endl << root << std::endl;
             #endif
@@ -417,15 +410,6 @@ std::string API::getExtraLink(const std::string& game_name, const std::string& i
         Json::Reader *jsonparser = new Json::Reader;
         if (jsonparser->parse(json, root))
         {
-            /*
-            std::string result = root["result"].asString();
-            int timestamp = root["timestamp"].asInt();
-            int available = root["file"]["available"].asInt();
-            std::string link = root["file"]["link"].asString();
-            std::string type = root["file"]["type"].asString();
-            std::string name = root["file"]["name"].asString();
-            std::string message = root["file"]["message"].asString();
-            */
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getExtraLink)" << std::endl << root << std::endl;
             #endif
@@ -465,13 +449,6 @@ std::string API::getXML(const std::string& game_name, const std::string& id)
         Json::Reader *jsonparser = new Json::Reader;
         if (jsonparser->parse(json, root))
         {
-            /*
-            std::string result = root["result"].asString();
-            int timestamp = root["timestamp"].asInt();
-            int available = root["file"]["available"].asInt();
-            std::string link = root["file"]["link"].asString();
-            std::string message = root["file"]["message"].asString();
-            */
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getXML)" << std::endl << root << std::endl;
             #endif
