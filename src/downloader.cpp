@@ -649,19 +649,11 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 {
     int res = 0;
     FILE *outfile;
-    size_t offset=0;
-
-    size_t from_offset, to_offset;
-
-    struct FileInfo {
-        std::string filename;
-        std::string hash;
-        size_t size;
-        int chunks;
-        std::vector<size_t> chunk_from;
-        std::vector<size_t> chunk_to;
-        std::vector<std::string> chunk_hash;
-    } info;
+    size_t offset=0, from_offset, to_offset, filesize;
+    std::string filehash;
+    int chunks;
+    std::vector<size_t> chunk_from, chunk_to;
+    std::vector<std::string> chunk_hash;
 
     // Get filename
     boost::filesystem::path pathname = filepath;
@@ -689,10 +681,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     {
         std::cout << "XML: Valid XML" << std::endl;
         TiXmlElement *fileElem = fileNode->ToElement();
-        info.filename = fileElem->Attribute("name");
-        info.hash = fileElem->Attribute("md5");
-        std::stringstream(fileElem->Attribute("chunks")) >> info.chunks;
-        std::stringstream(fileElem->Attribute("total_size")) >> info.size;
+        filename = fileElem->Attribute("name");
+        filehash = fileElem->Attribute("md5");
+        std::stringstream(fileElem->Attribute("chunks")) >> chunks;
+        std::stringstream(fileElem->Attribute("total_size")) >> filesize;
 
         //Iterate through all chunk nodes
         TiXmlNode *chunkNode = fileNode->FirstChild();
@@ -701,18 +693,18 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             TiXmlElement *chunkElem = chunkNode->ToElement();
             std::stringstream(chunkElem->Attribute("from")) >> from_offset;
             std::stringstream(chunkElem->Attribute("to")) >> to_offset;
-            info.chunk_from.push_back(from_offset);
-            info.chunk_to.push_back(to_offset);
-            info.chunk_hash.push_back(chunkElem->GetText());
+            chunk_from.push_back(from_offset);
+            chunk_to.push_back(to_offset);
+            chunk_hash.push_back(chunkElem->GetText());
             chunkNode = fileNode->IterateChildren(chunkNode);
         }
     }
 
     std::cout   << "XML: Parsing finished" << std::endl << std::endl
-                << info.filename << std::endl
-                << "\tMD5:\t" << info.hash << std::endl
-                << "\tChunks:\t" << info.chunks << std::endl
-                << "\tSize:\t" << info.size << " bytes" << std::endl << std::endl;
+                << filename << std::endl
+                << "\tMD5:\t" << filehash << std::endl
+                << "\tChunks:\t" << chunks << std::endl
+                << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
 
     // Check if file exists
     if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
@@ -735,7 +727,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         return res;
     }
 
-    if (offset != info.size)
+    if (offset != filesize)
     {
         std::cout   << "Filesizes don't match" << std::endl
                     << "Incomplete download or different version" << std::endl;
@@ -762,18 +754,18 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         return res;
     }
 
-    for (int i=0; i<info.chunks; i++)
+    for (int i=0; i<chunks; i++)
     {
-        size_t begin = info.chunk_from.at(i);
-        size_t end = info.chunk_to.at(i);
-        size_t size=0, chunk_size = end - begin + 1;
+        size_t chunk_begin = chunk_from.at(i);
+        size_t chunk_end = chunk_to.at(i);
+        size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
         std::stringstream ss;
-        ss << begin << "-" << end;
+        ss << chunk_begin << "-" << chunk_end;
         std::string range = ss.str();
         ss.str(std::string());
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
-        fseek(outfile, begin, SEEK_SET);
+        fseek(outfile, chunk_begin, SEEK_SET);
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
         {
@@ -788,10 +780,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             return res;
         }
         std::string hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
-        if (hash != info.chunk_hash.at(i))
+        if (hash != chunk_hash.at(i))
         {
             std::cout << "Failed - downloading chunk" << std::endl;
-            fseek(outfile, begin, SEEK_SET);
+            fseek(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
             curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
