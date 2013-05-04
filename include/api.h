@@ -70,7 +70,6 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
 class API
 {
     public:
-        apiConfig config;
         userDetails user;
 
         API(const std::string& token,const std::string& secret, const bool& verbose = false, const bool& bVerifyPeer = true);
@@ -88,9 +87,12 @@ class API
         void clearError();
         bool getError() { return this->error; };
         std::string getErrorMessage() { return this->error_message; };
+        std::string getToken() { return this->config.oauth_token; };
+        std::string getSecret() { return this->config.oauth_secret; };
         virtual ~API();
     protected:
     private:
+        apiConfig config;
         CURL* curlhandle;
         void setError(const std::string& err);
         bool error;
