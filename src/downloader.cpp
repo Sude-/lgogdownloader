@@ -120,7 +120,7 @@ int Downloader::login()
             std::ofstream ofs(config.sConfigFilePath.c_str());
             if (ofs)
             {
-                ofs << "token = " << gogAPI->config.oauth_token << std::endl << "secret = " << gogAPI->config.oauth_secret << std::endl;
+                ofs << "token = " << gogAPI->getToken() << std::endl << "secret = " << gogAPI->getSecret() << std::endl;
                 ofs.close();
                 return 0;
             }
