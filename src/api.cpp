@@ -339,6 +339,54 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                     );
             }
 
+            // Patch details
+            for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+            {
+                if (lang & GlobalConstants::LANGUAGES[i].languageId)
+                {
+                    unsigned int patch_number = 1;
+                    unsigned int patch_number_file = 1;
+                    std::ostringstream ss;
+                    ss.str(std::string());
+                    ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
+                    std::string patchname = ss.str();
+                    if (root["game"].isMember(patchname)) // found a patch node
+                    {
+                        Json::Value patchnode = root["game"][patchname];
+                        while (!patchnode.empty())
+                        {
+                            patch_number_file = 1;
+                            while(!patchnode.empty())
+                            {
+                                for ( unsigned int index = 0; index < patchnode.size(); ++index )
+                                {
+                                    Json::Value patch = patchnode[index];
+
+                                    game.patches.push_back(
+                                                            gameFile(   false, /* patches don't have "updated" flag */
+                                                                        patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
+                                                                        patchname,
+                                                                        patch["link"].asString(),
+                                                                        patch["size_mb"].asString(),
+                                                                        GlobalConstants::LANGUAGES[i].languageId
+                                                                     )
+                                                        );
+                                }
+                                patch_number_file++;
+                                ss.str(std::string());
+                                ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
+                                patchname = ss.str();
+                                patchnode = root["game"][patchname];
+                            }
+                            patch_number++;
+                            ss.str(std::string());
+                            ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
+                            patchname = ss.str();
+                            patchnode = root["game"][patchname];
+                        }
+                    }
+                }
+            }
         }
         else
         {
@@ -434,6 +482,10 @@ std::string API::getExtraLink(const std::string& game_name, const std::string& i
     return link;
 }
 
+std::string API::getPatchLink(const std::string& game_name, const std::string& id)
+{
+    return this->getInstallerLink(game_name, id);
+}
 
 std::string API::getXML(const std::string& game_name, const std::string& id)
 {
