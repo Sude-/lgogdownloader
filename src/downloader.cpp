@@ -991,10 +991,13 @@ std::string Downloader::getResponse(const std::string& url)
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    curl_easy_perform(curlhandle);
+    CURLcode result = curl_easy_perform(curlhandle);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     std::string response = memory.str();
     memory.str(std::string());
+
+    if (result != CURLE_OK)
+        std::cout << curl_easy_strerror(result) << std::endl;
 
     return response;
 }
@@ -1137,8 +1140,16 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
-    curl_easy_perform(curlhandle);
+    CURLcode result = curl_easy_perform(curlhandle);
     memory.str(std::string());
+
+    if (result != CURLE_OK)
+    {
+        // Expected to hit maximum amount of redirects so don't print error on it
+        if (result != CURLE_TOO_MANY_REDIRECTS)
+            std::cout << curl_easy_strerror(result) << std::endl;
+    }
+
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
     json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
@@ -1156,7 +1167,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
         std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
     #endif
 
-    if (root["user"]["email"].asString() == email)
+    if (root["user"]["email"].asString() == email && (result == CURLE_OK || result == CURLE_TOO_MANY_REDIRECTS))
         res = 1; // Login successful
     else
         res = 0; // Login failed
