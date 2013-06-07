@@ -139,29 +139,19 @@ int Downloader::login()
 void Downloader::updateCheck()
 {
     if (gogAPI->user.notifications_forum)
-    {
         std::cout << gogAPI->user.notifications_forum << " new forum replies" << std::endl;
-    }
     else
-    {
         std::cout << "No new forum replies" << std::endl;
-    }
+
     if (gogAPI->user.notifications_messages)
-    {
         std::cout << gogAPI->user.notifications_messages << " new private message(s)" << std::endl;
-    }
     else
-    {
         std::cout << "No new private messages" << std::endl;
-    }
+
     if (gogAPI->user.notifications_games)
-    {
         std::cout << gogAPI->user.notifications_games << " updated game(s)" << std::endl;
-    }
     else
-    {
         std::cout << "No updated games" << std::endl;
-    }
 
     if (gogAPI->user.notifications_games)
     {
@@ -188,9 +178,7 @@ void Downloader::getGameList()
     {
         // GameRegex filter aliases
         if (config.sGameRegex == "all")
-        {
             config.sGameRegex = ".*";
-        }
 
         if (config.sGameRegex == "free")
         {
@@ -204,18 +192,14 @@ void Downloader::getGameList()
             for (unsigned int i = 0; i < gameNames.size(); ++i)
             {
                 if (boost::regex_search(gameNames[i], what, expression))
-                {
                     gameNamesFiltered.push_back(gameNames[i]);
-                }
             }
             gameNames = gameNamesFiltered;
         }
     }
 
     if (config.bListDetails || config.bDownload || config.bRepair)
-    {
         this->getGameDetails();
-    }
 }
 
 /* Get detailed info about the games

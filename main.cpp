@@ -21,7 +21,7 @@
 #   endif
 #endif
 
-#define VERSION_NUMBER "2.5"
+#define VERSION_NUMBER "2.6"
 
 #ifndef VERSION_STRING
 #   define VERSION_STRING "LGOGDownloader " VERSION_NUMBER
