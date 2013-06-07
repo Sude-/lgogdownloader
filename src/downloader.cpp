@@ -830,10 +830,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         size_t chunk_begin = chunk_from.at(i);
         size_t chunk_end = chunk_to.at(i);
         size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
-        std::stringstream ss;
-        ss << chunk_begin << "-" << chunk_end;
-        std::string range = ss.str();
-        ss.str(std::string());
+        std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end);
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
         fseek(outfile, chunk_begin, SEEK_SET);
