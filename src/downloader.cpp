@@ -59,6 +59,9 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
+    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
     #ifdef ENVIRONMENT64
         curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
     #endif
@@ -323,12 +326,6 @@ void Downloader::listGames()
 
 void Downloader::repair()
 {
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Installers (use remote or local file)
@@ -429,12 +426,6 @@ void Downloader::repair()
 
 void Downloader::download()
 {
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
@@ -865,11 +856,6 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << "Failed - downloading chunk" << std::endl;
             fseek(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-            curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-            curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-            curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
             this->beginDownload(); //begin chunk download
@@ -992,6 +978,7 @@ std::string Downloader::getResponse(const std::string& url)
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     CURLcode result = curl_easy_perform(curlhandle);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     std::string response = memory.str();
     memory.str(std::string());
