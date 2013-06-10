@@ -73,7 +73,7 @@ class API
     public:
         userDetails user;
 
-        API(const std::string& token,const std::string& secret, const bool& verbose = false, const bool& bVerifyPeer = true);
+        API(const std::string& token,const std::string& secret, const bool& verbose = false, const bool& bVerifyPeer = true, const long int& iTimeout = 10);
         int init();
         int login(const std::string& email, const std::string& password);
         int getAPIConfig();

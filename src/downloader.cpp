@@ -52,7 +52,7 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
@@ -66,7 +66,7 @@ int Downloader::init()
         curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
     #endif
 
-    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer);
+    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer, config.iTimeout);
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
     if (config.bLogin || !gogAPI->init())

@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
             ("no-color", bpo::value<bool>(&config.bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("unsecure", bpo::value<bool>(&bUnsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
+            ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
         ;
 
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
