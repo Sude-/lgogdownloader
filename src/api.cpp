@@ -33,16 +33,13 @@ gameFile::~gameFile()
 
 }
 
-API::API(const std::string& token, const std::string& secret, const bool& verbose, const bool& bVerifyPeer, const long int& iTimeout)
+API::API(const std::string& token, const std::string& secret)
 {
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, verbose);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, bVerifyPeer);
 
     this->error = false;
     this->getAPIConfig();
