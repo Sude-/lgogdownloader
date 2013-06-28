@@ -62,9 +62,7 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-    #ifdef ENVIRONMENT64
-        curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
-    #endif
+    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
 
     gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer, config.iTimeout);
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);

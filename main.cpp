@@ -85,9 +85,7 @@ int main(int argc, char *argv[])
             ("repair", bpo::value<bool>(&config.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will delete the old file")
             ("game", bpo::value<std::string>(&config.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)\nAliases: \"all\", \"free\"")
             ("directory", bpo::value<std::string>(&config.sDirectory)->default_value(""), "Set download directory")
-            #ifdef ENVIRONMENT64
-                ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
-            #endif
+            ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("create-xml", bpo::value<std::string>(&config.sXMLFile)->default_value(""), "Create GOG XML for file\n\"automatic\" to enable automatic XML creation")
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
