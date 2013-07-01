@@ -781,6 +781,13 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     else
     {
         std::cout << "File doesn't exist " << filepath << std::endl;
+        if (this->config.bDownload)
+        {
+            std::cout << "Downloading: " << filepath << std::endl;
+            CURLcode result = this->downloadFile(url, filepath, xml_data);
+            if (result == CURLE_OK)
+                res = 1;
+        }
         return res;
     }
 
