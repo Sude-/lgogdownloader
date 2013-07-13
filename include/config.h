@@ -45,6 +45,7 @@ class Config
         unsigned int iInstallerLanguage;
         size_t iChunkSize;
         curl_off_t iDownloadRate;
+        long int iTimeout;
 };
 
 #endif // CONFIG_H__

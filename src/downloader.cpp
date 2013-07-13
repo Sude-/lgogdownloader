@@ -52,18 +52,23 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
-    #ifdef ENVIRONMENT64
-        curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
-    #endif
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
+    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
 
-    gogAPI = new API(config.sToken, config.sSecret, config.bVerbose, config.bVerifyPeer);
+    gogAPI = new API(config.sToken, config.sSecret);
+    gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
+    gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
+    gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
     if (config.bLogin || !gogAPI->init())
@@ -136,29 +141,19 @@ int Downloader::login()
 void Downloader::updateCheck()
 {
     if (gogAPI->user.notifications_forum)
-    {
         std::cout << gogAPI->user.notifications_forum << " new forum replies" << std::endl;
-    }
     else
-    {
         std::cout << "No new forum replies" << std::endl;
-    }
+
     if (gogAPI->user.notifications_messages)
-    {
         std::cout << gogAPI->user.notifications_messages << " new private message(s)" << std::endl;
-    }
     else
-    {
         std::cout << "No new private messages" << std::endl;
-    }
+
     if (gogAPI->user.notifications_games)
-    {
         std::cout << gogAPI->user.notifications_games << " updated game(s)" << std::endl;
-    }
     else
-    {
         std::cout << "No updated games" << std::endl;
-    }
 
     if (gogAPI->user.notifications_games)
     {
@@ -185,9 +180,7 @@ void Downloader::getGameList()
     {
         // GameRegex filter aliases
         if (config.sGameRegex == "all")
-        {
             config.sGameRegex = ".*";
-        }
 
         if (config.sGameRegex == "free")
         {
@@ -201,18 +194,14 @@ void Downloader::getGameList()
             for (unsigned int i = 0; i < gameNames.size(); ++i)
             {
                 if (boost::regex_search(gameNames[i], what, expression))
-                {
                     gameNamesFiltered.push_back(gameNames[i]);
-                }
             }
             gameNames = gameNamesFiltered;
         }
     }
 
     if (config.bListDetails || config.bDownload || config.bRepair)
-    {
         this->getGameDetails();
-    }
 }
 
 /* Get detailed info about the games
@@ -286,7 +275,7 @@ void Downloader::listGames()
                 }
             }
             // List extras
-            if (!config.bNoExtras && !config.bUpdateCheck)
+            if (!config.bNoExtras && !config.bUpdateCheck && !games[i].extras.empty())
             {
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
@@ -323,12 +312,6 @@ void Downloader::listGames()
 
 void Downloader::repair()
 {
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Installers (use remote or local file)
@@ -429,12 +412,6 @@ void Downloader::repair()
 
 void Downloader::download()
 {
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
-
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
@@ -804,6 +781,13 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     else
     {
         std::cout << "File doesn't exist " << filepath << std::endl;
+        if (this->config.bDownload)
+        {
+            std::cout << "Downloading: " << filepath << std::endl;
+            CURLcode result = this->downloadFile(url, filepath, xml_data);
+            if (result == CURLE_OK)
+                res = 1;
+        }
         return res;
     }
 
@@ -839,10 +823,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         size_t chunk_begin = chunk_from.at(i);
         size_t chunk_end = chunk_to.at(i);
         size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
-        std::stringstream ss;
-        ss << chunk_begin << "-" << chunk_end;
-        std::string range = ss.str();
-        ss.str(std::string());
+        std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end);
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
         fseek(outfile, chunk_begin, SEEK_SET);
@@ -865,11 +846,6 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << "Failed - downloading chunk" << std::endl;
             fseek(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-            curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-            curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-            curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
             this->beginDownload(); //begin chunk download
@@ -991,10 +967,14 @@ std::string Downloader::getResponse(const std::string& url)
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    curl_easy_perform(curlhandle);
+    CURLcode result = curl_easy_perform(curlhandle);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     std::string response = memory.str();
     memory.str(std::string());
+
+    if (result != CURLE_OK)
+        std::cout << curl_easy_strerror(result) << std::endl;
 
     return response;
 }
@@ -1137,8 +1117,16 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
-    curl_easy_perform(curlhandle);
+    CURLcode result = curl_easy_perform(curlhandle);
     memory.str(std::string());
+
+    if (result != CURLE_OK)
+    {
+        // Expected to hit maximum amount of redirects so don't print error on it
+        if (result != CURLE_TOO_MANY_REDIRECTS)
+            std::cout << curl_easy_strerror(result) << std::endl;
+    }
+
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
     json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
@@ -1156,7 +1144,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
         std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
     #endif
 
-    if (root["user"]["email"].asString() == email)
+    if (root["user"]["email"].asString() == email && (result == CURLE_OK || result == CURLE_TOO_MANY_REDIRECTS))
         res = 1; // Login successful
     else
         res = 0; // Login failed

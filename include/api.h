@@ -73,7 +73,7 @@ class API
     public:
         userDetails user;
 
-        API(const std::string& token,const std::string& secret, const bool& verbose = false, const bool& bVerifyPeer = true);
+        API(const std::string& token,const std::string& secret);
         int init();
         int login(const std::string& email, const std::string& password);
         int getAPIConfig();
@@ -91,6 +91,7 @@ class API
         std::string getErrorMessage() { return this->error_message; };
         std::string getToken() { return this->config.oauth_token; };
         std::string getSecret() { return this->config.oauth_secret; };
+        template <typename T> CURLcode curlSetOpt(CURLoption option, T value) { return curl_easy_setopt(this->curlhandle, option, value); };
         virtual ~API();
     protected:
     private:

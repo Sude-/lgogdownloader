@@ -33,16 +33,13 @@ gameFile::~gameFile()
 
 }
 
-API::API(const std::string& token, const std::string& secret, const bool& verbose, const bool& bVerifyPeer)
+API::API(const std::string& token, const std::string& secret)
 {
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, verbose);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, 10);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, bVerifyPeer);
 
     this->error = false;
     this->getAPIConfig();
@@ -346,10 +343,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 {
                     unsigned int patch_number = 1;
                     unsigned int patch_number_file = 1;
-                    std::ostringstream ss;
-                    ss.str(std::string());
-                    ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
-                    std::string patchname = ss.str();
+                    std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                     if (root["game"].isMember(patchname)) // found a patch node
                     {
                         Json::Value patchnode = root["game"][patchname];
@@ -373,15 +367,11 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                         );
                                 }
                                 patch_number_file++;
-                                ss.str(std::string());
-                                ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
-                                patchname = ss.str();
+                                patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                                 patchnode = root["game"][patchname];
                             }
                             patch_number++;
-                            ss.str(std::string());
-                            ss << GlobalConstants::LANGUAGES[i].languageCode << patch_number << "patch" << patch_number_file;
-                            patchname = ss.str();
+                            patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                             patchnode = root["game"][patchname];
                         }
                     }
@@ -409,9 +399,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 std::string API::getInstallerLink(const std::string& game_name, const std::string& id)
 {
     std::string url, link;
-    std::stringstream ss;
-    ss << this->config.get_installer_link << game_name << "/" << id << "/";
-    url = ss.str();
+    url = this->config.get_installer_link + game_name + "/" + id + "/";
     std::string json = this->getResponseOAuth(url);
 
     if (!json.empty())
@@ -447,9 +435,7 @@ std::string API::getInstallerLink(const std::string& game_name, const std::strin
 std::string API::getExtraLink(const std::string& game_name, const std::string& id)
 {
     std::string url, link;
-    std::stringstream ss;
-    ss << this->config.get_extra_link << game_name << "/" << id << "/";
-    url = ss.str();
+    url = this->config.get_extra_link + game_name + "/" + id + "/";
     std::string json = this->getResponseOAuth(url);
 
     if (!json.empty())
@@ -490,9 +476,7 @@ std::string API::getPatchLink(const std::string& game_name, const std::string& i
 std::string API::getXML(const std::string& game_name, const std::string& id)
 {
     std::string url, XML;
-    std::stringstream ss;
-    ss << this->config.get_installer_link << game_name << "/" << id << "/crc/";
-    url = ss.str();
+    url = this->config.get_installer_link + game_name + "/" + id + "/crc/";
     std::string json = this->getResponseOAuth(url);
 
     if (!json.empty())
