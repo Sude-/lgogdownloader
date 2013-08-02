@@ -118,16 +118,16 @@ int API::login(const std::string& email, const std::string& password)
     std::string token, secret;
 
     // Get temporary request token
-    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), NULL /* token */, NULL /* secret */);
+    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), NULL /* token */, NULL /* secret */);
 
     std::string request_token_resp = this->getResponse(url);
 
     char **rv = NULL;
     int rc = oauth_split_url_parameters(request_token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 3 && !strncmp(rv[1], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
-        token = rv[1]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
-        secret = rv[2]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
+    if (rc == 3 && !strncmp(rv[1], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
+        token = rv[1]+OAUTH_TOKEN_LENGTH+1;
+        secret = rv[2]+OAUTH_SECRET_LENGTH+1;
         rv = NULL;
     }
     else
@@ -137,14 +137,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Authorize temporary token and get verifier
     url = this->config.oauth_authorize_temp_token + "?username=" + oauth_url_escape(email.c_str()) + "&password=" + oauth_url_escape(password.c_str());
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string authorize_resp = this->getResponse(url);
 
     std::string verifier;
     rc = oauth_split_url_parameters(authorize_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", GlobalConstants::OAUTH_VERIFIER_LENGTH)) {
-        verifier = rv[1]+GlobalConstants::OAUTH_VERIFIER_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", OAUTH_VERIFIER_LENGTH)) {
+        verifier = rv[1]+OAUTH_VERIFIER_LENGTH+1;
         rv = NULL;
     }
     else
@@ -154,14 +154,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Get final token and secret
     url = this->config.oauth_get_token + "?oauth_verifier=" + verifier;
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string token_resp = this->getResponse(url);
 
     rc = oauth_split_url_parameters(token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[0], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
-        this->config.oauth_token = rv[0]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
-        this->config.oauth_secret = rv[1]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[0], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
+        this->config.oauth_token = rv[0]+OAUTH_TOKEN_LENGTH+1;
+        this->config.oauth_secret = rv[1]+OAUTH_SECRET_LENGTH+1;
         free(rv);
         res = 1;
     }
@@ -257,7 +257,7 @@ std::string API::getResponseOAuth(const std::string& url)
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (API::getResponseOAuth)" << std::endl << "URL: " << url << std::endl;
     #endif
-    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
+    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
     std::string response = this->getResponse(url_oauth);
 
     return response;

@@ -12,13 +12,6 @@
 
 namespace GlobalConstants
 {
-    // API constants
-    const std::string CONSUMER_KEY = "1f444d14ea8ec776585524a33f6ecc1c413ed4a5";
-    const std::string CONSUMER_SECRET = "20d175147f9db9a10fc0584aa128090217b9cf88";
-    const int OAUTH_VERIFIER_LENGTH = 14;
-    const int OAUTH_TOKEN_LENGTH = 11;
-    const int OAUTH_SECRET_LENGTH = 18;
-
     // Language constants
     const unsigned int LANGUAGE_EN = 1;
     const unsigned int LANGUAGE_DE = 2;

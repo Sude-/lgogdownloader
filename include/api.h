@@ -100,6 +100,13 @@ class API
         void setError(const std::string& err);
         bool error;
         std::string error_message;
+
+        // API constants
+        const std::string CONSUMER_KEY = "1f444d14ea8ec776585524a33f6ecc1c413ed4a5";
+        const std::string CONSUMER_SECRET = "20d175147f9db9a10fc0584aa128090217b9cf88";
+        const int OAUTH_VERIFIER_LENGTH = 14;
+        const int OAUTH_TOKEN_LENGTH = 11;
+        const int OAUTH_SECRET_LENGTH = 18;
 };
 
 #endif // API_H
