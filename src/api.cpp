@@ -311,7 +311,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     game.installers.push_back(
                                                 gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
-                                                            installer["#name"].asString(),
+                                                            installer["name"].asString(),
                                                             installer["link"].asString(),
                                                             installer["size"].asString(),
                                                             language
@@ -342,35 +342,50 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     unsigned int patch_number = 1;
-                    unsigned int patch_number_file = 1;
+                    unsigned int patch_number_file = 0;
                     std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                     if (root["game"].isMember(patchname)) // found a patch node
                     {
                         Json::Value patchnode = root["game"][patchname];
-                        while (!patchnode.empty())
+                        while (!patchnode.empty()) // patch numbers
                         {
-                            patch_number_file = 1;
-                            while(!patchnode.empty())
+                            while(!patchnode.empty()) // patch file numbers
                             {
-                                for ( unsigned int index = 0; index < patchnode.size(); ++index )
-                                {
-                                    Json::Value patch = patchnode[index];
+                                if (patchnode.isArray())
+								{
+                                    for ( unsigned int index = 0; index < patchnode.size(); ++index )
+                                    {
+                                        Json::Value patch = patchnode[index];
 
+                                        game.patches.push_back(
+                                                                gameFile(   false, /* patches don't have "updated" flag */
+                                                                            patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
+                                                                            patch["name"].asString(),
+                                                                            patch["link"].asString(),
+                                                                            patch["size"].asString(),
+                                                                            GlobalConstants::LANGUAGES[i].languageId
+                                                                        )
+                                                            );
+                                    }
+                                }
+                                else
+                                {
                                     game.patches.push_back(
                                                             gameFile(   false, /* patches don't have "updated" flag */
-                                                                        patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
-                                                                        patchname,
-                                                                        patch["link"].asString(),
-                                                                        patch["size_mb"].asString(),
+                                                                        patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
+                                                                        patchnode["name"].asString(),
+                                                                        patchnode["link"].asString(),
+                                                                        patchnode["size"].asString(),
                                                                         GlobalConstants::LANGUAGES[i].languageId
                                                                      )
-                                                        );
+                                                            );
                                 }
                                 patch_number_file++;
                                 patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                                 patchnode = root["game"][patchname];
                             }
                             patch_number++;
+                            patch_number_file = 0;
                             patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                             patchnode = root["game"][patchname];
                         }
