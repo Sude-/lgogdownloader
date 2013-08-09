@@ -300,6 +300,19 @@ void Downloader::listGames()
                                 << std::endl;
                 }
             }
+            // List language packs
+            if (!config.bNoLanguagePacks && !config.bUpdateCheck && !games[i].languagepacks.empty())
+            {
+                std::cout << "language packs: " << std::endl;
+                for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
+                {
+                    std::cout   << "\tid: " << games[i].languagepacks[j].id << std::endl
+                                << "\tname: " << games[i].languagepacks[j].name << std::endl
+                                << "\tpath: " << games[i].languagepacks[j].path << std::endl
+                                << "\tsize: " << games[i].languagepacks[j].size << std::endl
+                                << std::endl;
+                }
+            }
         }
     }
     else
@@ -378,35 +391,39 @@ void Downloader::repair()
             {
                 std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename);
 
-                // Get XML data
-                std::string XML = "";
-                if (!config.bNoRemoteXML)
+                std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
+                if (gogAPI->getError())
                 {
-                    XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
-                    if (gogAPI->getError())
-                    {
-                        std::cout << gogAPI->getErrorMessage() << std::endl;
-                        gogAPI->clearError();
-                        continue;
-                    }
+                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    gogAPI->clearError();
+                    continue;
                 }
-
-                // Repair
-                if (!XML.empty() || config.bNoRemoteXML)
-                {
-                    std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
-                    if (gogAPI->getError())
-                    {
-                        std::cout << gogAPI->getErrorMessage() << std::endl;
-                        gogAPI->clearError();
-                        continue;
-                    }
-                    std::cout << "Repairing file " << filepath << std::endl;
-                    this->repairFile(url, filepath, XML);
-                    std::cout << std::endl;
-                }
+                std::cout << "Repairing file " << filepath << std::endl;
+                this->repairFile(url, filepath);
+                std::cout << std::endl;
             }
         }
+
+        // Language packs (GOG doesn't provide XML data for language packs, use local file)
+        if (!config.bNoLanguagePacks)
+        {
+            for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
+            {
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename);
+
+                std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
+                if (gogAPI->getError())
+                {
+                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    gogAPI->clearError();
+                    continue;
+                }
+                std::cout << "Repairing file " << filepath << std::endl;
+                this->repairFile(url, filepath);
+                std::cout << std::endl;
+            }
+        }
+
     }
 }
 
@@ -513,14 +530,48 @@ void Downloader::download()
                 // Download
                 if (!url.empty())
                 {
-                    std::string XML;
-                    if (!config.bNoRemoteXML)
-                        XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                     if (!games[i].patches[j].name.empty())
                         std::cout << "Dowloading: " << games[i].gamename << " " << games[i].patches[j].name << std::endl;
                     std::cout << filepath << std::endl;
-                    this->downloadFile(url, filepath, XML);
+                    CURLcode result = downloadFile(url, filepath);
                     std::cout << std::endl;
+                    if (result==CURLE_OK && config.sXMLFile == "automatic")
+                    {
+                        std::cout << "Starting automatic XML creation" << std::endl;
+                        Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                    }
+                }
+            }
+        }
+        // Download language packs
+        if (!config.bNoLanguagePacks)
+        {
+            for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
+            {
+                // Get link
+                std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
+                if (gogAPI->getError())
+                {
+                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    gogAPI->clearError();
+                    continue;
+                }
+
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename);
+
+                // Download
+                if (!url.empty())
+                {
+                    if (!games[i].languagepacks[j].name.empty())
+                        std::cout << "Dowloading: " << games[i].gamename << " " << games[i].languagepacks[j].name << std::endl;
+                    std::cout << filepath << std::endl;
+                    CURLcode result = downloadFile(url, filepath);
+                    std::cout << std::endl;
+                    if (result==CURLE_OK && config.sXMLFile == "automatic")
+                    {
+                        std::cout << "Starting automatic XML creation" << std::endl;
+                        Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                    }
                 }
             }
         }

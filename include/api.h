@@ -34,6 +34,7 @@ class gameDetails {
         std::vector<gameFile> extras;
         std::vector<gameFile> installers;
         std::vector<gameFile> patches;
+        std::vector<gameFile> languagepacks;
         std::string gamename;
         std::string title;
         std::string icon;
@@ -85,6 +86,7 @@ class API
         std::string getInstallerLink(const std::string& game_name, const std::string& id);
         std::string getExtraLink(const std::string& game_name, const std::string& id);
         std::string getPatchLink(const std::string& game_name, const std::string& id);
+        std::string getLanguagePackLink(const std::string& game_name, const std::string& id);
         std::string getXML(const std::string& game_name, const std::string& id);
         void clearError();
         bool getError() { return this->error; };

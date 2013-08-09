@@ -28,6 +28,7 @@ class Config
         bool bNoInstallers;
         bool bNoExtras;
         bool bNoPatches;
+        bool bNoLanguagePacks;
         bool bNoUnicode; // don't use Unicode in console output
         bool bNoColor;   // don't use colors
         bool bVerifyPeer;
