@@ -12,13 +12,6 @@
 
 namespace GlobalConstants
 {
-    // API constants
-    const std::string CONSUMER_KEY = "1f444d14ea8ec776585524a33f6ecc1c413ed4a5";
-    const std::string CONSUMER_SECRET = "20d175147f9db9a10fc0584aa128090217b9cf88";
-    const int OAUTH_VERIFIER_LENGTH = 14;
-    const int OAUTH_TOKEN_LENGTH = 11;
-    const int OAUTH_SECRET_LENGTH = 18;
-
     // Language constants
     const unsigned int LANGUAGE_EN = 1;
     const unsigned int LANGUAGE_DE = 2;
@@ -32,6 +25,8 @@ namespace GlobalConstants
     const unsigned int LANGUAGE_IT = 512;
     const unsigned int LANGUAGE_JP = 1024;
     const unsigned int LANGUAGE_TR = 2048;
+    const unsigned int LANGUAGE_PT = 4096;
+    const unsigned int LANGUAGE_KO = 8192;
 
     struct languageStruct {const unsigned int languageId; const std::string languageCode; const std::string languageString;};
     const std::vector<languageStruct> LANGUAGES =
@@ -47,7 +42,9 @@ namespace GlobalConstants
         { LANGUAGE_HU, "hu", "Hungarian" },
         { LANGUAGE_IT, "it", "Italian"   },
         { LANGUAGE_JP, "jp", "Japanese"  },
-        { LANGUAGE_TR, "tr", "Turkish"   }
+        { LANGUAGE_TR, "tr", "Turkish"   },
+        { LANGUAGE_PT, "pt", "Portuguese"},
+        { LANGUAGE_KO, "ko", "Korean"    }
     };
 
     // Platform constants

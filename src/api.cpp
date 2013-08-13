@@ -118,16 +118,16 @@ int API::login(const std::string& email, const std::string& password)
     std::string token, secret;
 
     // Get temporary request token
-    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), NULL /* token */, NULL /* secret */);
+    url = oauth_sign_url2(this->config.oauth_get_temp_token.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), NULL /* token */, NULL /* secret */);
 
     std::string request_token_resp = this->getResponse(url);
 
     char **rv = NULL;
     int rc = oauth_split_url_parameters(request_token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 3 && !strncmp(rv[1], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
-        token = rv[1]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
-        secret = rv[2]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
+    if (rc == 3 && !strncmp(rv[1], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[2], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
+        token = rv[1]+OAUTH_TOKEN_LENGTH+1;
+        secret = rv[2]+OAUTH_SECRET_LENGTH+1;
         rv = NULL;
     }
     else
@@ -137,14 +137,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Authorize temporary token and get verifier
     url = this->config.oauth_authorize_temp_token + "?username=" + oauth_url_escape(email.c_str()) + "&password=" + oauth_url_escape(password.c_str());
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string authorize_resp = this->getResponse(url);
 
     std::string verifier;
     rc = oauth_split_url_parameters(authorize_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", GlobalConstants::OAUTH_VERIFIER_LENGTH)) {
-        verifier = rv[1]+GlobalConstants::OAUTH_VERIFIER_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[1], "oauth_verifier=", OAUTH_VERIFIER_LENGTH)) {
+        verifier = rv[1]+OAUTH_VERIFIER_LENGTH+1;
         rv = NULL;
     }
     else
@@ -154,14 +154,14 @@ int API::login(const std::string& email, const std::string& password)
 
     // Get final token and secret
     url = this->config.oauth_get_token + "?oauth_verifier=" + verifier;
-    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
+    url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
     std::string token_resp = this->getResponse(url);
 
     rc = oauth_split_url_parameters(token_resp.c_str(), &rv);
     qsort(rv, rc, sizeof(char *), oauth_cmpstringp);
-    if (rc == 2 && !strncmp(rv[0], "oauth_token=", GlobalConstants::OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", GlobalConstants::OAUTH_SECRET_LENGTH)) {
-        this->config.oauth_token = rv[0]+GlobalConstants::OAUTH_TOKEN_LENGTH+1;
-        this->config.oauth_secret = rv[1]+GlobalConstants::OAUTH_SECRET_LENGTH+1;
+    if (rc == 2 && !strncmp(rv[0], "oauth_token=", OAUTH_TOKEN_LENGTH) && !strncmp(rv[1], "oauth_token_secret=", OAUTH_SECRET_LENGTH)) {
+        this->config.oauth_token = rv[0]+OAUTH_TOKEN_LENGTH+1;
+        this->config.oauth_secret = rv[1]+OAUTH_SECRET_LENGTH+1;
         free(rv);
         res = 1;
     }
@@ -257,7 +257,7 @@ std::string API::getResponseOAuth(const std::string& url)
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (API::getResponseOAuth)" << std::endl << "URL: " << url << std::endl;
     #endif
-    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, GlobalConstants::CONSUMER_KEY.c_str(), GlobalConstants::CONSUMER_SECRET.c_str(), this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
+    std::string url_oauth = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), this->config.oauth_token.c_str(), this->config.oauth_secret.c_str());
     std::string response = this->getResponse(url_oauth);
 
     return response;
@@ -311,7 +311,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     game.installers.push_back(
                                                 gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
-                                                            installer["#name"].asString(),
+                                                            installer["name"].asString(),
                                                             installer["link"].asString(),
                                                             installer["size"].asString(),
                                                             language
@@ -341,16 +341,29 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             {
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
-                    unsigned int patch_number = 1;
-                    unsigned int patch_number_file = 1;
-                    std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
-                    if (root["game"].isMember(patchname)) // found a patch node
+                    // Try to find a patch
+                    unsigned int patch_number = 0;
+                    const unsigned int maxTries = 8;
+                    std::vector<std::string> patchnames;
+                    while (patch_number < maxTries)
                     {
-                        Json::Value patchnode = root["game"][patchname];
-                        while (!patchnode.empty())
+                        unsigned int patch_number_file = 0;
+                        while (patch_number_file < maxTries)
                         {
-                            patch_number_file = 1;
-                            while(!patchnode.empty())
+                            std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
+                            if (root["game"].isMember(patchname))
+                                patchnames.push_back(patchname);
+                            patch_number_file++;
+                        }
+                        patch_number++;
+                    }
+
+                    if (!patchnames.empty()) // found at least one patch
+                    {
+                        for (unsigned int i = 0; i < patchnames.size(); ++i)
+                        {
+                            Json::Value patchnode = root["game"][patchnames[i]];
+                            if (patchnode.isArray())
                             {
                                 for ( unsigned int index = 0; index < patchnode.size(); ++index )
                                 {
@@ -359,20 +372,67 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                     game.patches.push_back(
                                                             gameFile(   false, /* patches don't have "updated" flag */
                                                                         patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
-                                                                        patchname,
+                                                                        patch["name"].asString(),
                                                                         patch["link"].asString(),
-                                                                        patch["size_mb"].asString(),
+                                                                        patch["size"].asString(),
                                                                         GlobalConstants::LANGUAGES[i].languageId
-                                                                     )
+                                                                    )
                                                         );
                                 }
-                                patch_number_file++;
-                                patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
-                                patchnode = root["game"][patchname];
                             }
-                            patch_number++;
-                            patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
-                            patchnode = root["game"][patchname];
+                            else
+                            {
+                                game.patches.push_back(
+                                                        gameFile(   false, /* patches don't have "updated" flag */
+                                                                    patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
+                                                                    patchnode["name"].asString(),
+                                                                    patchnode["link"].asString(),
+                                                                    patchnode["size"].asString(),
+                                                                    GlobalConstants::LANGUAGES[i].languageId
+                                                                 )
+                                                        );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Language pack details
+            for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+            {
+                if (lang & GlobalConstants::LANGUAGES[i].languageId)
+                {
+                    // Try to find a language pack
+                    unsigned int lang_pack_number = 0;
+                    const unsigned int maxTries = 4;
+                    std::vector<std::string> langpacknames;
+                    while (lang_pack_number < maxTries)
+                    {
+                        unsigned int lang_pack_number_file = 0;
+                        while (lang_pack_number_file < maxTries)
+                        {
+                            std::string langpackname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(lang_pack_number) + "langpack" + std::to_string(lang_pack_number_file);
+                            if (root["game"].isMember(langpackname))
+                                langpacknames.push_back(langpackname);
+                            lang_pack_number_file++;
+                        }
+                        lang_pack_number++;
+                    }
+
+                    if (!langpacknames.empty()) // found at least one language pack
+                    {
+                        for (unsigned int i = 0; i < langpacknames.size(); ++i)
+                        {
+                            Json::Value langpack = root["game"][langpacknames[i]];
+                            game.languagepacks.push_back(
+                                                        gameFile(   false, /* language packs don't have "updated" flag */
+                                                                    langpack["id"].isInt() ? std::to_string(langpack["id"].asInt()) : langpack["id"].asString(),
+                                                                    langpack["name"].asString(),
+                                                                    langpack["link"].asString(),
+                                                                    langpack["size"].asString(),
+                                                                    GlobalConstants::LANGUAGES[i].languageId
+                                                            )
+                                                    );
                         }
                     }
                 }
@@ -469,6 +529,11 @@ std::string API::getExtraLink(const std::string& game_name, const std::string& i
 }
 
 std::string API::getPatchLink(const std::string& game_name, const std::string& id)
+{
+    return this->getInstallerLink(game_name, id);
+}
+
+std::string API::getLanguagePackLink(const std::string& game_name, const std::string& id)
 {
     return this->getInstallerLink(game_name, id);
 }

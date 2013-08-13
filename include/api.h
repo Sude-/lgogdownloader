@@ -34,6 +34,7 @@ class gameDetails {
         std::vector<gameFile> extras;
         std::vector<gameFile> installers;
         std::vector<gameFile> patches;
+        std::vector<gameFile> languagepacks;
         std::string gamename;
         std::string title;
         std::string icon;
@@ -85,6 +86,7 @@ class API
         std::string getInstallerLink(const std::string& game_name, const std::string& id);
         std::string getExtraLink(const std::string& game_name, const std::string& id);
         std::string getPatchLink(const std::string& game_name, const std::string& id);
+        std::string getLanguagePackLink(const std::string& game_name, const std::string& id);
         std::string getXML(const std::string& game_name, const std::string& id);
         void clearError();
         bool getError() { return this->error; };
@@ -100,6 +102,13 @@ class API
         void setError(const std::string& err);
         bool error;
         std::string error_message;
+
+        // API constants
+        const std::string CONSUMER_KEY = "1f444d14ea8ec776585524a33f6ecc1c413ed4a5";
+        const std::string CONSUMER_SECRET = "20d175147f9db9a10fc0584aa128090217b9cf88";
+        const int OAUTH_VERIFIER_LENGTH = 14;
+        const int OAUTH_TOKEN_LENGTH = 11;
+        const int OAUTH_SECRET_LENGTH = 18;
 };
 
 #endif // API_H
