@@ -1101,7 +1101,18 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
         // assuming that config is provided.
         printf("\033[0K\r%3.0f%% ", fraction * 100);
         downloader->progressbar->draw(bar_length, fraction);
-        printf(" %0.2f/%0.2fMB @ %0.2fkB/s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate/1024, eta_ss.str().c_str());
+        std::string rate_unit;
+        if (rate > 1048576) // 1 MB
+        {
+            rate /= 1048576;
+            rate_unit = "MB/s";
+        }
+        else
+        {
+            rate /= 1024;
+            rate_unit = "kB/s";
+        }
+        printf(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
         fflush(stdout);
     }
 
