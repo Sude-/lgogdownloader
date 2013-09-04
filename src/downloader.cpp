@@ -1277,8 +1277,26 @@ std::vector<std::string> Downloader::getGames()
 // Get list of free games
 std::vector<std::string> Downloader::getFreeGames()
 {
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
     std::vector<std::string> games;
-    std::string html = this->getResponse("https://secure.gog.com/catalogue/ajax?a=getGames&tab=all_genres&genre=all_genres&price=0&order=alph&publisher=&releaseDate=&availability=&gameMode=&rating=&search=&sort=vote&system=&language=&mixPage=1");
+    std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"]}&p=1&t=all");
+
+    // Parse JSON
+    if (!jsonparser->parse(json, root))
+    {
+        #ifdef DEBUG
+            std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << json << std::endl;
+        #endif
+        std::cout << jsonparser->getFormatedErrorMessages();
+        delete jsonparser;
+        exit(1);
+    }
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << root << std::endl;
+    #endif
+    std::string html = root["result"]["html"].asString();
+    delete jsonparser;
 
     // Parse HTML to get game names
     htmlcxx::HTML::ParserDom parser;
@@ -1287,14 +1305,14 @@ std::vector<std::string> Downloader::getFreeGames()
     tree<htmlcxx::HTML::Node>::iterator end = dom.end();
     for (; it != end; ++it)
     {
-        if (it->tagName()=="a")
+        if (it->tagName()=="span")
         {
             it->parseAttributes();
             std::string classname = it->attribute("class").second;
-            if (classname=="game-title-link")
+            if (classname=="gog-price game-owned")
             {
-                std::string game = it->attribute("href").second;
-                game.assign(game.begin()+game.find_last_of("/")+1,game.end());
+                // Game name is contained in data-gameindex attribute
+                std::string game = it->attribute("data-gameindex").second;
                 if (!game.empty())
                     games.push_back(game);
             }
