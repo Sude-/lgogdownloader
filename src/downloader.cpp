@@ -841,7 +841,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data);
             if (result == CURLE_OK)
+            {
+                if (config.sXMLFile == "automatic" && bParsingFailed)
+                {
+                    std::cout << "Starting automatic XML creation" << std::endl;
+                    Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                }
                 res = 1;
+            }
         }
         return res;
     }
