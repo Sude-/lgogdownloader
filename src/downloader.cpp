@@ -762,6 +762,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     int chunks;
     std::vector<size_t> chunk_from, chunk_to;
     std::vector<std::string> chunk_hash;
+    bool bParsingFailed = false;
 
     // Get filename
     boost::filesystem::path pathname = filepath;
@@ -783,7 +784,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     if (!fileNode)
     {
         std::cout << "XML: Parsing failed / not valid XML" << std::endl;
-        return res;
+        if (config.bDownload)
+            bParsingFailed = true;
+        else
+            return res;
     }
     else
     {
@@ -815,7 +819,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
                 << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
 
     // Check if file exists
-    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
+    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL && !bParsingFailed)
     {
         // File exists
         if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
