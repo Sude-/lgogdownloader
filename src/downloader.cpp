@@ -218,7 +218,7 @@ int Downloader::getGameDetails()
         game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage);
         if (!gogAPI->getError())
         {
-            if (game.extras.empty())
+            if (game.extras.empty() && !config.bNoExtras)
             {
                 game.extras = this->getExtras(gameNamesIds[i].first, gameNamesIds[i].second);
             }
