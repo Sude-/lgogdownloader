@@ -19,8 +19,8 @@ extern "C" {
 
 class gameFile {
     public:
-        gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN);
-        bool updated;
+        gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN);
+        int updated;
         std::string id;
         std::string name;
         std::string path;

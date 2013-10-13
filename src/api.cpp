@@ -18,7 +18,7 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     return count;
 }
 
-gameFile::gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language)
+gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language)
 {
     this->updated = t_updated;
     this->id = t_id;
@@ -309,7 +309,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     unsigned int language = installers[i].second;
 
                     game.installers.push_back(
-                                                gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
+                                                gameFile(   installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString()),
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
                                                             installer["name"].asString(),
                                                             installer["link"].asString(),
