@@ -173,7 +173,7 @@ void Downloader::updateCheck()
 
 void Downloader::getGameList()
 {
-    gameNames = this->getGames();
+    gameNamesIds = this->getGames();
 
     // Filter the game list
     if (!config.sGameRegex.empty())
@@ -184,19 +184,19 @@ void Downloader::getGameList()
 
         if (config.sGameRegex == "free")
         {
-            gameNames = this->getFreeGames();
+            gameNamesIds = this->getFreeGames();
         }
         else
         {
-            std::vector<std::string> gameNamesFiltered;
+            std::vector<std::pair<std::string,std::string>> gameNamesIdsFiltered;
             boost::regex expression(config.sGameRegex);
             boost::match_results<std::string::const_iterator> what;
-            for (unsigned int i = 0; i < gameNames.size(); ++i)
+            for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
             {
-                if (boost::regex_search(gameNames[i], what, expression))
-                    gameNamesFiltered.push_back(gameNames[i]);
+                if (boost::regex_search(gameNamesIds[i].first, what, expression))
+                    gameNamesIdsFiltered.push_back(gameNamesIds[i]);
             }
-            gameNames = gameNamesFiltered;
+            gameNamesIds = gameNamesIdsFiltered;
         }
     }
 
@@ -212,12 +212,16 @@ int Downloader::getGameDetails()
 {
     gameDetails game;
     int updated = 0;
-    for (unsigned int i = 0; i < gameNames.size(); ++i)
+    for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
     {
-        std::cout << "Getting game info " << i+1 << " / " << gameNames.size() << "\r" << std::flush;
-        game = gogAPI->getGameDetails(gameNames[i], config.iInstallerType, config.iInstallerLanguage);
+        std::cout << "Getting game info " << i+1 << " / " << gameNamesIds.size() << "\r" << std::flush;
+        game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage);
         if (!gogAPI->getError())
         {
+            if (game.extras.empty())
+            {
+                game.extras = this->getExtras(gameNamesIds[i].first, gameNamesIds[i].second);
+            }
             if (!config.bUpdateCheck)
                 games.push_back(game);
             else
@@ -317,8 +321,8 @@ void Downloader::listGames()
     }
     else
     {
-        for (unsigned int i = 0; i < gameNames.size(); ++i)
-            std::cout << gameNames[i] << std::endl;
+        for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
+            std::cout << gameNamesIds[i].first << std::endl;
     }
 
 }
@@ -1228,9 +1232,9 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 }
 
 // Get list of games from account page
-std::vector<std::string> Downloader::getGames()
+std::vector< std::pair<std::string,std::string> > Downloader::getGames()
 {
-    std::vector<std::string> games;
+    std::vector< std::pair<std::string,std::string> > games;
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     int i = 1;
@@ -1276,8 +1280,9 @@ std::vector<std::string> Downloader::getGames()
             {
                 // Game name is contained in data-gameindex attribute
                 std::string game = it->attribute("data-gameindex").second;
-                if (!game.empty())
-                    games.push_back(game);
+                std::string gameid = it->attribute("data-gameid").second;
+                if (!game.empty() && !gameid.empty())
+                    games.push_back(std::make_pair(game,gameid));
             }
         }
     }
@@ -1286,11 +1291,11 @@ std::vector<std::string> Downloader::getGames()
 }
 
 // Get list of free games
-std::vector<std::string> Downloader::getFreeGames()
+std::vector< std::pair<std::string,std::string> > Downloader::getFreeGames()
 {
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
-    std::vector<std::string> games;
+    std::vector< std::pair<std::string,std::string> > games;
     std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"]}&p=1&t=all");
 
     // Parse JSON
@@ -1324,11 +1329,75 @@ std::vector<std::string> Downloader::getFreeGames()
             {
                 // Game name is contained in data-gameindex attribute
                 std::string game = it->attribute("data-gameindex").second;
-                if (!game.empty())
-                    games.push_back(game);
+                std::string id = it->attribute("data-gameid").second;
+                if (!game.empty() && !id.empty())
+                    games.push_back(std::make_pair(game,id));
             }
         }
     }
 
     return games;
+}
+
+std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const std::string& gameid)
+{
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    std::vector<gameFile> extras;
+
+    std::string gameDataUrl = "https://secure.gog.com/en/account/ajax?a=gamesListDetails&g=" + gameid;
+    std::string json = this->getResponse(gameDataUrl);
+    // Parse JSON
+    if (!jsonparser->parse(json, root))
+    {
+        #ifdef DEBUG
+            std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << json << std::endl;
+        #endif
+        std::cout << jsonparser->getFormatedErrorMessages();
+        delete jsonparser;
+        exit(1);
+    }
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << root << std::endl;
+    #endif
+    std::string html = root["details"]["html"].asString();
+    delete jsonparser;
+
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="a")
+        {
+            it->parseAttributes();
+            std::string href = it->attribute("href").second;
+            // Extra links https://secure.gog.com/downlink/file/gamename/id_number
+            if (href.find("/downlink/file/" + gamename + "/")!=std::string::npos)
+            {
+                std::string id, name, path;
+                id.assign(href.begin()+href.find_last_of("/")+1, href.end());
+
+                // Get path from download link
+                std::string url = gogAPI->getExtraLink(gamename, id);
+                path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
+                path = "/" + gamename + path;
+
+                // Get name from path
+                name.assign(path.begin()+path.find_last_of("/")+1,path.end());
+
+                extras.push_back(
+                                    gameFile (  false,
+                                                id,
+                                                name,
+                                                path,
+                                                std::string()
+                                            )
+                                 );
+            }
+        }
+    }
+
+    return extras;
 }
