@@ -48,6 +48,7 @@ class Downloader
         void updateCheck();
         void repair();
         void download();
+        void checkOrphans();
         CURL* curlhandle;
         Timer timer;
         Config config;

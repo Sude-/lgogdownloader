@@ -77,6 +77,14 @@ int Downloader::init()
     if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/GOG_covers_v2.xml");
 
+    if (config.bCheckOrphans) // Always check everything when checking for orphaned files
+    {
+        config.bNoInstallers = false;
+        config.bNoExtras = false;
+        config.bNoPatches = false;
+        config.bNoLanguagePacks = false;
+    }
+
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
         this->getGameList();
 
@@ -200,7 +208,7 @@ void Downloader::getGameList()
         }
     }
 
-    if (config.bListDetails || config.bDownload || config.bRepair)
+    if (config.bListDetails || config.bDownload || config.bRepair || config.bCheckOrphans)
         this->getGameDetails();
 }
 
@@ -1400,4 +1408,111 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
     }
 
     return extras;
+}
+
+void Downloader::checkOrphans()
+{
+    std::vector<std::string> orphans;
+    for (unsigned int i = 0; i < games.size(); ++i)
+    {
+        std::cout << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
+        boost::filesystem::path path (config.sDirectory + games[i].gamename);
+        std::vector<boost::filesystem::path> filepath_vector;
+
+        try
+        {
+            if (boost::filesystem::exists(path))
+            {
+                if (boost::filesystem::is_directory(path))
+                {
+                    boost::filesystem::recursive_directory_iterator end_iter;
+                    boost::filesystem::recursive_directory_iterator dir_iter(path);
+                    while (dir_iter != end_iter)
+                    {
+                        if (boost::filesystem::is_regular_file(dir_iter->status()))
+                        {
+                            std::string filename = dir_iter->path().filename().string();
+                            boost::regex expression(".*\\.(zip|exe|bin|dmg|old)$");
+                            boost::match_results<std::string::const_iterator> what;
+                            if (boost::regex_search(filename, what, expression))
+                                filepath_vector.push_back(dir_iter->path());
+                        }
+                        dir_iter++;
+                    }
+                }
+            }
+            else
+                std::cout << path << " does not exist" << std::endl;
+        }
+        catch (const boost::filesystem::filesystem_error& ex)
+        {
+            std::cout << ex.what() << std::endl;
+        }
+
+        if (!filepath_vector.empty())
+        {
+            for (unsigned int j = 0; j < filepath_vector.size(); ++j)
+            {
+                bool bFoundFile = false;
+                for (unsigned int k = 0; k < games[i].installers.size(); ++k)
+                {
+                    if (games[i].installers[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                    {
+                        bFoundFile = true;
+                        break;
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].extras.size(); ++k)
+                    {
+                        if (games[i].extras[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].patches.size(); ++k)
+                    {
+                        if (games[i].patches[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].languagepacks.size(); ++k)
+                    {
+                        if (games[i].languagepacks[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                    orphans.push_back(filepath_vector[j].string());
+            }
+        }
+    }
+    std::cout << std::endl;
+
+    if (!orphans.empty())
+    {
+        for (unsigned int i = 0; i < orphans.size(); ++i)
+        {
+            std::cout << orphans[i] << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "No orphaned files" << std::endl;
+    }
+
+    return;
 }
