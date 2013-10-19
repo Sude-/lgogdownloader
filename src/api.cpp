@@ -43,7 +43,6 @@ API::API(const std::string& token, const std::string& secret)
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
 
     this->error = false;
-    this->getAPIConfig();
     this->config.oauth_token = token;
     this->config.oauth_secret = secret;
 }
@@ -51,6 +50,7 @@ API::API(const std::string& token, const std::string& secret)
 int API::init()
 {
     int res = 0;
+    this->getAPIConfig();
 
     // Check if we already have token and secret
     if (!this->config.oauth_token.empty() && !this->config.oauth_secret.empty())
