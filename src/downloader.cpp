@@ -1199,6 +1199,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_URL, "https://secure.gog.com/login");
     curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
     curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 1);
