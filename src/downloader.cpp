@@ -71,11 +71,20 @@ int Downloader::init()
 
     progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
 
-    if (config.bLogin || !gogAPI->init())
+    bool bInitOK = gogAPI->init();
+    if (config.bLogin || !bInitOK)
         return this->login();
 
     if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/GOG_covers_v2.xml");
+
+    if (config.bCheckOrphans) // Always check everything when checking for orphaned files
+    {
+        config.bNoInstallers = false;
+        config.bNoExtras = false;
+        config.bNoPatches = false;
+        config.bNoLanguagePacks = false;
+    }
 
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
         this->getGameList();
@@ -173,7 +182,7 @@ void Downloader::updateCheck()
 
 void Downloader::getGameList()
 {
-    gameNames = this->getGames();
+    gameNamesIds = this->getGames();
 
     // Filter the game list
     if (!config.sGameRegex.empty())
@@ -184,23 +193,23 @@ void Downloader::getGameList()
 
         if (config.sGameRegex == "free")
         {
-            gameNames = this->getFreeGames();
+            gameNamesIds = this->getFreeGames();
         }
         else
         {
-            std::vector<std::string> gameNamesFiltered;
+            std::vector<std::pair<std::string,std::string>> gameNamesIdsFiltered;
             boost::regex expression(config.sGameRegex);
             boost::match_results<std::string::const_iterator> what;
-            for (unsigned int i = 0; i < gameNames.size(); ++i)
+            for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
             {
-                if (boost::regex_search(gameNames[i], what, expression))
-                    gameNamesFiltered.push_back(gameNames[i]);
+                if (boost::regex_search(gameNamesIds[i].first, what, expression))
+                    gameNamesIdsFiltered.push_back(gameNamesIds[i]);
             }
-            gameNames = gameNamesFiltered;
+            gameNamesIds = gameNamesIdsFiltered;
         }
     }
 
-    if (config.bListDetails || config.bDownload || config.bRepair)
+    if (config.bListDetails || config.bDownload || config.bRepair || config.bCheckOrphans)
         this->getGameDetails();
 }
 
@@ -212,12 +221,16 @@ int Downloader::getGameDetails()
 {
     gameDetails game;
     int updated = 0;
-    for (unsigned int i = 0; i < gameNames.size(); ++i)
+    for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
     {
-        std::cout << "Getting game info " << i+1 << " / " << gameNames.size() << "\r" << std::flush;
-        game = gogAPI->getGameDetails(gameNames[i], config.iInstallerType, config.iInstallerLanguage);
+        std::cout << "Getting game info " << i+1 << " / " << gameNamesIds.size() << "\r" << std::flush;
+        game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage);
         if (!gogAPI->getError())
         {
+            if (game.extras.empty() && !config.bNoExtras)
+            {
+                game.extras = this->getExtras(gameNamesIds[i].first, gameNamesIds[i].second);
+            }
             if (!config.bUpdateCheck)
                 games.push_back(game);
             else
@@ -317,8 +330,8 @@ void Downloader::listGames()
     }
     else
     {
-        for (unsigned int i = 0; i < gameNames.size(); ++i)
-            std::cout << gameNames[i] << std::endl;
+        for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
+            std::cout << gameNamesIds[i].first << std::endl;
     }
 
 }
@@ -762,6 +775,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     int chunks;
     std::vector<size_t> chunk_from, chunk_to;
     std::vector<std::string> chunk_hash;
+    bool bParsingFailed = false;
 
     // Get filename
     boost::filesystem::path pathname = filepath;
@@ -783,7 +797,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     if (!fileNode)
     {
         std::cout << "XML: Parsing failed / not valid XML" << std::endl;
-        return res;
+        if (config.bDownload)
+            bParsingFailed = true;
+        else
+            return res;
     }
     else
     {
@@ -815,7 +832,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
                 << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
 
     // Check if file exists
-    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL)
+    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL && !bParsingFailed)
     {
         // File exists
         if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
@@ -837,7 +854,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data);
             if (result == CURLE_OK)
+            {
+                if (config.sXMLFile == "automatic" && bParsingFailed)
+                {
+                    std::cout << "Starting automatic XML creation" << std::endl;
+                    Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                }
                 res = 1;
+            }
         }
         return res;
     }
@@ -1101,7 +1125,18 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
         // assuming that config is provided.
         printf("\033[0K\r%3.0f%% ", fraction * 100);
         downloader->progressbar->draw(bar_length, fraction);
-        printf(" %0.2f/%0.2fMB @ %0.2fkB/s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate/1024, eta_ss.str().c_str());
+        std::string rate_unit;
+        if (rate > 1048576) // 1 MB
+        {
+            rate /= 1048576;
+            rate_unit = "MB/s";
+        }
+        else
+        {
+            rate /= 1024;
+            rate_unit = "kB/s";
+        }
+        printf(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
         fflush(stdout);
     }
 
@@ -1206,9 +1241,9 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 }
 
 // Get list of games from account page
-std::vector<std::string> Downloader::getGames()
+std::vector< std::pair<std::string,std::string> > Downloader::getGames()
 {
-    std::vector<std::string> games;
+    std::vector< std::pair<std::string,std::string> > games;
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     int i = 1;
@@ -1254,8 +1289,9 @@ std::vector<std::string> Downloader::getGames()
             {
                 // Game name is contained in data-gameindex attribute
                 std::string game = it->attribute("data-gameindex").second;
-                if (!game.empty())
-                    games.push_back(game);
+                std::string gameid = it->attribute("data-gameid").second;
+                if (!game.empty() && !gameid.empty())
+                    games.push_back(std::make_pair(game,gameid));
             }
         }
     }
@@ -1264,12 +1300,78 @@ std::vector<std::string> Downloader::getGames()
 }
 
 // Get list of free games
-std::vector<std::string> Downloader::getFreeGames()
+std::vector< std::pair<std::string,std::string> > Downloader::getFreeGames()
 {
-    std::vector<std::string> games;
-    std::string html = this->getResponse("https://secure.gog.com/catalogue/ajax?a=getGames&tab=all_genres&genre=all_genres&price=0&order=alph&publisher=&releaseDate=&availability=&gameMode=&rating=&search=&sort=vote&system=&language=&mixPage=1");
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    std::vector< std::pair<std::string,std::string> > games;
+    std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"]}&p=1&t=all");
+
+    // Parse JSON
+    if (!jsonparser->parse(json, root))
+    {
+        #ifdef DEBUG
+            std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << json << std::endl;
+        #endif
+        std::cout << jsonparser->getFormatedErrorMessages();
+        delete jsonparser;
+        exit(1);
+    }
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << root << std::endl;
+    #endif
+    std::string html = root["result"]["html"].asString();
+    delete jsonparser;
 
     // Parse HTML to get game names
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="span")
+        {
+            it->parseAttributes();
+            std::string classname = it->attribute("class").second;
+            if (classname=="gog-price game-owned")
+            {
+                // Game name is contained in data-gameindex attribute
+                std::string game = it->attribute("data-gameindex").second;
+                std::string id = it->attribute("data-gameid").second;
+                if (!game.empty() && !id.empty())
+                    games.push_back(std::make_pair(game,id));
+            }
+        }
+    }
+
+    return games;
+}
+
+std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const std::string& gameid)
+{
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    std::vector<gameFile> extras;
+
+    std::string gameDataUrl = "https://secure.gog.com/en/account/ajax?a=gamesListDetails&g=" + gameid;
+    std::string json = this->getResponse(gameDataUrl);
+    // Parse JSON
+    if (!jsonparser->parse(json, root))
+    {
+        #ifdef DEBUG
+            std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << json << std::endl;
+        #endif
+        std::cout << jsonparser->getFormatedErrorMessages();
+        delete jsonparser;
+        exit(1);
+    }
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << root << std::endl;
+    #endif
+    std::string html = root["details"]["html"].asString();
+    delete jsonparser;
+
     htmlcxx::HTML::ParserDom parser;
     tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
@@ -1279,16 +1381,139 @@ std::vector<std::string> Downloader::getFreeGames()
         if (it->tagName()=="a")
         {
             it->parseAttributes();
-            std::string classname = it->attribute("class").second;
-            if (classname=="game-title-link")
+            std::string href = it->attribute("href").second;
+            // Extra links https://secure.gog.com/downlink/file/gamename/id_number
+            if (href.find("/downlink/file/" + gamename + "/")!=std::string::npos)
             {
-                std::string game = it->attribute("href").second;
-                game.assign(game.begin()+game.find_last_of("/")+1,game.end());
-                if (!game.empty())
-                    games.push_back(game);
+                std::string id, name, path;
+                id.assign(href.begin()+href.find_last_of("/")+1, href.end());
+
+                // Get path from download link
+                std::string url = gogAPI->getExtraLink(gamename, id);
+                path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
+                path = "/" + gamename + path;
+
+                // Get name from path
+                name.assign(path.begin()+path.find_last_of("/")+1,path.end());
+
+                extras.push_back(
+                                    gameFile (  false,
+                                                id,
+                                                name,
+                                                path,
+                                                std::string()
+                                            )
+                                 );
             }
         }
     }
 
-    return games;
+    return extras;
+}
+
+void Downloader::checkOrphans()
+{
+    std::vector<std::string> orphans;
+    for (unsigned int i = 0; i < games.size(); ++i)
+    {
+        std::cout << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
+        boost::filesystem::path path (config.sDirectory + games[i].gamename);
+        std::vector<boost::filesystem::path> filepath_vector;
+
+        try
+        {
+            if (boost::filesystem::exists(path))
+            {
+                if (boost::filesystem::is_directory(path))
+                {
+                    boost::filesystem::recursive_directory_iterator end_iter;
+                    boost::filesystem::recursive_directory_iterator dir_iter(path);
+                    while (dir_iter != end_iter)
+                    {
+                        if (boost::filesystem::is_regular_file(dir_iter->status()))
+                        {
+                            std::string filename = dir_iter->path().filename().string();
+                            boost::regex expression(".*\\.(zip|exe|bin|dmg|old)$");
+                            boost::match_results<std::string::const_iterator> what;
+                            if (boost::regex_search(filename, what, expression))
+                                filepath_vector.push_back(dir_iter->path());
+                        }
+                        dir_iter++;
+                    }
+                }
+            }
+            else
+                std::cout << path << " does not exist" << std::endl;
+        }
+        catch (const boost::filesystem::filesystem_error& ex)
+        {
+            std::cout << ex.what() << std::endl;
+        }
+
+        if (!filepath_vector.empty())
+        {
+            for (unsigned int j = 0; j < filepath_vector.size(); ++j)
+            {
+                bool bFoundFile = false;
+                for (unsigned int k = 0; k < games[i].installers.size(); ++k)
+                {
+                    if (games[i].installers[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                    {
+                        bFoundFile = true;
+                        break;
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].extras.size(); ++k)
+                    {
+                        if (games[i].extras[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].patches.size(); ++k)
+                    {
+                        if (games[i].patches[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                {
+                    for (unsigned int k = 0; k < games[i].languagepacks.size(); ++k)
+                    {
+                        if (games[i].languagepacks[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                        {
+                            bFoundFile = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bFoundFile)
+                    orphans.push_back(filepath_vector[j].string());
+            }
+        }
+    }
+    std::cout << std::endl;
+
+    if (!orphans.empty())
+    {
+        for (unsigned int i = 0; i < orphans.size(); ++i)
+        {
+            std::cout << orphans[i] << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "No orphaned files" << std::endl;
+    }
+
+    return;
 }

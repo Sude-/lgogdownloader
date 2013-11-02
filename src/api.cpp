@@ -18,7 +18,7 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     return count;
 }
 
-gameFile::gameFile(const bool& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language)
+gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language, const int& t_silent)
 {
     this->updated = t_updated;
     this->id = t_id;
@@ -26,6 +26,7 @@ gameFile::gameFile(const bool& t_updated, const std::string& t_id, const std::st
     this->path = t_path;
     this->size = t_size;
     this->language = t_language;
+    this->silent = t_silent;
 }
 
 gameFile::~gameFile()
@@ -42,7 +43,6 @@ API::API(const std::string& token, const std::string& secret)
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
 
     this->error = false;
-    this->getAPIConfig();
     this->config.oauth_token = token;
     this->config.oauth_secret = secret;
 }
@@ -50,6 +50,7 @@ API::API(const std::string& token, const std::string& secret)
 int API::init()
 {
     int res = 0;
+    this->getAPIConfig();
 
     // Check if we already have token and secret
     if (!this->config.oauth_token.empty() && !this->config.oauth_secret.empty())
@@ -309,12 +310,13 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     unsigned int language = installers[i].second;
 
                     game.installers.push_back(
-                                                gameFile(   installer["#updated"].isBool() ? installer["#updated"].asBool() : false,
+                                                gameFile(   installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString()),
                                                             installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
                                                             installer["name"].asString(),
                                                             installer["link"].asString(),
                                                             installer["size"].asString(),
-                                                            language
+                                                            language,
+                                                            installer["silent"].isInt() ? installer["silent"].asInt() : std::stoi(installer["silent"].asString())
                                                          )
                                             );
                 }

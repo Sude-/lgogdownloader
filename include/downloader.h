@@ -48,6 +48,7 @@ class Downloader
         void updateCheck();
         void repair();
         void download();
+        void checkOrphans();
         CURL* curlhandle;
         Timer timer;
         Config config;
@@ -65,8 +66,9 @@ class Downloader
         std::string getResponse(const std::string& url);
 
         int HTTP_Login(const std::string& email, const std::string& password);
-        std::vector<std::string> getGames();
-        std::vector<std::string> getFreeGames();
+        std::vector< std::pair<std::string,std::string> > getGames();
+        std::vector< std::pair<std::string,std::string> > getFreeGames();
+        std::vector<gameFile> getExtras(const std::string& gamename, const std::string& gameid);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
@@ -75,7 +77,7 @@ class Downloader
 
 
         API *gogAPI;
-        std::vector<std::string> gameNames;
+        std::vector< std::pair<std::string,std::string> > gameNamesIds;
         std::vector<gameDetails> games;
         std::string coverXML;
 

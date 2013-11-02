@@ -21,7 +21,7 @@
 #   endif
 #endif
 
-#define VERSION_NUMBER "2.8"
+#define VERSION_NUMBER "2.9"
 
 #ifndef VERSION_STRING
 #   define VERSION_STRING "LGOGDownloader " VERSION_NUMBER
@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
+            ("check-orphans", bpo::value<bool>(&config.bCheckOrphans)->zero_tokens()->default_value(false), "Check for orphaned files (files found on local filesystem that are not found on GOG servers)")
         ;
 
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
@@ -200,6 +201,8 @@ int main(int argc, char *argv[])
         downloader.download();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
         downloader.listGames();
+    else if (config.bCheckOrphans)
+        downloader.checkOrphans();
     else
     {   // Show help message
         std::cout   << config.sVersionString << std::endl
