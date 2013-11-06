@@ -1152,7 +1152,10 @@ size_t Downloader::writeMemoryCallback(char *ptr, size_t size, size_t nmemb, voi
 
 size_t Downloader::writeData(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-    return fwrite(ptr, size, nmemb, stream);
+  std::ostream *ostream = (std::ostream*) stream;
+  size_t count = size * nmemb;
+  ostream->write((const char*)ptr, count);
+  return count;
 }
 
 size_t Downloader::readData(void *ptr, size_t size, size_t nmemb, FILE *stream)
