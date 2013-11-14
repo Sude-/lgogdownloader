@@ -49,6 +49,7 @@ class Downloader
         void repair();
         void download();
         void checkOrphans();
+        void checkStatus();
         CURL* curlhandle;
         Timer timer;
         Config config;
@@ -64,6 +65,8 @@ class Downloader
         size_t getResumePosition();
         CURLcode beginDownload();
         std::string getResponse(const std::string& url);
+        std::string getLocalFileHash(const std::string& filepath);
+        std::string getRemoteFileHash(const std::string& gamename, const std::string& id);
 
         int HTTP_Login(const std::string& email, const std::string& password);
         std::vector< std::pair<std::string,std::string> > getGames();

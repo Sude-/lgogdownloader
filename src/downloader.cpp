@@ -69,7 +69,7 @@ int Downloader::init()
     gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
 
-    progressbar = new ProgressBar(!config.bNoUnicode, !config.bNoColor);
+    progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
     bool bInitOK = gogAPI->init();
     if (config.bLogin || !bInitOK)
@@ -209,7 +209,7 @@ void Downloader::getGameList()
         }
     }
 
-    if (config.bListDetails || config.bDownload || config.bRepair || config.bCheckOrphans)
+    if (config.bListDetails || config.bDownload || config.bRepair || config.bCheckOrphans || config.bCheckStatus)
         this->getGameDetails();
 }
 
@@ -520,6 +520,7 @@ void Downloader::download()
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
                         Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::cout << std::endl;
                     }
                 }
             }
@@ -552,6 +553,7 @@ void Downloader::download()
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
                         Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::cout << std::endl;
                     }
                 }
             }
@@ -584,6 +586,7 @@ void Downloader::download()
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
                         Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::cout << std::endl;
                     }
                 }
             }
@@ -606,30 +609,24 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     // Using local XML data for version check before resuming
     boost::filesystem::path local_xml_file;
-    if (config.sXMLDirectory.empty())
-        local_xml_file = config.sHome + "/.gogdownloader/xml/" + filenameXML;
-    else
-        local_xml_file = config.sXMLDirectory + "/" + filenameXML;
+    local_xml_file = config.sXMLDirectory + "/" + filenameXML;
 
     bool bSameVersion = true; // assume same version
-    bool bLocalXMLExists = boost::filesystem::exists(local_xml_file);
+    bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
+    std::string localHash = this->getLocalFileHash(filepath);
 
     if (!xml_data.empty())
     {
-        // Do version check if local XML file exists
-        if (bLocalXMLExists)
+        // Do version check if local hash exists
+        if (!localHash.empty())
         {
-            TiXmlDocument remote_xml, local_xml;
+            TiXmlDocument remote_xml;
             remote_xml.Parse(xml_data.c_str());
-            local_xml.LoadFile(local_xml_file.string());
             TiXmlNode *fileNodeRemote = remote_xml.FirstChild("file");
-            TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
-            if (fileNodeRemote && fileNodeLocal)
+            if (fileNodeRemote)
             {
                 TiXmlElement *fileElemRemote = fileNodeRemote->ToElement();
-                TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
                 std::string remoteHash = fileElemRemote->Attribute("md5");
-                std::string localHash = fileElemLocal->Attribute("md5");
                 if (remoteHash != localHash)
                     bSameVersion = false;
             }
@@ -1517,4 +1514,150 @@ void Downloader::checkOrphans()
     }
 
     return;
+}
+
+// Check status of files
+void Downloader::checkStatus()
+{
+    for (unsigned int i = 0; i < games.size(); ++i)
+    {
+        if (!config.bNoInstallers)
+        {
+            for (unsigned int j = 0; j < games[i].installers.size(); ++j)
+            {
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+
+                std::string remoteHash;
+                std::string localHash;
+                bool bHashOK = true; // assume hash OK
+                size_t filesize;
+
+                localHash = this->getLocalFileHash(filepath.string());
+                remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
+
+                if (boost::filesystem::exists(filepath))
+                {
+                    filesize = boost::filesystem::file_size(filepath);
+
+                    if (remoteHash != localHash)
+                        bHashOK = false;
+
+                    std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                }
+                else
+                {
+                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                }
+            }
+        }
+
+        if (!config.bNoExtras)
+        {
+            for (unsigned int j = 0; j < games[i].extras.size(); ++j)
+            {
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename);
+
+                std::string localHash = this->getLocalFileHash(filepath.string());
+                size_t filesize;
+
+                if (boost::filesystem::exists(filepath))
+                {
+                    filesize = boost::filesystem::file_size(filepath);
+                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                }
+                else
+                {
+                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                }
+            }
+        }
+
+        if (!config.bNoPatches)
+        {
+            for (unsigned int j = 0; j < games[i].patches.size(); ++j)
+            {
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename);
+
+                std::string localHash = this->getLocalFileHash(filepath.string());
+                size_t filesize;
+
+                if (boost::filesystem::exists(filepath))
+                {
+                    filesize = boost::filesystem::file_size(filepath);
+                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                }
+                else
+                {
+                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                }
+            }
+        }
+
+        if (!config.bNoLanguagePacks)
+        {
+            for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
+            {
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename);
+
+                std::string localHash = this->getLocalFileHash(filepath.string());
+                size_t filesize;
+
+                if (boost::filesystem::exists(filepath))
+                {
+                    filesize = boost::filesystem::file_size(filepath);
+                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                }
+                else
+                {
+                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                }
+            }
+        }
+    }
+
+    return;
+}
+
+std::string Downloader::getLocalFileHash(const std::string& filepath)
+{
+    std::string localHash;
+    boost::filesystem::path path = filepath;
+    boost::filesystem::path local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+    if (boost::filesystem::exists(local_xml_file))
+    {
+        TiXmlDocument local_xml;
+        local_xml.LoadFile(local_xml_file.string());
+        TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
+        if (fileNodeLocal)
+        {
+            TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
+            localHash = fileElemLocal->Attribute("md5");
+        }
+    }
+    else
+    {
+        if (boost::filesystem::exists(path))
+        {
+            localHash = Util::getFileHash(path.string(), RHASH_MD5);
+        }
+    }
+    return localHash;
+}
+
+std::string Downloader::getRemoteFileHash(const std::string& gamename, const std::string& id)
+{
+    std::string remoteHash;
+    std::string xml_data = gogAPI->getXML(gamename, id);
+    if (!xml_data.empty())
+    {
+        TiXmlDocument remote_xml;
+        remote_xml.Parse(xml_data.c_str());
+        TiXmlNode *fileNodeRemote = remote_xml.FirstChild("file");
+        if (fileNodeRemote)
+        {
+            TiXmlElement *fileElemRemote = fileNodeRemote->ToElement();
+            remoteHash = fileElemRemote->Attribute("md5");
+        }
+    }
+    return remoteHash;
 }

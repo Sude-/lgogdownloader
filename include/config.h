@@ -19,7 +19,6 @@ class Config
         bool bNoRemoteXML;
         bool bNoCover;
         bool bUpdateCheck;
-        bool bHelp;
         bool bDownload;
         bool bList;
         bool bListDetails;
@@ -29,10 +28,11 @@ class Config
         bool bNoExtras;
         bool bNoPatches;
         bool bNoLanguagePacks;
-        bool bNoUnicode; // don't use Unicode in console output
-        bool bNoColor;   // don't use colors
+        bool bUnicode; // use Unicode in console output
+        bool bColor;   // use colors
         bool bVerifyPeer;
         bool bCheckOrphans;
+        bool bCheckStatus;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sXMLFile;

@@ -76,6 +76,8 @@ int main(int argc, char *argv[])
     try
     {
         bool bInsecure = false;
+        bool bNoColor = false;
+        bool bNoUnicode = false;
         desc.add_options()
             ("help,h", "Print help message")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
@@ -98,12 +100,13 @@ int main(int argc, char *argv[])
             ("no-language-packs", bpo::value<bool>(&config.bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
             ("no-cover", bpo::value<bool>(&config.bNoCover)->zero_tokens()->default_value(false), "Don't download cover images")
             ("no-remote-xml", bpo::value<bool>(&config.bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
-            ("no-unicode", bpo::value<bool>(&config.bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
-            ("no-color", bpo::value<bool>(&config.bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
+            ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
+            ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
             ("check-orphans", bpo::value<bool>(&config.bCheckOrphans)->zero_tokens()->default_value(false), "Check for orphaned files (files found on local filesystem that are not found on GOG servers)")
+            ("status", bpo::value<bool>(&config.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version")
         ;
 
         bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
@@ -145,6 +148,8 @@ int main(int argc, char *argv[])
             config.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
 
         config.bVerifyPeer = !bInsecure;
+        config.bColor = !bNoColor;
+        config.bUnicode = !bNoUnicode;
     }
     catch (std::exception& e)
     {
@@ -203,6 +208,8 @@ int main(int argc, char *argv[])
         downloader.listGames();
     else if (config.bCheckOrphans)
         downloader.checkOrphans();
+    else if (config.bCheckStatus)
+        downloader.checkStatus();
     else
     {   // Show help message
         std::cout   << config.sVersionString << std::endl
