@@ -76,7 +76,7 @@ int Downloader::init()
         return this->login();
 
     if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
-        coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/GOG_covers_v2.xml");
+        coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/covers.xml");
 
     if (config.bCheckOrphans) // Always check everything when checking for orphaned files
     {
