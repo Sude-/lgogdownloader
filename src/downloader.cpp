@@ -1303,7 +1303,7 @@ std::vector< std::pair<std::string,std::string> > Downloader::getFreeGames()
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     std::vector< std::pair<std::string,std::string> > games;
-    std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"]}&p=1&t=all");
+    std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"],\"sort\":\"title\"}&p=1&t=all");
 
     // Parse JSON
     if (!jsonparser->parse(json, root))
