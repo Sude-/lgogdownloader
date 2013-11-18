@@ -264,7 +264,7 @@ std::string API::getResponseOAuth(const std::string& url)
     return response;
 }
 
-gameDetails API::getGameDetails(const std::string& game_name, const unsigned int& type, const unsigned int& lang)
+gameDetails API::getGameDetails(const std::string& game_name, const unsigned int& type, const unsigned int& lang, const bool& useDuplicateHandler)
 {
     std::string url;
     gameDetails game;
@@ -296,7 +296,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     {
                         if (lang & GlobalConstants::LANGUAGES[j].languageId)
                         {
-                            installers.push_back(std::make_pair(root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode],GlobalConstants::LANGUAGES[j].languageId));
+                            if (root["game"].isMember(installer+GlobalConstants::LANGUAGES[j].languageCode))
+                                installers.push_back(std::make_pair(root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode],GlobalConstants::LANGUAGES[j].languageId));
                         }
                     }
                 }
@@ -308,6 +309,24 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 {
                     Json::Value installer = installers[i].first[index];
                     unsigned int language = installers[i].second;
+
+                    // Check for duplicate installers in different languages and add languageId of duplicate installer to the original installer
+                    // https://secure.gog.com/forum/general/introducing_the_beta_release_of_the_new_gogcom_downloader/post1483
+                    if (useDuplicateHandler)
+                    {
+                        bool bDuplicate = false;
+                        for (unsigned int j = 0; j < game.installers.size(); ++j)
+                        {
+                            if (game.installers[j].path == installer["link"].asString())
+                            {
+                                game.installers[j].language |= language;
+                                bDuplicate = true;
+                                break;
+                            }
+                        }
+                        if (bDuplicate)
+                            continue;
+                    }
 
                     game.installers.push_back(
                                                 gameFile(   installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString()),

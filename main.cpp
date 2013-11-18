@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
         bool bInsecure = false;
         bool bNoColor = false;
         bool bNoUnicode = false;
+        bool bNoDuplicateHandler = false;
         desc.add_options()
             ("help,h", "Print help message")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
@@ -102,6 +103,7 @@ int main(int argc, char *argv[])
             ("no-remote-xml", bpo::value<bool>(&config.bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
+            ("no-duplicate-handling", bpo::value<bool>(&bNoDuplicateHandler)->zero_tokens()->default_value(false), "Don't use duplicate handler for installers\nDuplicate installers from different languages are handled separately")
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
@@ -150,6 +152,7 @@ int main(int argc, char *argv[])
         config.bVerifyPeer = !bInsecure;
         config.bColor = !bNoColor;
         config.bUnicode = !bNoUnicode;
+        config.bDuplicateHandler = !bNoDuplicateHandler;
     }
     catch (std::exception& e)
     {

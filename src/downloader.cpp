@@ -224,7 +224,7 @@ int Downloader::getGameDetails()
     for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
     {
         std::cout << "Getting game info " << i+1 << " / " << gameNamesIds.size() << "\r" << std::flush;
-        game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage);
+        game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
             if (game.extras.empty() && !config.bNoExtras)
@@ -278,11 +278,19 @@ void Downloader::listGames()
                 {
                     if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
+                        std::string languages;
+                        for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++)
+                        {
+                            if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].languageId)
+                                languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
+                        }
+
                         std::cout   << "\tid: " << games[i].installers[j].id << std::endl
                                     << "\tname: " << games[i].installers[j].name << std::endl
                                     << "\tpath: " << games[i].installers[j].path << std::endl
                                     << "\tsize: " << games[i].installers[j].size << std::endl
                                     << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
+                                    << "\tlanguage: " << languages << std::endl
                                     << std::endl;
                     }
                 }
@@ -467,6 +475,8 @@ void Downloader::download()
                 if (config.bUpdateCheck && !games[i].installers[j].updated)
                     continue;
 
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+
                 // Get link
                 std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                 if (gogAPI->getError())
@@ -475,8 +485,6 @@ void Downloader::download()
                     gogAPI->clearError();
                     continue;
                 }
-
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
 
                 // Download
                 if (!url.empty())
