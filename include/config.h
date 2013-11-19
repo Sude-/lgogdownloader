@@ -16,18 +16,18 @@ class Config
         Config() {};
         virtual ~Config() {};
         bool bVerbose;
-        bool bNoRemoteXML;
-        bool bNoCover;
+        bool bRemoteXML;
+        bool bCover;
         bool bUpdateCheck;
         bool bDownload;
         bool bList;
         bool bListDetails;
         bool bLogin;
         bool bRepair;
-        bool bNoInstallers;
-        bool bNoExtras;
-        bool bNoPatches;
-        bool bNoLanguagePacks;
+        bool bInstallers;
+        bool bExtras;
+        bool bPatches;
+        bool bLanguagePacks;
         bool bUnicode; // use Unicode in console output
         bool bColor;   // use colors
         bool bVerifyPeer;

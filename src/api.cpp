@@ -286,16 +286,17 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             game.icon = root["game"]["icon"].asString();
 
             // Installer details
+            // Create a list of installers from JSON
             std::vector<std::pair<Json::Value,unsigned int>> installers;
             for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
-            {
+            {   // Check against the specified platforms
                 if (type & GlobalConstants::PLATFORMS[i].platformId)
                 {
                     std::string installer = "installer_" + GlobalConstants::PLATFORMS[i].platformCode + "_";
                     for (unsigned int j = 0; j < GlobalConstants::LANGUAGES.size(); ++j)
-                    {
+                    {   // Check against the specified languages
                         if (lang & GlobalConstants::LANGUAGES[j].languageId)
-                        {
+                        {   // Make sure that the installer exists in the JSON
                             if (root["game"].isMember(installer+GlobalConstants::LANGUAGES[j].languageCode))
                                 installers.push_back(std::make_pair(root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode],GlobalConstants::LANGUAGES[j].languageId));
                         }
@@ -319,7 +320,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         {
                             if (game.installers[j].path == installer["link"].asString())
                             {
-                                game.installers[j].language |= language;
+                                game.installers[j].language |= language; // Add language code to installer
                                 bDuplicate = true;
                                 break;
                             }
@@ -359,7 +360,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             // Patch details
             for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
-            {
+            {   // Check against the specified languages
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a patch
@@ -372,7 +373,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         while (patch_number_file < maxTries)
                         {
                             std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
-                            if (root["game"].isMember(patchname))
+                            if (root["game"].isMember(patchname)) // Check that patch node exists
                                 patchnames.push_back(patchname);
                             patch_number_file++;
                         }
@@ -384,7 +385,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         for (unsigned int i = 0; i < patchnames.size(); ++i)
                         {
                             Json::Value patchnode = root["game"][patchnames[i]];
-                            if (patchnode.isArray())
+                            if (patchnode.isArray()) // Patch has multiple files
                             {
                                 for ( unsigned int index = 0; index < patchnode.size(); ++index )
                                 {
@@ -401,7 +402,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                         );
                                 }
                             }
-                            else
+                            else // Patch is a single file
                             {
                                 game.patches.push_back(
                                                         gameFile(   false, /* patches don't have "updated" flag */
@@ -420,7 +421,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             // Language pack details
             for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
-            {
+            {   // Check against the specified languages
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a language pack
@@ -433,7 +434,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         while (lang_pack_number_file < maxTries)
                         {
                             std::string langpackname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(lang_pack_number) + "langpack" + std::to_string(lang_pack_number_file);
-                            if (root["game"].isMember(langpackname))
+                            if (root["game"].isMember(langpackname)) // Check that language pack node exists
                                 langpacknames.push_back(langpackname);
                             lang_pack_number_file++;
                         }

@@ -47,6 +47,7 @@ int Downloader::init()
 {
     this->resume_position = 0;
 
+    // Initialize curl and set curl options
     curl_global_init(CURL_GLOBAL_ALL);
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
@@ -64,6 +65,7 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
 
+    // Create new API handle and set curl options for the API
     gogAPI = new API(config.sToken, config.sSecret);
     gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
     gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
@@ -71,19 +73,19 @@ int Downloader::init()
 
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
-    bool bInitOK = gogAPI->init();
+    bool bInitOK = gogAPI->init(); // Initialize the API
     if (config.bLogin || !bInitOK)
         return this->login();
 
-    if (!config.bNoCover && config.bDownload && !config.bUpdateCheck)
+    if (config.bCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/covers.xml");
 
     if (config.bCheckOrphans) // Always check everything when checking for orphaned files
     {
-        config.bNoInstallers = false;
-        config.bNoExtras = false;
-        config.bNoPatches = false;
-        config.bNoLanguagePacks = false;
+        config.bInstallers = true;
+        config.bExtras = true;
+        config.bPatches = true;
+        config.bLanguagePacks = true;
     }
 
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
@@ -196,13 +198,13 @@ void Downloader::getGameList()
             gameNamesIds = this->getFreeGames();
         }
         else
-        {
+        {   // Filter the names
             std::vector<std::pair<std::string,std::string>> gameNamesIdsFiltered;
             boost::regex expression(config.sGameRegex);
             boost::match_results<std::string::const_iterator> what;
             for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
             {
-                if (boost::regex_search(gameNamesIds[i].first, what, expression))
+                if (boost::regex_search(gameNamesIds[i].first, what, expression)) // Check if name matches the specified regex
                     gameNamesIdsFiltered.push_back(gameNamesIds[i]);
             }
             gameNamesIds = gameNamesIdsFiltered;
@@ -227,7 +229,7 @@ int Downloader::getGameDetails()
         game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
-            if (game.extras.empty() && !config.bNoExtras)
+            if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
                 game.extras = this->getExtras(gameNamesIds[i].first, gameNamesIds[i].second);
             }
@@ -271,7 +273,7 @@ void Downloader::listGames()
                         << "title: " << games[i].title << std::endl
                         << "icon: " << "http://static.gog.com" << games[i].icon << std::endl;
             // List installers
-            if (!config.bNoInstallers)
+            if (config.bInstallers)
             {
                 std::cout << "installers: " << std::endl;
                 for (unsigned int j = 0; j < games[i].installers.size(); ++j)
@@ -279,7 +281,7 @@ void Downloader::listGames()
                     if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
                         std::string languages;
-                        for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++)
+                        for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
                         {
                             if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].languageId)
                                 languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
@@ -296,7 +298,7 @@ void Downloader::listGames()
                 }
             }
             // List extras
-            if (!config.bNoExtras && !config.bUpdateCheck && !games[i].extras.empty())
+            if (config.bExtras && !config.bUpdateCheck && !games[i].extras.empty())
             {
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
@@ -309,7 +311,7 @@ void Downloader::listGames()
                 }
             }
             // List patches
-            if (!config.bNoPatches && !config.bUpdateCheck && !games[i].patches.empty())
+            if (config.bPatches && !config.bUpdateCheck && !games[i].patches.empty())
             {
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
@@ -322,7 +324,7 @@ void Downloader::listGames()
                 }
             }
             // List language packs
-            if (!config.bNoLanguagePacks && !config.bUpdateCheck && !games[i].languagepacks.empty())
+            if (config.bLanguagePacks && !config.bUpdateCheck && !games[i].languagepacks.empty())
             {
                 std::cout << "language packs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
@@ -337,7 +339,7 @@ void Downloader::listGames()
         }
     }
     else
-    {
+    {   // List game names
         for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
             std::cout << gameNamesIds[i].first << std::endl;
     }
@@ -349,7 +351,7 @@ void Downloader::repair()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Installers (use remote or local file)
-        if (!config.bNoInstallers)
+        if (config.bInstallers)
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
@@ -357,7 +359,7 @@ void Downloader::repair()
 
                 // Get XML data
                 std::string XML = "";
-                if (!config.bNoRemoteXML)
+                if (config.bRemoteXML)
                 {
                     XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
@@ -369,7 +371,8 @@ void Downloader::repair()
                 }
 
                 // Repair
-                if (!XML.empty() || config.bNoRemoteXML)
+                bool bUseLocalXML = !config.bRemoteXML;
+                if (!XML.empty() || bUseLocalXML)
                 {
                     std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
@@ -386,7 +389,7 @@ void Downloader::repair()
         }
 
         // Extras (GOG doesn't provide XML data for extras, use local file)
-        if (!config.bNoExtras)
+        if (config.bExtras)
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
@@ -406,7 +409,7 @@ void Downloader::repair()
         }
 
         // Patches (use remote or local file)
-        if (!config.bNoPatches)
+        if (config.bPatches)
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
@@ -426,7 +429,7 @@ void Downloader::repair()
         }
 
         // Language packs (GOG doesn't provide XML data for language packs, use local file)
-        if (!config.bNoLanguagePacks)
+        if (config.bLanguagePacks)
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
@@ -453,7 +456,7 @@ void Downloader::download()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
-        if (!config.bNoCover && !config.bUpdateCheck)
+        if (config.bCover && !config.bUpdateCheck)
         {
             // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
             std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
@@ -467,7 +470,7 @@ void Downloader::download()
             this->downloadCovers(games[i].gamename, directory, coverXML);
         }
         // Download installers
-        if (!config.bNoInstallers)
+        if (config.bInstallers)
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
@@ -490,7 +493,7 @@ void Downloader::download()
                 if (!url.empty())
                 {
                     std::string XML;
-                    if (!config.bNoRemoteXML)
+                    if (config.bRemoteXML)
                         XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (!games[i].installers[j].name.empty())
                         std::cout << "Dowloading: " << games[i].installers[j].name << std::endl;
@@ -501,7 +504,7 @@ void Downloader::download()
             }
         }
         // Download extras
-        if (!config.bNoExtras && !config.bUpdateCheck)
+        if (config.bExtras && !config.bUpdateCheck)
         { // Save some time and don't process extras when running update check. Extras don't have updated flag, all of them would be skipped anyway.
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
@@ -534,7 +537,7 @@ void Downloader::download()
             }
         }
         // Download patches
-        if (!config.bNoPatches)
+        if (config.bPatches)
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
@@ -567,7 +570,7 @@ void Downloader::download()
             }
         }
         // Download language packs
-        if (!config.bNoLanguagePacks)
+        if (config.bLanguagePacks)
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
@@ -681,12 +684,12 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             }
         }
         else
-        {
+        {   // File exists but is not the same version
             fclose(outfile);
             std::cout << "Remote file is different, renaming local file" << std::endl;
-            boost::filesystem::path new_name = filepath + ".old";
+            boost::filesystem::path new_name = filepath + ".old"; // Rename old file by appending ".old" to filename
             if (boost::filesystem::exists(new_name))
-            {
+            {   // One even older file exists, delete the older file before renaming
                 std::cout << "Old renamed file found, deleting old file" << std::endl;
                 if (!boost::filesystem::remove(new_name))
                 {
@@ -696,7 +699,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                 }
             }
             boost::system::error_code ec;
-            boost::filesystem::rename(pathname, new_name, ec);
+            boost::filesystem::rename(pathname, new_name, ec); // Rename the file
             if (ec)
             {
                 std::cout << "Failed to rename " << filepath << " to " << new_name.string() << std::endl;
@@ -787,20 +790,22 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     std::string filename = pathname.filename().string();
 
     TiXmlDocument xml;
-    if (!xml_data.empty()) {
+    if (!xml_data.empty()) // Parse remote XML data
+    {
         std::cout << "XML: Using remote file" << std::endl;
         xml.Parse(xml_data.c_str());
     }
     else
-    {
+    {   // Parse local XML data
         std::string xml_file = config.sXMLDirectory + "/" + filename + ".xml";
         std::cout << "XML: Using local file" << std::endl;
         xml.LoadFile(xml_file);
     }
 
+    // Check if file node exists in XML data
     TiXmlNode *fileNode = xml.FirstChild("file");
     if (!fileNode)
-    {
+    {   // File node doesn't exist
         std::cout << "XML: Parsing failed / not valid XML" << std::endl;
         if (config.bDownload)
             bParsingFailed = true;
@@ -808,7 +813,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             return res;
     }
     else
-    {
+    {   // File node exists --> valid XML
         std::cout << "XML: Valid XML" << std::endl;
         TiXmlElement *fileElem = fileNode->ToElement();
         filename = fileElem->Attribute("name");
@@ -898,12 +903,13 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         return res;
     }
 
+    // Check all chunks
     for (int i=0; i<chunks; i++)
     {
         size_t chunk_begin = chunk_from.at(i);
         size_t chunk_end = chunk_to.at(i);
         size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
-        std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end);
+        std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end); // Download range string for curl
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
         fseek(outfile, chunk_begin, SEEK_SET);
@@ -1130,6 +1136,8 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
         // assuming that config is provided.
         printf("\033[0K\r%3.0f%% ", fraction * 100);
         downloader->progressbar->draw(bar_length, fraction);
+
+        // Download rate unit conversion
         std::string rate_unit;
         if (rate > 1048576) // 1 MB
         {
@@ -1432,6 +1440,7 @@ void Downloader::checkOrphans()
             {
                 if (boost::filesystem::is_directory(path))
                 {
+                    // Recursively iterate over files in directory
                     boost::filesystem::recursive_directory_iterator end_iter;
                     boost::filesystem::recursive_directory_iterator dir_iter(path);
                     while (dir_iter != end_iter)
@@ -1439,7 +1448,7 @@ void Downloader::checkOrphans()
                         if (boost::filesystem::is_regular_file(dir_iter->status()))
                         {
                             std::string filename = dir_iter->path().filename().string();
-                            boost::regex expression(".*\\.(zip|exe|bin|dmg|old)$");
+                            boost::regex expression(".*\\.(zip|exe|bin|dmg|old)$"); // Limit to files with these extensions (".old" is for renamed older version files)
                             boost::match_results<std::string::const_iterator> what;
                             if (boost::regex_search(filename, what, expression))
                                 filepath_vector.push_back(dir_iter->path());
@@ -1460,7 +1469,9 @@ void Downloader::checkOrphans()
         {
             for (unsigned int j = 0; j < filepath_vector.size(); ++j)
             {
-                bool bFoundFile = false;
+                bool bFoundFile = false; // Assume that the file is orphaned
+
+                // Check installers
                 for (unsigned int k = 0; k < games[i].installers.size(); ++k)
                 {
                     if (games[i].installers[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
@@ -1470,7 +1481,7 @@ void Downloader::checkOrphans()
                     }
                 }
                 if (!bFoundFile)
-                {
+                {   // Check extras
                     for (unsigned int k = 0; k < games[i].extras.size(); ++k)
                     {
                         if (games[i].extras[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
@@ -1481,7 +1492,7 @@ void Downloader::checkOrphans()
                     }
                 }
                 if (!bFoundFile)
-                {
+                {   // Check patches
                     for (unsigned int k = 0; k < games[i].patches.size(); ++k)
                     {
                         if (games[i].patches[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
@@ -1492,7 +1503,7 @@ void Downloader::checkOrphans()
                     }
                 }
                 if (!bFoundFile)
-                {
+                {   // Check language packs
                     for (unsigned int k = 0; k < games[i].languagepacks.size(); ++k)
                     {
                         if (games[i].languagepacks[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
@@ -1529,7 +1540,7 @@ void Downloader::checkStatus()
 {
     for (unsigned int i = 0; i < games.size(); ++i)
     {
-        if (!config.bNoInstallers)
+        if (config.bInstallers)
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
@@ -1559,7 +1570,7 @@ void Downloader::checkStatus()
             }
         }
 
-        if (!config.bNoExtras)
+        if (config.bExtras)
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
@@ -1580,7 +1591,7 @@ void Downloader::checkStatus()
             }
         }
 
-        if (!config.bNoPatches)
+        if (config.bPatches)
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
@@ -1601,7 +1612,7 @@ void Downloader::checkStatus()
             }
         }
 
-        if (!config.bNoLanguagePacks)
+        if (config.bLanguagePacks)
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {

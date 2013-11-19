@@ -79,6 +79,12 @@ int main(int argc, char *argv[])
         bool bNoColor = false;
         bool bNoUnicode = false;
         bool bNoDuplicateHandler = false;
+        bool bNoCover = false;
+        bool bNoInstallers = false;
+        bool bNoExtras = false;
+        bool bNoPatches = false;
+        bool bNoLanguagePacks = false;
+        bool bNoRemoteXML = false;
         desc.add_options()
             ("help,h", "Print help message")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
@@ -95,12 +101,12 @@ int main(int argc, char *argv[])
             ("update-check", bpo::value<bool>(&config.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
             ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::PLATFORM_WINDOWS), platform_text.c_str())
             ("language", bpo::value<unsigned int>(&config.iInstallerLanguage)->default_value(GlobalConstants::LANGUAGE_EN), language_text.c_str())
-            ("no-installers", bpo::value<bool>(&config.bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
-            ("no-extras", bpo::value<bool>(&config.bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
-            ("no-patches", bpo::value<bool>(&config.bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
-            ("no-language-packs", bpo::value<bool>(&config.bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
-            ("no-cover", bpo::value<bool>(&config.bNoCover)->zero_tokens()->default_value(false), "Don't download cover images")
-            ("no-remote-xml", bpo::value<bool>(&config.bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
+            ("no-installers", bpo::value<bool>(&bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
+            ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
+            ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
+            ("no-language-packs", bpo::value<bool>(&bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
+            ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images")
+            ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
             ("no-duplicate-handling", bpo::value<bool>(&bNoDuplicateHandler)->zero_tokens()->default_value(false), "Don't use duplicate handler for installers\nDuplicate installers from different languages are handled separately")
@@ -153,6 +159,12 @@ int main(int argc, char *argv[])
         config.bColor = !bNoColor;
         config.bUnicode = !bNoUnicode;
         config.bDuplicateHandler = !bNoDuplicateHandler;
+        config.bCover = !bNoCover;
+        config.bInstallers = !bNoInstallers;
+        config.bExtras = !bNoExtras;
+        config.bPatches = !bNoPatches;
+        config.bLanguagePacks = !bNoLanguagePacks;
+        config.bRemoteXML = !bNoRemoteXML;
     }
     catch (std::exception& e)
     {
