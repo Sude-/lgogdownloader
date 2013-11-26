@@ -80,14 +80,6 @@ int Downloader::init()
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/covers.xml");
 
-    if (config.bCheckOrphans) // Always check everything when checking for orphaned files
-    {
-        config.bInstallers = true;
-        config.bExtras = true;
-        config.bPatches = true;
-        config.bLanguagePacks = true;
-    }
-
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
         this->getGameList();
 
@@ -199,9 +191,6 @@ void Downloader::getGameList()
             gameNamesIds = gameNamesIdsFiltered;
         }
     }
-
-    if (config.bListDetails || config.bDownload || config.bRepair || config.bCheckOrphans || config.bCheckStatus)
-        this->getGameDetails();
 }
 
 /* Get detailed info about the games
@@ -256,6 +245,9 @@ void Downloader::listGames()
 {
     if (config.bListDetails) // Detailed list
     {
+        if (this->games.empty())
+            this->getGameDetails();
+
         for (unsigned int i = 0; i < games.size(); ++i)
         {
             std::cout   << "gamename: " << games[i].gamename << std::endl
@@ -337,6 +329,9 @@ void Downloader::listGames()
 
 void Downloader::repair()
 {
+    if (this->games.empty())
+        this->getGameDetails();
+
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Installers (use remote or local file)
@@ -442,6 +437,9 @@ void Downloader::repair()
 
 void Downloader::download()
 {
+    if (this->games.empty())
+        this->getGameDetails();
+
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Download covers
@@ -1416,6 +1414,15 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
 
 void Downloader::checkOrphans()
 {
+    // Always check everything when checking for orphaned files
+    config.bInstallers = true;
+    config.bExtras = true;
+    config.bPatches = true;
+    config.bLanguagePacks = true;
+
+    if (this->games.empty())
+        this->getGameDetails();
+
     std::vector<std::string> orphans;
     for (unsigned int i = 0; i < games.size(); ++i)
     {
@@ -1527,6 +1534,9 @@ void Downloader::checkOrphans()
 // Check status of files
 void Downloader::checkStatus()
 {
+    if (this->games.empty())
+        this->getGameDetails();
+
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         if (config.bInstallers)
