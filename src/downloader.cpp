@@ -151,20 +151,9 @@ int Downloader::login()
 
 void Downloader::updateCheck()
 {
-    if (gogAPI->user.notifications_forum)
-        std::cout << gogAPI->user.notifications_forum << " new forum replies" << std::endl;
-    else
-        std::cout << "No new forum replies" << std::endl;
-
-    if (gogAPI->user.notifications_messages)
-        std::cout << gogAPI->user.notifications_messages << " new private message(s)" << std::endl;
-    else
-        std::cout << "No new private messages" << std::endl;
-
-    if (gogAPI->user.notifications_games)
-        std::cout << gogAPI->user.notifications_games << " updated game(s)" << std::endl;
-    else
-        std::cout << "No updated games" << std::endl;
+    std::cout << "New forum replies: " << gogAPI->user.notifications_forum << std::endl;
+    std::cout << "New private messages: " << gogAPI->user.notifications_messages << std::endl;
+    std::cout << "Updated games: " << gogAPI->user.notifications_games << std::endl;
 
     if (gogAPI->user.notifications_games)
     {
