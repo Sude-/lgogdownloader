@@ -904,6 +904,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (chunk == NULL)
         {
             std::cout << "Memory error" << std::endl;
+            fclose(outfile);
             return res;
         }
         size = fread(chunk, 1, chunk_size, outfile);
@@ -911,6 +912,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         {
             std::cout << "Read error" << std::endl;
             free(chunk);
+            fclose(outfile);
             return res;
         }
         std::string hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
