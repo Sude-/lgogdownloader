@@ -41,7 +41,7 @@ class Config
         std::string sToken;
         std::string sSecret;
         std::string sVersionString;
-        std::string sHome;
+        std::string sConfigDirectory;
         std::string sCookiePath;
         std::string sConfigFilePath;
         unsigned int iInstallerType;

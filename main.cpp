@@ -33,13 +33,40 @@ int main(int argc, char *argv[])
 {
     Config config;
     config.sVersionString = VERSION_STRING;
-    config.sHome = (std::string)getenv("HOME");
-    config.sCookiePath = config.sHome + "/.gogdownloader/cookies.txt";
-    config.sConfigFilePath = config.sHome + "/.gogdownloader/config.cfg";
-    config.sXMLDirectory = config.sHome + "/.gogdownloader/xml";
+    char *xdgconfig = getenv("XDG_CONFIG_HOME");
+    char *xdgcache = getenv("XDG_CACHE_HOME");
+    std::string home = (std::string)getenv("HOME");
 
-    // Create gogdownloader directories
+    if (xdgconfig)
+    {
+        config.sConfigDirectory = (std::string)xdgconfig + "/lgogdownloader";
+        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
+        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
+    }
+    else
+    {
+        config.sConfigDirectory = home + "/.config/lgogdownloader";
+        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
+        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
+    }
+
+    if (xdgcache)
+        config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
+    else
+        config.sXMLDirectory = home + "/.cache/lgogdownloader/xml";
+
+    // Create lgogdownloader directories
     boost::filesystem::path path = config.sXMLDirectory;
+    if (!boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return 1;
+        }
+    }
+
+    path = config.sConfigDirectory;
     if (!boost::filesystem::exists(path))
     {
         if (!boost::filesystem::create_directories(path))
