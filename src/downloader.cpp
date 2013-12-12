@@ -820,13 +820,13 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             chunk_hash.push_back(chunkElem->GetText());
             chunkNode = fileNode->IterateChildren(chunkNode);
         }
-    }
 
-    std::cout   << "XML: Parsing finished" << std::endl << std::endl
-                << filename << std::endl
-                << "\tMD5:\t" << filehash << std::endl
-                << "\tChunks:\t" << chunks << std::endl
-                << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
+        std::cout   << "XML: Parsing finished" << std::endl << std::endl
+                    << filename << std::endl
+                    << "\tMD5:\t" << filehash << std::endl
+                    << "\tChunks:\t" << chunks << std::endl
+                    << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
+    }
 
     // Check if file exists
     if ((outfile=fopen(filepath.c_str(), "r"))!=NULL && !bParsingFailed)
@@ -845,7 +845,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     }
     else
     {
-        std::cout << "File doesn't exist " << filepath << std::endl;
+        if (!bParsingFailed)
+            std::cout << "File doesn't exist " << filepath << std::endl;
+
         if (this->config.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
