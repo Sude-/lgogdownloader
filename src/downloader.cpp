@@ -775,6 +775,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     // Get filename
     boost::filesystem::path pathname = filepath;
     std::string filename = pathname.filename().string();
+    std::string xml_file = config.sXMLDirectory + "/" + filename + ".xml";
+    bool bFileExists = boost::filesystem::exists(pathname);
+    bool bLocalXMLExists = boost::filesystem::exists(xml_file);
 
     TiXmlDocument xml;
     if (!xml_data.empty()) // Parse remote XML data
@@ -784,8 +787,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     }
     else
     {   // Parse local XML data
-        std::string xml_file = config.sXMLDirectory + "/" + filename + ".xml";
         std::cout << "XML: Using local file" << std::endl;
+        if (!bLocalXMLExists)
+            std::cout << "XML: File doesn't exist (" << xml_file << ")" << std::endl;
         xml.LoadFile(xml_file);
     }
 
@@ -828,26 +832,50 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
                     << "\tSize:\t" << filesize << " bytes" << std::endl << std::endl;
     }
 
+    // No local XML file and parsing failed.
+    if (bParsingFailed && !bLocalXMLExists)
+    {
+        if (!bFileExists && this->config.bDownload)
+        {
+            std::cout << "Downloading: " << filepath << std::endl;
+            CURLcode result = this->downloadFile(url, filepath, xml_data);
+            if (result == CURLE_OK)
+            {
+                bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
+
+                if (config.sXMLFile == "automatic" && !bLocalXMLExists)
+                {
+                    std::cout << "Starting automatic XML creation" << std::endl;
+                    Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                }
+                res = 1;
+            }
+        }
+        else
+        {
+            std::cout << "Can't repair file." << std::endl;
+        }
+        return res;
+    }
+
     // Check if file exists
-    if ((outfile=fopen(filepath.c_str(), "r"))!=NULL && !bParsingFailed)
+    if (bFileExists)
     {
         // File exists
-        if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
+        if ((outfile = fopen(filepath.c_str(), "r+"))!=NULL )
         {
             fseek(outfile, 0, SEEK_END);
             offset = ftell(outfile);
         }
         else
         {
-            std::cout << "Failed to reopen " << filepath << std::endl;
+            std::cout << "Failed to open " << filepath << std::endl;
             return res;
         }
     }
     else
     {
-        if (!bParsingFailed)
-            std::cout << "File doesn't exist " << filepath << std::endl;
-
+        std::cout << "File doesn't exist " << filepath << std::endl;
         if (this->config.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
