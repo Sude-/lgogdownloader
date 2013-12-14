@@ -835,11 +835,15 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     // No local XML file and parsing failed.
     if (bParsingFailed && !bLocalXMLExists)
     {
-        if (!bFileExists && this->config.bDownload)
+        if (this->config.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data);
-            if (result == CURLE_OK)
+            std::cout << std::endl;
+            if  (
+                    (!bFileExists && result == CURLE_OK) || /* File doesn't exist so only accept if everything was OK */
+                    (bFileExists && (result == CURLE_OK || result == CURLE_RANGE_ERROR ))   /* File exists so accept also CURLE_RANGE_ERROR because curl will return CURLE_RANGE_ERROR */
+                )                                                                           /* if the file is already fully downloaded and we want to resume it */
             {
                 bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
 
@@ -880,6 +884,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         {
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data);
+            std::cout << std::endl;
             if (result == CURLE_OK)
             {
                 if (config.sXMLFile == "automatic" && bParsingFailed)
