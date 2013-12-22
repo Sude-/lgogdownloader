@@ -1481,7 +1481,7 @@ void Downloader::checkOrphans()
                         if (boost::filesystem::is_regular_file(dir_iter->status()))
                         {
                             std::string filename = dir_iter->path().filename().string();
-                            boost::regex expression(".*\\.(zip|exe|bin|dmg|old)$"); // Limit to files with these extensions (".old" is for renamed older version files)
+                            boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
                             boost::match_results<std::string::const_iterator> what;
                             if (boost::regex_search(filename, what, expression))
                                 filepath_vector.push_back(dir_iter->path());

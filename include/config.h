@@ -31,7 +31,6 @@ class Config
         bool bUnicode; // use Unicode in console output
         bool bColor;   // use colors
         bool bVerifyPeer;
-        bool bCheckOrphans;
         bool bCheckStatus;
         bool bDuplicateHandler;
         std::string sGameRegex;
@@ -44,6 +43,7 @@ class Config
         std::string sConfigDirectory;
         std::string sCookiePath;
         std::string sConfigFilePath;
+        std::string sOrphanRegex;
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
         size_t iChunkSize;

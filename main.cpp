@@ -97,6 +97,10 @@ int main(int argc, char *argv[])
     language_text += "Add the values to download multiple languages\nAll = " + std::to_string(language_sum) + "\n"
                     + "French + Polish = " + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + " = " + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL);
 
+    // Create help text for --check-orphans
+    std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old)$"; // Limit to files with these extensions (".old" is for renamed older version files)
+    std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
+
     bpo::variables_map vm;
     bpo::options_description desc("Options");
     bpo::options_description config_file_options("Configuration");
@@ -140,7 +144,7 @@ int main(int argc, char *argv[])
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
-            ("check-orphans", bpo::value<bool>(&config.bCheckOrphans)->zero_tokens()->default_value(false), "Check for orphaned files (files found on local filesystem that are not found on GOG servers)")
+            ("check-orphans", bpo::value<std::string>(&config.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
             ("status", bpo::value<bool>(&config.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version")
         ;
 
@@ -181,6 +185,10 @@ int main(int argc, char *argv[])
 
         if (vm.count("limit-rate"))
             config.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
+
+        if (vm.count("check-orphans"))
+            if (config.sOrphanRegex.empty())
+                config.sOrphanRegex = orphans_regex_default;
 
         config.bVerifyPeer = !bInsecure;
         config.bColor = !bNoColor;
@@ -248,7 +256,7 @@ int main(int argc, char *argv[])
         downloader.download();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
         downloader.listGames();
-    else if (config.bCheckOrphans)
+    else if (!config.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
     else if (config.bCheckStatus)
         downloader.checkStatus();
