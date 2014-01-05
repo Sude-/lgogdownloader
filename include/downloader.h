@@ -13,14 +13,6 @@
 #include <curl/curl.h>
 #include <ctime>
 
-#if __GNUC__
-#   if __x86_64__ || __ppc64__ || __LP64__
-#       define ENVIRONMENT64
-#   else
-#       define ENVIRONMENT32
-#   endif
-#endif
-
 class Timer
 {
     public:

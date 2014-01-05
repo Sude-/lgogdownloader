@@ -13,14 +13,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#if __GNUC__
-#   if __x86_64__ || __ppc64__ || __LP64__
-#       define ENVIRONMENT64
-#   else
-#       define ENVIRONMENT32
-#   endif
-#endif
-
 #define VERSION_NUMBER "2.10"
 
 #ifndef VERSION_STRING
