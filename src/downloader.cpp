@@ -445,16 +445,19 @@ void Downloader::download()
         // Download covers
         if (config.bCover && !config.bUpdateCheck)
         {
-            // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
-            std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
+            if (!games[i].installers.empty())
+            {
+                // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
 
-            // Get base directory from filepath
-            boost::match_results<std::string::const_iterator> what;
-            boost::regex expression("(.*)/.*");
-            boost::regex_match(filepath, what, expression);
-            std::string directory = what[1];
+                // Get base directory from filepath
+                boost::match_results<std::string::const_iterator> what;
+                boost::regex expression("(.*)/.*");
+                boost::regex_match(filepath, what, expression);
+                std::string directory = what[1];
 
-            this->downloadCovers(games[i].gamename, directory, coverXML);
+                this->downloadCovers(games[i].gamename, directory, coverXML);
+            }
         }
         // Download installers
         if (config.bInstallers)
