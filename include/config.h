@@ -33,6 +33,8 @@ class Config
         bool bVerifyPeer;
         bool bCheckStatus;
         bool bDuplicateHandler;
+        bool bSaveConfig;
+        bool bResetConfig;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sXMLFile;
