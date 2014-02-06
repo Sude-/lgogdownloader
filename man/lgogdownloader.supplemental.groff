@@ -1,0 +1,35 @@
+[synopsis]
+.B lgogdownloader
+[\fIOPTION\fP]...
+
+[description]
+An open-source GOG.com downloader for Linux users which uses the same API as the official GOGDownloader.
+.PP
+LGOGDownloader can download purchased games, query GOG.com to see if game files have changed, as well as downloading extras such as artwork and manuals. It is capable of downloading language-specific installers for games where they exist.
+.PP
+These games are currently offered only for the Microsoft Windows\[rg] and Apple OS X\[rg] operating systems. To play these games under GNU/Linux will require a compatibility layer such as Wine. Usage of such a program is outside the scope of this document. 
+
+/--update-check/
+.nf
+/--no-installers/
+.fi
+
+/Status codes:/
+.nf
+
+[files]
+.fi
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/\fP
+Storage for configuration files and cookies
+.br
+If \fB$XDG_CONFIG_HOME\fP is not set, it will use \fI$HOME/.config/lgogdownloader/\fP.
+
+.TP
+\fI$XDG_CACHE_HOME/lgogdownloader/xml/\fP
+Storage for XML files
+.br
+If \fB$XDG_CACHE_HOME\fP is not set, it will use \fI$HOME/.cache/lgogdownloader/xml/\fP.
+
+[availability]
+The latest version of this distribution is available from \fIhttps://github.com/Sude-/lgogdownloader\fP

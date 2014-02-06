@@ -19,6 +19,9 @@ LIB =  -lcurl -loauth -ljsoncpp -lhtmlcxx -lboost_system -lboost_filesystem -lbo
 LDFLAGS = 
 
 VERSION = -DVERSION_STRING="\"$(shell sh version.sh)\""
+HELP2MAN = $(shell which help2man 2> /dev/null)
+MAN_DIR = man
+MAN_PAGE = lgogdownloader.1
 
 INC_DEBUG =  $(INC)
 CFLAGS_DEBUG =  $(CFLAGS) -g -DDEBUG
@@ -88,7 +91,11 @@ before_release:
 	test -d $(OBJDIR_RELEASE) || mkdir -p $(OBJDIR_RELEASE)
 	test -d $(OBJDIR_RELEASE)/src || mkdir -p $(OBJDIR_RELEASE)/src
 
-after_release: 
+after_release: out_release
+ifdef HELP2MAN
+	help2man -N -i $(MAN_DIR)/lgogdownloader.supplemental.groff -o $(MAN_DIR)/$(MAN_PAGE) $(OUT_RELEASE)
+	gzip -9 $(MAN_DIR)/$(MAN_PAGE)
+endif
 
 release: before_release out_release after_release
 
@@ -115,12 +122,19 @@ clean_release:
 	rm -rf bin/Release
 	rm -rf $(OBJDIR_RELEASE)
 	rm -rf $(OBJDIR_RELEASE)/src
+	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
 install:
 	install $(OUT_RELEASE) /usr/bin
+	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
+		install $(MAN_DIR)/$(MAN_PAGE).gz /usr/share/man/man1; \
+	fi
 
 uninstall:
 	rm /usr/bin/lgogdownloader
+	if test -f /usr/share/man/man1/lgogdownloader.1.gz; then \
+		rm /usr/share/man/man1/lgogdownloader.1.gz; \
+	fi
 
 .PHONY: before_debug after_debug clean_debug before_release after_release clean_release
 
