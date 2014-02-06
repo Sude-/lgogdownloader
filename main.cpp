@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
+            ("version", "Print version information")
             ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
             ("list", bpo::value<bool>(&config.bList)->zero_tokens()->default_value(false), "List games")
             ("list-details", bpo::value<bool>(&config.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
@@ -180,6 +181,12 @@ int main(int argc, char *argv[])
         {
             std::cout   << config.sVersionString << std::endl
                         << options_cli_all << std::endl;
+            return 0;
+        }
+
+        if (vm.count("version"))
+        {
+            std::cout << VERSION_STRING << std::endl;
             return 0;
         }
 
