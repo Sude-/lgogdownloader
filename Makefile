@@ -132,8 +132,8 @@ install:
 
 uninstall:
 	rm /usr/bin/lgogdownloader
-	if test -f /usr/share/man/man1/lgogdownloader.1.gz; then \
-		rm /usr/share/man/man1/lgogdownloader.1.gz; \
+	if test -f /usr/share/man/man1/$(MAN_PAGE).gz; then \
+		rm /usr/share/man/man1/$(MAN_PAGE).gz; \
 	fi
 
 .PHONY: before_debug after_debug clean_debug before_release after_release clean_release
