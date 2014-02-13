@@ -35,6 +35,7 @@ class Config
         bool bDuplicateHandler;
         bool bSaveConfig;
         bool bResetConfig;
+        bool bReport;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sXMLFile;

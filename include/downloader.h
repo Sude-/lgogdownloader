@@ -77,6 +77,7 @@ class Downloader
         std::string coverXML;
 
         size_t resume_position;
+        std::vector< std::string > report;
 };
 
 #endif // DOWNLOADER_H

@@ -32,6 +32,23 @@ Downloader::Downloader(Config &conf)
 
 Downloader::~Downloader()
 {
+    if (config.bReport && !this->report.empty())
+    {
+        std::ofstream ofs("lgogdownloader-report.log");
+        if (ofs)
+        {
+            std::cout << "Saving report: lgogdownloader-report.log" << std::endl;
+            for (unsigned int i = 0; i < this->report.size(); ++i)
+            {
+                ofs << this->report[i] << std::endl;
+            }
+            ofs.close();
+        }
+        else
+        {
+            std::cout << "Failed to save report" << std::endl;
+        }
+    }
     delete progressbar;
     delete gogAPI;
     curl_easy_cleanup(curlhandle);
@@ -760,6 +777,15 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                 std::cout << "Failed to delete " << path << std::endl;
     }
 
+    if (config.bReport)
+    {
+        std::string status = static_cast<std::string>(curl_easy_strerror(res));
+        if (bResume && res == CURLE_RANGE_ERROR) // CURLE_RANGE_ERROR on resume attempts is not an error that user needs to know about
+            status = "No error";
+        std::string report_line = "Downloaded [" + status + "] " + filepath;
+        this->report.push_back(report_line);
+    }
+
     return res;
 }
 
@@ -929,6 +955,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     }
 
     // Check all chunks
+    int iChunksRepaired = 0;
     for (int i=0; i<chunks; i++)
     {
         size_t chunk_begin = chunk_from.at(i);
@@ -963,6 +990,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
             this->beginDownload(); //begin chunk download
             std::cout << std::endl;
+            if (config.bReport)
+                iChunksRepaired++;
             i--; //verify downloaded chunk
         }
         else
@@ -974,6 +1003,12 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     }
     std::cout << std::endl;
     fclose(outfile);
+
+    if (config.bReport)
+    {
+        std::string report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
+        this->report.push_back(report_line);
+    }
 
     return res;
 }

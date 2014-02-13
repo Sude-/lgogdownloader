@@ -127,6 +127,7 @@ int main(int argc, char *argv[])
             ("status", bpo::value<bool>(&config.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version")
             ("save-config", bpo::value<bool>(&config.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
+            ("report", bpo::value<bool>(&config.bReport)->zero_tokens()->default_value(false), "Save report of downloaded/repaired files")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
