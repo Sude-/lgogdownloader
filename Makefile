@@ -94,7 +94,7 @@ before_release:
 after_release: out_release
 ifdef HELP2MAN
 	help2man -N -i $(MAN_DIR)/lgogdownloader.supplemental.groff -o $(MAN_DIR)/$(MAN_PAGE) $(OUT_RELEASE)
-	gzip -9 $(MAN_DIR)/$(MAN_PAGE)
+	gzip -f -9 $(MAN_DIR)/$(MAN_PAGE)
 endif
 
 release: before_release out_release after_release
