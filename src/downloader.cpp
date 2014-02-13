@@ -32,23 +32,9 @@ Downloader::Downloader(Config &conf)
 
 Downloader::~Downloader()
 {
-    if (config.bReport && !this->report.empty())
-    {
-        std::ofstream ofs("lgogdownloader-report.log");
-        if (ofs)
-        {
-            std::cout << "Saving report: lgogdownloader-report.log" << std::endl;
-            for (unsigned int i = 0; i < this->report.size(); ++i)
-            {
-                ofs << this->report[i] << std::endl;
-            }
-            ofs.close();
-        }
-        else
-        {
-            std::cout << "Failed to save report" << std::endl;
-        }
-    }
+    if (config.bReport)
+        if (this->report_ofs)
+            this->report_ofs.close();
     delete progressbar;
     delete gogAPI;
     curl_easy_cleanup(curlhandle);
@@ -99,6 +85,16 @@ int Downloader::init()
 
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
         this->getGameList();
+
+    if (config.bReport && (config.bDownload || config.bRepair))
+    {
+        this->report_ofs.open("lgogdownloader-report.log");
+        if (!this->report_ofs)
+        {
+            std::cout << "Failed to create lgogdownloader-report.log" << std::endl;
+            return 1;
+        }
+    }
 
     return 0;
 }
@@ -783,7 +779,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         if (bResume && res == CURLE_RANGE_ERROR) // CURLE_RANGE_ERROR on resume attempts is not an error that user needs to know about
             status = "No error";
         std::string report_line = "Downloaded [" + status + "] " + filepath;
-        this->report.push_back(report_line);
+        this->report_ofs << report_line << std::endl;
     }
 
     return res;
@@ -1007,7 +1003,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     if (config.bReport)
     {
         std::string report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
-        this->report.push_back(report_line);
+        this->report_ofs << report_line << std::endl;
     }
 
     return res;

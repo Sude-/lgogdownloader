@@ -12,6 +12,7 @@
 #include "progressbar.h"
 #include <curl/curl.h>
 #include <ctime>
+#include <fstream>
 
 class Timer
 {
@@ -77,7 +78,7 @@ class Downloader
         std::string coverXML;
 
         size_t resume_position;
-        std::vector< std::string > report;
+        std::ofstream report_ofs;
 };
 
 #endif // DOWNLOADER_H
