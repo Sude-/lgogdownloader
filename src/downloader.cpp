@@ -1462,8 +1462,16 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
 
                 // Get path from download link
                 std::string url = gogAPI->getExtraLink(gamename, id);
-                path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
-                path = "/" + gamename + path;
+                if (url.find("/extras/") != std::string::npos)
+                {
+                    path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
+                    path = "/" + gamename + path;
+                }
+                else
+                {
+                    path.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
+                    path = "/" + gamename + "/extras/" + path;
+                }
 
                 // Get name from path
                 name.assign(path.begin()+path.find_last_of("/")+1,path.end());
