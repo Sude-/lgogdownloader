@@ -14,7 +14,7 @@
     Remove the leading slash from path if needed
     Use gamename as base directory if specified
 */
-std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename)
+std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory)
 {
     std::string filepath;
 
@@ -32,14 +32,12 @@ std::string Util::makeFilepath(const std::string& directory, const std::string& 
     }
     else
     {
-        std::string extras = "";
-        if (path.find("extras")!=std::string::npos)
-        {
-            extras = "/extras";
-        }
-
         std::string filename = path.substr(path.find_last_of("/")+1, path.length());
-        filepath = directory + gamename + extras + "/" + filename;
+        if (!subdirectory.empty())
+        {
+            subdirectory = "/" + subdirectory;
+        }
+        filepath = directory + gamename + subdirectory + "/" + filename;
     }
 
     return filepath;
