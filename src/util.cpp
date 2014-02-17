@@ -81,9 +81,18 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
     FILE *xmlfile;
     size_t filesize, size;
     int chunks, i;
-    std::string home = (std::string)getenv("HOME");
+
     if (xml_dir.empty())
-        xml_dir = home + "/.gogdownloader/xml";
+    {
+        char *xdgcache = getenv("XDG_CACHE_HOME");
+        if (xdgcache)
+            xml_dir = (std::string)xdgcache + "/lgogdownloader/xml";
+        else
+        {
+            std::string home = (std::string)getenv("HOME");
+            xml_dir = home + "/.cache/lgogdownloader/xml";
+        }
+    }
 
     // Make sure directory exists
     boost::filesystem::path path = xml_dir;
