@@ -16,6 +16,7 @@ extern "C" {
     #include <oauth.h>
 }
 #include <cstring>
+#include <sys/time.h>
 
 class gameFile {
     public:
