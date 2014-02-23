@@ -390,7 +390,7 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, "extras");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
 
                 std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
@@ -410,7 +410,7 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, "patches");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
 
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())
@@ -430,7 +430,7 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, "languagepacks");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
 
                 std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
                 if (gogAPI->getError())
@@ -520,7 +520,7 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, "extras");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
 
                 // Download
                 if (!url.empty())
@@ -553,7 +553,7 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, "patches");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
 
                 // Download
                 if (!url.empty())
@@ -586,7 +586,7 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, "languagepacks");
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
 
                 // Download
                 if (!url.empty())
@@ -1652,7 +1652,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, "extras");
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
 
                 std::string localHash = this->getLocalFileHash(filepath.string());
                 size_t filesize;
@@ -1673,7 +1673,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, "patches");
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
 
                 std::string localHash = this->getLocalFileHash(filepath.string());
                 size_t filesize;
@@ -1694,7 +1694,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, "languagepacks");
+                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
 
                 std::string localHash = this->getLocalFileHash(filepath.string());
                 size_t filesize;

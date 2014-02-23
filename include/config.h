@@ -36,6 +36,7 @@ class Config
         bool bSaveConfig;
         bool bResetConfig;
         bool bReport;
+        bool bSubDirectories;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sXMLFile;
