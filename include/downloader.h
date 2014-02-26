@@ -49,8 +49,8 @@ class Downloader
         ProgressBar* progressbar;
     protected:
     private:
-        CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string());
-        int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string());
+        CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
+        int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
         int login();
         int getGameDetails();
@@ -58,7 +58,7 @@ class Downloader
         size_t getResumePosition();
         CURLcode beginDownload();
         std::string getResponse(const std::string& url);
-        std::string getLocalFileHash(const std::string& filepath);
+        std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
         std::string getRemoteFileHash(const std::string& gamename, const std::string& id);
 
         int HTTP_Login(const std::string& email, const std::string& password);

@@ -380,7 +380,7 @@ void Downloader::repair()
                         continue;
                     }
                     std::cout << "Repairing file " << filepath << std::endl;
-                    this->repairFile(url, filepath, XML);
+                    this->repairFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
                 }
             }
@@ -401,7 +401,7 @@ void Downloader::repair()
                     continue;
                 }
                 std::cout << "Repairing file " << filepath << std::endl;
-                this->repairFile(url, filepath);
+                this->repairFile(url, filepath, std::string(), games[i].gamename);
                 std::cout << std::endl;
             }
         }
@@ -421,7 +421,7 @@ void Downloader::repair()
                     continue;
                 }
                 std::cout << "Repairing file " << filepath << std::endl;
-                this->repairFile(url, filepath);
+                this->repairFile(url, filepath, std::string(), games[i].gamename);
                 std::cout << std::endl;
             }
         }
@@ -441,7 +441,7 @@ void Downloader::repair()
                     continue;
                 }
                 std::cout << "Repairing file " << filepath << std::endl;
-                this->repairFile(url, filepath);
+                this->repairFile(url, filepath, std::string(), games[i].gamename);
                 std::cout << std::endl;
             }
         }
@@ -502,7 +502,7 @@ void Downloader::download()
                     if (!games[i].installers[j].name.empty())
                         std::cout << "Dowloading: " << games[i].installers[j].name << std::endl;
                     std::cout << filepath << std::endl;
-                    this->downloadFile(url, filepath, XML);
+                    this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
                 }
             }
@@ -534,7 +534,8 @@ void Downloader::download()
                     if (result==CURLE_OK && config.sXMLFile == "automatic")
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
-                        Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
+                        Util::createXML(filepath, config.iChunkSize, xml_dir);
                         std::cout << std::endl;
                     }
                 }
@@ -567,7 +568,8 @@ void Downloader::download()
                     if (result==CURLE_OK && config.sXMLFile == "automatic")
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
-                        Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
+                        Util::createXML(filepath, config.iChunkSize, xml_dir);
                         std::cout << std::endl;
                     }
                 }
@@ -600,7 +602,8 @@ void Downloader::download()
                     if (result==CURLE_OK && config.sXMLFile == "automatic")
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
-                        Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                        std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
+                        Util::createXML(filepath, config.iChunkSize, xml_dir);
                         std::cout << std::endl;
                     }
                 }
@@ -610,7 +613,7 @@ void Downloader::download()
 }
 
 // Download a file, resume if possible
-CURLcode Downloader::downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data)
+CURLcode Downloader::downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data, const std::string& gamename)
 {
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
@@ -621,10 +624,15 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     boost::filesystem::path pathname = filepath;
     std::string directory = pathname.parent_path().string();
     std::string filenameXML = pathname.filename().string() + ".xml";
+    std::string xml_directory;
+    if (!gamename.empty())
+        xml_directory = config.sXMLDirectory + "/" + gamename;
+    else
+        xml_directory = config.sXMLDirectory;
 
     // Using local XML data for version check before resuming
     boost::filesystem::path local_xml_file;
-    local_xml_file = config.sXMLDirectory + "/" + filenameXML;
+    local_xml_file = xml_directory + "/" + filenameXML;
 
     bool bSameVersion = true; // assume same version
     bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
@@ -746,6 +754,22 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     {
         if ((bLocalXMLExists && (!bSameVersion || config.bRepair)) || !bLocalXMLExists)
         {
+            // Check that directory exists and create subdirectories
+            boost::filesystem::path path = xml_directory;
+            if (boost::filesystem::exists(path))
+            {
+                if (!boost::filesystem::is_directory(path))
+                {
+                    std::cout << path << " is not directory" << std::endl;
+                }
+            }
+            else
+            {
+                if (!boost::filesystem::create_directories(path))
+                {
+                    std::cout << "Failed to create directory: " << path << std::endl;
+                }
+            }
             std::ofstream ofs(local_xml_file.string().c_str());
             if (ofs)
             {
@@ -787,7 +811,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     if (res == CURLE_PARTIAL_FILE && (this->retries < config.iRetries) )
     {
         this->retries++;
-        res = this->downloadFile(url, filepath, xml_data);
+        res = this->downloadFile(url, filepath, xml_data, gamename);
     }
     else
     {
@@ -798,7 +822,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 }
 
 // Repair file
-int Downloader::repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data)
+int Downloader::repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data, const std::string& gamename)
 {
     int res = 0;
     FILE *outfile;
@@ -812,7 +836,12 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     // Get filename
     boost::filesystem::path pathname = filepath;
     std::string filename = pathname.filename().string();
-    std::string xml_file = config.sXMLDirectory + "/" + filename + ".xml";
+    std::string xml_directory;
+    if (!gamename.empty())
+        xml_directory = config.sXMLDirectory + "/" + gamename;
+    else
+        xml_directory = config.sXMLDirectory;
+    std::string xml_file = xml_directory + "/" + filename + ".xml";
     bool bFileExists = boost::filesystem::exists(pathname);
     bool bLocalXMLExists = boost::filesystem::exists(xml_file);
 
@@ -875,7 +904,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (this->config.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
-            CURLcode result = this->downloadFile(url, filepath, xml_data);
+            CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
             std::cout << std::endl;
             if  (
                     (!bFileExists && result == CURLE_OK) || /* File doesn't exist so only accept if everything was OK */
@@ -887,7 +916,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
                 if (config.sXMLFile == "automatic" && !bLocalXMLExists)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
-                    Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                    Util::createXML(filepath, config.iChunkSize, xml_directory);
                 }
                 res = 1;
             }
@@ -920,14 +949,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (this->config.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
-            CURLcode result = this->downloadFile(url, filepath, xml_data);
+            CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
             std::cout << std::endl;
             if (result == CURLE_OK)
             {
                 if (config.sXMLFile == "automatic" && bParsingFailed)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
-                    Util::createXML(filepath, config.iChunkSize, config.sXMLDirectory);
+                    Util::createXML(filepath, config.iChunkSize, xml_directory);
                 }
                 res = 1;
             }
@@ -951,7 +980,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             }
             else
             {
-                CURLcode result = this->downloadFile(url, filepath, xml_data);
+                CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
                 std::cout << std::endl;
                 if (result == CURLE_OK)
                     res = 1;
@@ -1641,7 +1670,7 @@ void Downloader::checkStatus()
                 bool bHashOK = true; // assume hash OK
                 size_t filesize;
 
-                localHash = this->getLocalFileHash(filepath.string());
+                localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
 
                 if (boost::filesystem::exists(filepath))
@@ -1666,7 +1695,7 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
 
-                std::string localHash = this->getLocalFileHash(filepath.string());
+                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
                 if (boost::filesystem::exists(filepath))
@@ -1687,7 +1716,7 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
 
-                std::string localHash = this->getLocalFileHash(filepath.string());
+                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
                 if (boost::filesystem::exists(filepath))
@@ -1708,7 +1737,7 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
 
-                std::string localHash = this->getLocalFileHash(filepath.string());
+                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
                 if (boost::filesystem::exists(filepath))
@@ -1727,11 +1756,16 @@ void Downloader::checkStatus()
     return;
 }
 
-std::string Downloader::getLocalFileHash(const std::string& filepath)
+std::string Downloader::getLocalFileHash(const std::string& filepath, const std::string& gamename)
 {
     std::string localHash;
     boost::filesystem::path path = filepath;
-    boost::filesystem::path local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+    boost::filesystem::path local_xml_file;
+    if (!gamename.empty())
+        local_xml_file = config.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
+    else
+        local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+
     if (boost::filesystem::exists(local_xml_file))
     {
         TiXmlDocument local_xml;
