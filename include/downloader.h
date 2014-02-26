@@ -78,6 +78,7 @@ class Downloader
         std::string coverXML;
 
         size_t resume_position;
+        int retries;
         std::ofstream report_ofs;
 };
 

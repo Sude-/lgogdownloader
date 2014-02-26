@@ -50,6 +50,7 @@ class Config
         std::string sOrphanRegex;
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
+        int iRetries;
         size_t iChunkSize;
         curl_off_t iDownloadRate;
         long int iTimeout;

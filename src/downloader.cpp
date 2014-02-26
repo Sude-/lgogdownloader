@@ -49,6 +49,7 @@ Downloader::~Downloader()
 int Downloader::init()
 {
     this->resume_position = 0;
+    this->retries = 0;
 
     // Initialize curl and set curl options
     curl_global_init(CURL_GLOBAL_ALL);
@@ -765,7 +766,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     fclose(outfile);
 
     // Download failed and was not a resume attempt so delete the file
-    if (res != CURLE_OK && !bResume)
+    if ( (res != CURLE_OK || res != CURLE_PARTIAL_FILE) && !bResume )
     {
         boost::filesystem::path path = filepath;
         if (boost::filesystem::exists(path))
@@ -780,6 +781,17 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             status = "No error";
         std::string report_line = "Downloaded [" + status + "] " + filepath;
         this->report_ofs << report_line << std::endl;
+    }
+
+    // Retry partially downloaded file
+    if (res == CURLE_PARTIAL_FILE && (this->retries < config.iRetries) )
+    {
+        this->retries++;
+        res = this->downloadFile(url, filepath, xml_data);
+    }
+    else
+    {
+        this->retries = 0; // Reset retries counter
     }
 
     return res;

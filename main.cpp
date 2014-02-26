@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
             ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
+            ("retries", bpo::value<int>(&config.iRetries)->default_value(3), "Set maximum number of retries on failed download")
         ;
         // Options read from config file
         options_cfg_only.add_options()
