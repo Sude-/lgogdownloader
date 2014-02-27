@@ -134,7 +134,7 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
     fileElem->SetAttribute("name", filename);
     fileElem->SetAttribute("md5", file_md5);
     fileElem->SetAttribute("chunks", chunks);
-    fileElem->SetAttribute("total_size", filesize);
+    fileElem->SetAttribute("total_size", std::to_string(filesize));
 
     std::cout << "Getting MD5 for chunks" << std::endl;
     for (i = 0; i < chunks; i++) {
