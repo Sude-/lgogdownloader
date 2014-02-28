@@ -161,8 +161,8 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
 
         TiXmlElement *chunkElem = new TiXmlElement("chunk");
         chunkElem->SetAttribute("id", i);
-        chunkElem->SetAttribute("from", range_begin);
-        chunkElem->SetAttribute("to", range_end);
+        chunkElem->SetAttribute("from", std::to_string(range_begin));
+        chunkElem->SetAttribute("to", std::to_string(range_end));
         chunkElem->SetAttribute("method", "md5");
         TiXmlText *text = new TiXmlText(hash);
         chunkElem->LinkEndChild(text);
