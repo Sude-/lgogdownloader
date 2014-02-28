@@ -359,5 +359,9 @@ int main(int argc, char *argv[])
                     << options_cli_all << std::endl;
     }
 
+    // Orphan check was called at the same time as download. Perform it after download has finished
+    if (!config.sOrphanRegex.empty() && config.bDownload)
+        downloader.checkOrphans();
+
     return 0;
 }
