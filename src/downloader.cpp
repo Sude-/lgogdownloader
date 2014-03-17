@@ -22,6 +22,7 @@
 #include <tinyxml.h>
 #include <jsoncpp/json/json.h>
 #include <htmlcxx/html/ParserDom.h>
+#include <htmlcxx/html/Uri.h>
 
 namespace bptime = boost::posix_time;
 
@@ -1503,6 +1504,7 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
 
                 // Get path from download link
                 std::string url = gogAPI->getExtraLink(gamename, id);
+                url = htmlcxx::Uri::decode(url);
                 if (url.find("/extras/") != std::string::npos)
                 {
                     path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
