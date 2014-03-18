@@ -312,10 +312,18 @@ void Downloader::listGames()
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
                 {
+                    std::string languages;
+                    for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
+                    {
+                        if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].languageId)
+                            languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
+                    }
+
                     std::cout   << "\tid: " << games[i].patches[j].id << std::endl
                                 << "\tname: " << games[i].patches[j].name << std::endl
                                 << "\tpath: " << games[i].patches[j].path << std::endl
                                 << "\tsize: " << games[i].patches[j].size << std::endl
+                                << "\tlanguage: " << languages << std::endl
                                 << std::endl;
                 }
             }

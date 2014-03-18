@@ -391,6 +391,23 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                 {
                                     Json::Value patch = patchnode[index];
 
+                                    // Check for duplicate patches in different languages and add languageId of duplicate patch to the original patch
+                                    if (useDuplicateHandler)
+                                    {
+                                        bool bDuplicate = false;
+                                        for (unsigned int j = 0; j < game.patches.size(); ++j)
+                                        {
+                                            if (game.patches[j].path == patch["link"].asString())
+                                            {
+                                                game.patches[j].language |= GlobalConstants::LANGUAGES[i].languageId; // Add language code to patch
+                                                bDuplicate = true;
+                                                break;
+                                            }
+                                        }
+                                        if (bDuplicate)
+                                            continue;
+                                    }
+
                                     game.patches.push_back(
                                                             gameFile(   false, /* patches don't have "updated" flag */
                                                                         patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
@@ -404,6 +421,23 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             }
                             else // Patch is a single file
                             {
+                                // Check for duplicate patches in different languages and add languageId of duplicate patch to the original patch
+                                if (useDuplicateHandler)
+                                {
+                                    bool bDuplicate = false;
+                                    for (unsigned int j = 0; j < game.patches.size(); ++j)
+                                    {
+                                        if (game.patches[j].path == patchnode["link"].asString())
+                                        {
+                                            game.patches[j].language |= GlobalConstants::LANGUAGES[i].languageId; // Add language code to patch
+                                            bDuplicate = true;
+                                            break;
+                                        }
+                                    }
+                                    if (bDuplicate)
+                                        continue;
+                                }
+
                                 game.patches.push_back(
                                                         gameFile(   false, /* patches don't have "updated" flag */
                                                                     patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
