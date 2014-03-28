@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
         bool bNoExtras = false;
         bool bNoPatches = false;
         bool bNoLanguagePacks = false;
+        bool bNoDLC = false;
         bool bNoRemoteXML = false;
         bool bNoSubDirectories = false;
         // Commandline options (no config file)
@@ -142,6 +143,7 @@ int main(int argc, char *argv[])
             ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
             ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
             ("no-language-packs", bpo::value<bool>(&bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
+            ("no-dlc", bpo::value<bool>(&bNoDLC)->zero_tokens()->default_value(false), "Don't download/list/repair DLCs")
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images")
             ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
@@ -213,6 +215,7 @@ int main(int argc, char *argv[])
         config.bExtras = !bNoExtras;
         config.bPatches = !bNoPatches;
         config.bLanguagePacks = !bNoLanguagePacks;
+        config.bDLC = !bNoDLC;
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
     }

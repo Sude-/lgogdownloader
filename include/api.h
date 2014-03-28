@@ -37,6 +37,7 @@ class gameDetails {
         std::vector<gameFile> installers;
         std::vector<gameFile> patches;
         std::vector<gameFile> languagepacks;
+        std::vector<gameDetails> dlcs;
         std::string gamename;
         std::string title;
         std::string icon;

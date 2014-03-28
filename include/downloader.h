@@ -31,6 +31,13 @@ class Timer
         struct timeval last_update;
 };
 
+class gameItem {
+    public:
+        std::string name;
+        std::string id;
+        std::vector<std::string> dlcnames;
+};
+
 class Downloader
 {
     public:
@@ -62,8 +69,8 @@ class Downloader
         std::string getRemoteFileHash(const std::string& gamename, const std::string& id);
 
         int HTTP_Login(const std::string& email, const std::string& password);
-        std::vector< std::pair<std::string,std::string> > getGames();
-        std::vector< std::pair<std::string,std::string> > getFreeGames();
+        std::vector<gameItem> getGames();
+        std::vector<gameItem> getFreeGames();
         std::vector<gameFile> getExtras(const std::string& gamename, const std::string& gameid);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
@@ -73,7 +80,7 @@ class Downloader
 
 
         API *gogAPI;
-        std::vector< std::pair<std::string,std::string> > gameNamesIds;
+        std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;
         std::string coverXML;
 

@@ -28,6 +28,7 @@ class Config
         bool bExtras;
         bool bPatches;
         bool bLanguagePacks;
+        bool bDLC;
         bool bUnicode; // use Unicode in console output
         bool bColor;   // use colors
         bool bVerifyPeer;

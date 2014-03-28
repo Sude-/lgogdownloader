@@ -180,7 +180,7 @@ void Downloader::updateCheck()
 
 void Downloader::getGameList()
 {
-    gameNamesIds = this->getGames();
+    gameItems = this->getGames();
 
     // Filter the game list
     if (!config.sGameRegex.empty())
@@ -191,19 +191,19 @@ void Downloader::getGameList()
 
         if (config.sGameRegex == "free")
         {
-            gameNamesIds = this->getFreeGames();
+            gameItems = this->getFreeGames();
         }
         else
         {   // Filter the names
-            std::vector<std::pair<std::string,std::string>> gameNamesIdsFiltered;
+            std::vector<gameItem> gameItemsFiltered;
             boost::regex expression(config.sGameRegex);
             boost::match_results<std::string::const_iterator> what;
-            for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
+            for (unsigned int i = 0; i < gameItems.size(); ++i)
             {
-                if (boost::regex_search(gameNamesIds[i].first, what, expression)) // Check if name matches the specified regex
-                    gameNamesIdsFiltered.push_back(gameNamesIds[i]);
+                if (boost::regex_search(gameItems[i].name, what, expression)) // Check if name matches the specified regex
+                    gameItemsFiltered.push_back(gameItems[i]);
             }
-            gameNamesIds = gameNamesIdsFiltered;
+            gameItems = gameItemsFiltered;
         }
     }
 }
@@ -216,15 +216,29 @@ int Downloader::getGameDetails()
 {
     gameDetails game;
     int updated = 0;
-    for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
+    for (unsigned int i = 0; i < gameItems.size(); ++i)
     {
-        std::cout << "Getting game info " << i+1 << " / " << gameNamesIds.size() << "\r" << std::flush;
-        game = gogAPI->getGameDetails(gameNamesIds[i].first, config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
+        std::cout << "Getting game info " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
+        bool bHasDLC = !gameItems[i].dlcnames.empty();
+        game = gogAPI->getGameDetails(gameItems[i].name, config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
-                game.extras = this->getExtras(gameNamesIds[i].first, gameNamesIds[i].second);
+                game.extras = this->getExtras(gameItems[i].name, gameItems[i].id);
+            }
+            if (game.dlcs.empty() && bHasDLC && config.bDLC)
+            {
+                for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
+                {
+                    gameDetails dlc;
+                    dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
+                    if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
+                    {
+                        dlc.extras = this->getExtras(gameItems[i].dlcnames[j], gameItems[i].id);
+                    }
+                    game.dlcs.push_back(dlc);
+                }
             }
             if (!config.bUpdateCheck)
                 games.push_back(game);
@@ -340,12 +354,50 @@ void Downloader::listGames()
                                 << std::endl;
                 }
             }
+            if (config.bDLC && !games[i].dlcs.empty())
+            {
+                std::cout << "DLCs: " << std::endl;
+                for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
+                    {
+                        std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
+                                    << "\tid: " << games[i].dlcs[j].installers[k].id << std::endl
+                                    << "\tname: " << games[i].dlcs[j].installers[k].name << std::endl
+                                    << "\tpath: " << games[i].dlcs[j].installers[k].path << std::endl
+                                    << "\tsize: " << games[i].dlcs[j].installers[k].size << std::endl
+                                    << std::endl;
+                    }
+                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
+                    {
+                        std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
+                                    << "\tid: " << games[i].dlcs[j].patches[k].id << std::endl
+                                    << "\tname: " << games[i].dlcs[j].patches[k].name << std::endl
+                                    << "\tpath: " << games[i].dlcs[j].patches[k].path << std::endl
+                                    << "\tsize: " << games[i].dlcs[j].patches[k].size << std::endl
+                                    << std::endl;
+                    }
+                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
+                    {
+                        std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
+                                    << "\tid: " << games[i].dlcs[j].extras[k].id << std::endl
+                                    << "\tname: " << games[i].dlcs[j].extras[k].name << std::endl
+                                    << "\tpath: " << games[i].dlcs[j].extras[k].path << std::endl
+                                    << "\tsize: " << games[i].dlcs[j].extras[k].size << std::endl
+                                    << std::endl;
+                    }
+                }
+            }
         }
     }
     else
     {   // List game names
-        for (unsigned int i = 0; i < gameNamesIds.size(); ++i)
-            std::cout << gameNamesIds[i].first << std::endl;
+        for (unsigned int i = 0; i < gameItems.size(); ++i)
+        {
+            std::cout << gameItems[i].name << std::endl;
+            for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
+                std::cout << "+> " << gameItems[i].dlcnames[j] << std::endl;
+        }
     }
 
 }
@@ -454,7 +506,84 @@ void Downloader::repair()
                 std::cout << std::endl;
             }
         }
+        if (config.bDLC && !games[i].dlcs.empty())
+        {
+            for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
+            {
+                if (config.bInstallers)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
 
+                        // Get XML data
+                        std::string XML = "";
+                        if (config.bRemoteXML)
+                        {
+                            XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+                            if (gogAPI->getError())
+                            {
+                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                gogAPI->clearError();
+                                continue;
+                            }
+                        }
+
+                        // Repair
+                        bool bUseLocalXML = !config.bRemoteXML;
+                        if (!XML.empty() || bUseLocalXML)
+                        {
+                            std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+                            if (gogAPI->getError())
+                            {
+                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                gogAPI->clearError();
+                                continue;
+                            }
+                            std::cout << "Repairing file " << filepath << std::endl;
+                            this->repairFile(url, filepath, XML, games[i].dlcs[j].gamename);
+                            std::cout << std::endl;
+                        }
+                    }
+                }
+                if (config.bPatches)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+
+                        std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+                        std::cout << "Repairing file " << filepath << std::endl;
+                        this->repairFile(url, filepath, std::string(), games[i].dlcs[j].gamename);
+                        std::cout << std::endl;
+                    }
+                }
+                if (config.bExtras)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+
+                        std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+                        std::cout << "Repairing file " << filepath << std::endl;
+                        this->repairFile(url, filepath, std::string(), games[i].dlcs[j].gamename);
+                        std::cout << std::endl;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -569,12 +698,14 @@ void Downloader::download()
                 // Download
                 if (!url.empty())
                 {
-                    if (!games[i].patches[j].name.empty())
-                        std::cout << "Dowloading: " << games[i].gamename << " " << games[i].patches[j].name << std::endl;
-                    std::cout << filepath << std::endl;
-                    CURLcode result = downloadFile(url, filepath);
+                    std::string XML;
+                    if (config.bRemoteXML)
+                        XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].patches[j].id);
+                    if (!games[i].dlcs[j].patches[j].name.empty())
+                        std::cout << "Dowloading: " << games[i].patches[j].name << std::endl;
+                    CURLcode result = this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
-                    if (result==CURLE_OK && config.sXMLFile == "automatic")
+                    if (result==CURLE_OK && config.sXMLFile == "automatic" && XML.empty())
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
                         std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
@@ -614,6 +745,108 @@ void Downloader::download()
                         std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
                         Util::createXML(filepath, config.iChunkSize, xml_dir);
                         std::cout << std::endl;
+                    }
+                }
+            }
+        }
+        if (config.bDLC && !games[i].dlcs.empty())
+        {
+            for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
+            {
+                if (config.bInstallers)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
+
+                        // Get link
+                        std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+
+                        // Download
+                        if (!url.empty())
+                        {
+                            std::string XML;
+                            if (config.bRemoteXML)
+                                XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+                            if (!games[i].dlcs[j].installers[k].name.empty())
+                                std::cout << "Dowloading: " << games[i].dlcs[j].installers[k].name << std::endl;
+                            std::cout << filepath << std::endl;
+                            this->downloadFile(url, filepath, XML, games[i].dlcs[j].gamename);
+                            std::cout << std::endl;
+                        }
+                    }
+                }
+                if (config.bPatches)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+
+                        // Get link
+                        std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+
+                        // Download
+                        if (!url.empty())
+                        {
+                            std::string XML;
+                            if (config.bRemoteXML)
+                                XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
+                            if (!games[i].dlcs[j].patches[k].name.empty())
+                                std::cout << "Dowloading: " << games[i].dlcs[j].patches[k].name << std::endl;
+                            CURLcode result = this->downloadFile(url, filepath, XML, games[i].dlcs[j].gamename);
+                            std::cout << std::endl;
+                            if (result==CURLE_OK && config.sXMLFile == "automatic" && XML.empty())
+                            {
+                                std::cout << "Starting automatic XML creation" << std::endl;
+                                std::string xml_dir = config.sXMLDirectory + "/" + games[i].dlcs[j].gamename;
+                                Util::createXML(filepath, config.iChunkSize, xml_dir);
+                                std::cout << std::endl;
+                            }
+                        }
+                    }
+                }
+                if (config.bExtras)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
+                    {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+
+                        // Get link
+                        std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+
+                        // Download
+                        if (!url.empty())
+                        {
+                            if (!games[i].dlcs[j].extras[k].name.empty())
+                                std::cout << "Dowloading: " << games[i].dlcs[j].extras[k].name << std::endl;
+                            CURLcode result = this->downloadFile(url, filepath);
+                            std::cout << std::endl;
+                            if (result==CURLE_OK && config.sXMLFile == "automatic")
+                            {
+                                std::cout << "Starting automatic XML creation" << std::endl;
+                                std::string xml_dir = config.sXMLDirectory + "/" + games[i].dlcs[j].gamename;
+                                Util::createXML(filepath, config.iChunkSize, xml_dir);
+                                std::cout << std::endl;
+                            }
+                        }
                     }
                 }
             }
@@ -1363,9 +1596,9 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 }
 
 // Get list of games from account page
-std::vector< std::pair<std::string,std::string> > Downloader::getGames()
+std::vector<gameItem> Downloader::getGames()
 {
-    std::vector< std::pair<std::string,std::string> > games;
+    std::vector<gameItem> games;
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     int i = 1;
@@ -1409,11 +1642,122 @@ std::vector< std::pair<std::string,std::string> > Downloader::getGames()
             std::string classname = it->attribute("class").second;
             if (classname=="shelf_game")
             {
+                gameItem game;
                 // Game name is contained in data-gameindex attribute
-                std::string game = it->attribute("data-gameindex").second;
-                std::string gameid = it->attribute("data-gameid").second;
-                if (!game.empty() && !gameid.empty())
-                    games.push_back(std::make_pair(game,gameid));
+                game.name = it->attribute("data-gameindex").second;
+                game.id = it->attribute("data-gameid").second;
+                if (!game.name.empty() && !game.id.empty())
+                {
+                    // Check for DLC
+                    if (config.bDLC)
+                    {
+                        tree<htmlcxx::HTML::Node>::iterator dlc_it = it;
+                        tree<htmlcxx::HTML::Node>::iterator dlc_end = it.end();
+                        for (; dlc_it != dlc_end; ++dlc_it)
+                        {
+                            if (dlc_it->tagName()=="div")
+                            {
+                                dlc_it->parseAttributes();
+                                std::string classname_dlc = dlc_it->attribute("class").second;
+                                if (classname_dlc == "shelf-game-dlc-counter")
+                                {
+                                    std::string content;
+                                    for (unsigned int i = 0; i < dom.number_of_children(dlc_it); ++i)
+                                    {
+                                        tree<htmlcxx::HTML::Node>::iterator it = dom.child(dlc_it, i);
+                                        if (!it->isTag() && !it->isComment())
+                                            content += it->text();
+                                    }
+                                    // Get game names if game has DLC
+                                    if (content.find("DLC")!=std::string::npos)
+                                    {
+                                        Json::Value root;
+                                        Json::Reader *jsonparser = new Json::Reader;
+
+                                        std::string gameDataUrl = "https://secure.gog.com/en/account/ajax?a=gamesListDetails&g=" + game.id;
+                                        std::string json = this->getResponse(gameDataUrl);
+                                        // Parse JSON
+                                        if (!jsonparser->parse(json, root))
+                                        {
+                                            #ifdef DEBUG
+                                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << json << std::endl;
+                                            #endif
+                                            std::cout << jsonparser->getFormatedErrorMessages();
+                                            delete jsonparser;
+                                            exit(1);
+                                        }
+                                        #ifdef DEBUG
+                                            std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << root << std::endl;
+                                        #endif
+                                        std::string html = root["details"]["html"].asString();
+                                        delete jsonparser;
+
+                                        // Parse HTML to get game names for DLC
+                                        htmlcxx::HTML::ParserDom parser;
+                                        tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+                                        tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+                                        tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+                                        for (; it != end; ++it)
+                                        {
+                                            if (it->tagName()=="div")
+                                            {
+                                                it->parseAttributes();
+                                                std::string gamename = it->attribute("data-gameindex").second;
+                                                if (!gamename.empty() && gamename!=game.name)
+                                                {
+                                                    bool bDuplicate = false;
+                                                    for (unsigned int i = 0; i < game.dlcnames.size(); ++i)
+                                                    {
+                                                        if (gamename == game.dlcnames[i])
+                                                        {
+                                                            bDuplicate = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (!bDuplicate)
+                                                        game.dlcnames.push_back(gamename);
+                                                }
+                                            }
+                                        }
+
+                                        // Try getting game names for DLCs from extra links. Catches game names for DLCs that don't have installers.
+                                        it = dom.begin();
+                                        end = dom.end();
+                                        for (; it != end; ++it)
+                                        {
+                                            if (it->tagName()=="a")
+                                            {
+                                                it->parseAttributes();
+                                                std::string href = it->attribute("href").second;
+                                                std::string search_string = "/downlink/file/"; // Extra links: https://secure.gog.com/downlink/file/gamename/id_number
+                                                if (href.find(search_string)!=std::string::npos)
+                                                {
+                                                    std::string gamename;
+                                                    gamename.assign(href.begin()+href.find(search_string)+search_string.length(), href.begin()+href.find_last_of("/"));
+                                                    if (!gamename.empty() && gamename!=game.name)
+                                                    {
+                                                        bool bDuplicate = false;
+                                                        for (unsigned int i = 0; i < game.dlcnames.size(); ++i)
+                                                        {
+                                                            if (gamename == game.dlcnames[i])
+                                                            {
+                                                                bDuplicate = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                        if (!bDuplicate)
+                                                            game.dlcnames.push_back(gamename);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    games.push_back(game);
+                }
             }
         }
     }
@@ -1422,11 +1766,11 @@ std::vector< std::pair<std::string,std::string> > Downloader::getGames()
 }
 
 // Get list of free games
-std::vector< std::pair<std::string,std::string> > Downloader::getFreeGames()
+std::vector<gameItem> Downloader::getFreeGames()
 {
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
-    std::vector< std::pair<std::string,std::string> > games;
+    std::vector<gameItem> games;
     std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"],\"sort\":\"title\"}&p=1&t=all");
 
     // Parse JSON
@@ -1458,11 +1802,12 @@ std::vector< std::pair<std::string,std::string> > Downloader::getFreeGames()
             std::string classname = it->attribute("class").second;
             if (classname=="gog-price game-owned")
             {
+                gameItem game;
                 // Game name is contained in data-gameindex attribute
-                std::string game = it->attribute("data-gameindex").second;
-                std::string id = it->attribute("data-gameid").second;
-                if (!game.empty() && !id.empty())
-                    games.push_back(std::make_pair(game,id));
+                game.name = it->attribute("data-gameindex").second;
+                game.id = it->attribute("data-gameid").second;
+                if (!game.name.empty() && !game.id.empty())
+                    games.push_back(game);
             }
         }
     }
@@ -1640,6 +1985,38 @@ void Downloader::checkOrphans()
                     }
                 }
                 if (!bFoundFile)
+                {   // Check dlcs
+                    for (unsigned int k = 0; k < games[i].dlcs.size(); ++k)
+                    {
+                        for (unsigned int index = 0; index < games[i].dlcs[k].installers.size(); ++index)
+                        {
+                            if (games[i].dlcs[k].installers[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                            {
+                                bFoundFile = true;
+                                break;
+                            }
+                        }
+                        if (bFoundFile) break;
+                        for (unsigned int index = 0; index < games[i].dlcs[k].patches.size(); ++index)
+                        {
+                            if (games[i].dlcs[k].patches[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                            {
+                                bFoundFile = true;
+                                break;
+                            }
+                        }
+                        for (unsigned int index = 0; index < games[i].dlcs[k].extras.size(); ++index)
+                        {
+                            if (games[i].dlcs[k].extras[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
+                            {
+                                bFoundFile = true;
+                                break;
+                            }
+                        }
+                        if (bFoundFile) break;
+                    }
+                }
+                if (!bFoundFile)
                     orphans.push_back(filepath_vector[j].string());
             }
         }
@@ -1758,6 +2135,84 @@ void Downloader::checkStatus()
                 else
                 {
                     std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                }
+            }
+        }
+
+        if (config.bDLC)
+        {
+            for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
+            {
+                if (config.bInstallers)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
+                    {
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
+
+                        std::string remoteHash;
+                        std::string localHash;
+                        bool bHashOK = true; // assume hash OK
+                        size_t filesize;
+
+                        localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
+                        remoteHash = this->getRemoteFileHash(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+
+                        if (boost::filesystem::exists(filepath))
+                        {
+                            filesize = boost::filesystem::file_size(filepath);
+
+                            if (remoteHash != localHash)
+                                bHashOK = false;
+
+                            std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                        }
+                    }
+                }
+
+                if (config.bPatches)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
+                    {
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+
+                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
+                        size_t filesize;
+
+                        if (boost::filesystem::exists(filepath))
+                        {
+                            filesize = boost::filesystem::file_size(filepath);
+                            std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                        }
+                    }
+                }
+
+                if (config.bExtras)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
+                    {
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+
+                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
+                        size_t filesize;
+
+                        if (boost::filesystem::exists(filepath))
+                        {
+                            filesize = boost::filesystem::file_size(filepath);
+                            std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                        }
+                    }
                 }
             }
         }
