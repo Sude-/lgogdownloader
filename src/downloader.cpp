@@ -700,8 +700,8 @@ void Downloader::download()
                 {
                     std::string XML;
                     if (config.bRemoteXML)
-                        XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].patches[j].id);
-                    if (!games[i].dlcs[j].patches[j].name.empty())
+                        XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
+                    if (!games[i].patches[j].name.empty())
                         std::cout << "Dowloading: " << games[i].patches[j].name << std::endl;
                     CURLcode result = this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
