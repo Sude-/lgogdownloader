@@ -1556,7 +1556,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
     CURLcode result = curl_easy_perform(curlhandle);
     memory.str(std::string());
