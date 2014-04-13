@@ -1401,7 +1401,19 @@ std::string Downloader::getResponse(const std::string& url)
     memory.str(std::string());
 
     if (result != CURLE_OK)
+    {
         std::cout << curl_easy_strerror(result) << std::endl;
+        if (result == CURLE_HTTP_RETURNED_ERROR)
+        {
+            long int response_code = 0;
+            result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+            std::cout << "HTTP ERROR: ";
+            if (result == CURLE_OK)
+                std::cout << response_code << std::endl;
+            else
+                std::cout << "failed to get error code: " << curl_easy_strerror(result) << std::endl;
+        }
+    }
 
     return response;
 }
