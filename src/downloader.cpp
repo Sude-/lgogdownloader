@@ -1540,7 +1540,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     std::string buk;
 
     // Get "buk" for login form
-    std::string json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
+    std::string json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
 
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
@@ -1582,7 +1582,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
-    json = this->getResponse("http://www.gog.com/user/ajax/?a=get");
+    json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
 
     parsingSuccessful = jsonparser->parse(json, root);
     if (!parsingSuccessful)
