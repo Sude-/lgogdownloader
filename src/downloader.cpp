@@ -1930,10 +1930,10 @@ void Downloader::checkOrphans()
                     {
                         if (boost::filesystem::is_regular_file(dir_iter->status()))
                         {
-                            std::string filename = dir_iter->path().filename().string();
+                            std::string filepath = dir_iter->path().string();
                             boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
                             boost::match_results<std::string::const_iterator> what;
-                            if (boost::regex_search(filename, what, expression))
+                            if (boost::regex_search(filepath, what, expression))
                                 filepath_vector.push_back(dir_iter->path());
                         }
                         dir_iter++;
