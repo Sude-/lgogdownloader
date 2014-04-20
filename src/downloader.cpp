@@ -878,7 +878,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     bool bSameVersion = true; // assume same version
     bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
-    std::string localHash = this->getLocalFileHash(filepath);
+    std::string localHash = this->getLocalFileHash(filepath, gamename);
 
     if (!xml_data.empty())
     {
