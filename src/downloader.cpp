@@ -734,10 +734,13 @@ void Downloader::download()
                 // Download
                 if (!url.empty())
                 {
+                    std::string XML;
+                    if (config.bRemoteXML)
+                        XML = gogAPI->getXML(games[i].gamename, games[i].languagepacks[j].id);
                     if (!games[i].languagepacks[j].name.empty())
                         std::cout << "Dowloading: " << games[i].gamename << " " << games[i].languagepacks[j].name << std::endl;
                     std::cout << filepath << std::endl;
-                    CURLcode result = downloadFile(url, filepath);
+                    CURLcode result = downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
                     if (result==CURLE_OK && config.sXMLFile == "automatic")
                     {
