@@ -1402,6 +1402,7 @@ std::string Downloader::getResponse(const std::string& url)
     CURLcode result;
     do
     {
+        usleep(config.iWait); // Delay the request by specified time
         result = curl_easy_perform(curlhandle);
         response = memory.str();
         memory.str(std::string());

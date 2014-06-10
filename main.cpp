@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
             ("retries", bpo::value<int>(&config.iRetries)->default_value(3), "Set maximum number of retries on failed download")
+            ("wait", bpo::value<int>(&config.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -205,6 +206,9 @@ int main(int argc, char *argv[])
         if (vm.count("check-orphans"))
             if (config.sOrphanRegex.empty())
                 config.sOrphanRegex = orphans_regex_default;
+
+        if (config.iWait > 0)
+            config.iWait *= 1000;
 
         config.bVerifyPeer = !bInsecure;
         config.bColor = !bNoColor;

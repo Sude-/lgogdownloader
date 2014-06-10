@@ -52,6 +52,7 @@ class Config
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
         int iRetries;
+        int iWait;
         size_t iChunkSize;
         curl_off_t iDownloadRate;
         long int iTimeout;
