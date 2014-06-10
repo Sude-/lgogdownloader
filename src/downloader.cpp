@@ -514,7 +514,7 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
 
                         // Get XML data
                         std::string XML = "";
@@ -550,7 +550,7 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
 
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                         if (gogAPI->getError())
@@ -568,7 +568,7 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
 
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
                         if (gogAPI->getError())
@@ -760,7 +760,7 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
 
                         // Get link
                         std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
@@ -789,7 +789,7 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
 
                         // Get link
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
@@ -824,7 +824,7 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
 
                         // Get link
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
@@ -2171,7 +2171,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc" : "");
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
 
                         std::string remoteHash;
                         std::string localHash;
@@ -2201,7 +2201,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/patches" : "");
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
@@ -2222,7 +2222,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/extras" : "");
+                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
