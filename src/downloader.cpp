@@ -1392,16 +1392,25 @@ CURLcode Downloader::beginDownload()
 std::string Downloader::getResponse(const std::string& url)
 {
     std::ostringstream memory;
+    std::string response;
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    CURLcode result = curl_easy_perform(curlhandle);
+
+    CURLcode result;
+    do
+    {
+        result = curl_easy_perform(curlhandle);
+        response = memory.str();
+        memory.str(std::string());
+    }
+    while ((result != CURLE_OK) && response.empty() && (this->retries++ < config.iRetries));
+    this->retries = 0; // reset retries counter
+
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    std::string response = memory.str();
-    memory.str(std::string());
 
     if (result != CURLE_OK)
     {
