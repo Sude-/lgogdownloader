@@ -1633,7 +1633,7 @@ std::vector<gameItem> Downloader::getGames()
 
     do
     {
-        std::string response = this->getResponse("https://secure.gog.com/en/account/ajax?a=gamesShelfMore&s=title&q=&t=0&p=" + std::to_string(i));
+        std::string response = this->getResponse("https://secure.gog.com/account/ajax?a=gamesShelfMore&s=title&q=&t=0&p=" + std::to_string(i));
 
         // Parse JSON
         if (!jsonparser->parse(response, root))
@@ -1700,7 +1700,7 @@ std::vector<gameItem> Downloader::getGames()
                                         Json::Value root;
                                         Json::Reader *jsonparser = new Json::Reader;
 
-                                        std::string gameDataUrl = "https://secure.gog.com/en/account/ajax?a=gamesListDetails&g=" + game.id;
+                                        std::string gameDataUrl = "https://secure.gog.com/account/ajax?a=gamesListDetails&g=" + game.id;
                                         std::string json = this->getResponse(gameDataUrl);
                                         // Parse JSON
                                         if (!jsonparser->parse(json, root))
@@ -1847,7 +1847,7 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
     Json::Reader *jsonparser = new Json::Reader;
     std::vector<gameFile> extras;
 
-    std::string gameDataUrl = "https://secure.gog.com/en/account/ajax?a=gamesListDetails&g=" + gameid;
+    std::string gameDataUrl = "https://secure.gog.com/account/ajax?a=gamesListDetails&g=" + gameid;
     std::string json = this->getResponse(gameDataUrl);
     // Parse JSON
     if (!jsonparser->parse(json, root))

@@ -65,9 +65,9 @@ int API::init()
 
 int API::getAPIConfig()
 {
-    std::string url = "https://api.gog.com/en/downloader2/status/stable/"; // Stable API
-    //std::string url = "https://api.gog.com/en/downloader2/status/beta/"; // Beta API
-    //std::string url = "https://api.gog.com/en/downloader2/status/e77989ed21758e78331b20e477fc5582/"; // Development API? Not sure because the downloader version number it reports is lower than beta.
+    std::string url = "https://api.gog.com/downloader2/status/stable/"; // Stable API
+    //std::string url = "https://api.gog.com/downloader2/status/beta/"; // Beta API
+    //std::string url = "https://api.gog.com/downloader2/status/e77989ed21758e78331b20e477fc5582/"; // Development API? Not sure because the downloader version number it reports is lower than beta.
     int res = 0;
 
     std::string json = this->getResponse(url);
