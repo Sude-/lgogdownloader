@@ -32,16 +32,14 @@ int main(int argc, char *argv[])
     if (xdgconfig)
     {
         config.sConfigDirectory = (std::string)xdgconfig + "/lgogdownloader";
-        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
-        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     }
     else
     {
         config.sConfigDirectory = home + "/.config/lgogdownloader";
-        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
-        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     }
 
+    config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
+    config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     if (xdgcache)
         config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
     else
