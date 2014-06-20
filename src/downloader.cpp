@@ -415,6 +415,12 @@ void Downloader::repair()
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
                 std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+                if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Get XML data
                 std::string XML = "";
@@ -452,7 +458,14 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
+                std::string subdir = config.bSubDirectories ? "extras" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
@@ -472,7 +485,14 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
+                std::string subdir = config.bSubDirectories ? "patches" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())
@@ -492,7 +512,14 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
+                std::string subdir = config.bSubDirectories ? "languagepacks" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
                 if (gogAPI->getError())
@@ -514,7 +541,14 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
+                        std::string subdir = (config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         // Get XML data
                         std::string XML = "";
@@ -550,7 +584,13 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir)) {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                         if (gogAPI->getError())
@@ -568,7 +608,13 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir)) {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
                         if (gogAPI->getError())
@@ -601,6 +647,12 @@ void Downloader::download()
             {
                 // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
                 std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
+                if (config.blacklist.isBlacklisted(games[i].installers[0].path, games[i].gamename))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Get base directory from filepath
                 boost::match_results<std::string::const_iterator> what;
@@ -621,6 +673,12 @@ void Downloader::download()
                     continue;
 
                 std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+                if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Get link
                 std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
@@ -659,7 +717,14 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
+                std::string subdir = config.bSubDirectories ? "extras" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Download
                 if (!url.empty())
@@ -693,7 +758,14 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
+                std::string subdir = config.bSubDirectories ? "patches" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Download
                 if (!url.empty())
@@ -729,7 +801,14 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
+                std::string subdir = config.bSubDirectories ? "languagepacks" : "";
+                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
+                if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                {
+                    if (config.bVerbose)
+                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                    continue;
+                }
 
                 // Download
                 if (!url.empty())
@@ -760,7 +839,14 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         // Get link
                         std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
@@ -789,7 +875,14 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         // Get link
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
@@ -824,7 +917,14 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
 
                         // Get link
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
@@ -1930,6 +2030,7 @@ void Downloader::checkOrphans()
         std::cout << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
         boost::filesystem::path path (config.sDirectory + games[i].gamename);
         std::vector<boost::filesystem::path> filepath_vector;
+        std::size_t pathlen = config.sDirectory.length();
 
         try
         {
@@ -1945,10 +2046,15 @@ void Downloader::checkOrphans()
                         if (boost::filesystem::is_regular_file(dir_iter->status()))
                         {
                             std::string filepath = dir_iter->path().string();
-                            boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
-                            boost::match_results<std::string::const_iterator> what;
-                            if (boost::regex_search(filepath, what, expression))
-                                filepath_vector.push_back(dir_iter->path());
+                            if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
+                                if (config.bVerbose)
+                                    std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            } else {
+                                boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
+                                boost::match_results<std::string::const_iterator> what;
+                                if (boost::regex_search(filepath, what, expression))
+                                    filepath_vector.push_back(dir_iter->path());
+                            }
                         }
                         dir_iter++;
                     }

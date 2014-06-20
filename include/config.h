@@ -10,6 +10,8 @@
 #include <iostream>
 #include <curl/curl.h>
 
+#include "blacklist.h"
+
 class Config
 {
     public:
@@ -48,6 +50,7 @@ class Config
         std::string sConfigDirectory;
         std::string sCookiePath;
         std::string sConfigFilePath;
+        std::string sBlacklistFilePath;
         std::string sOrphanRegex;
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
@@ -56,6 +59,7 @@ class Config
         size_t iChunkSize;
         curl_off_t iDownloadRate;
         long int iTimeout;
+        Blacklist blacklist;
 };
 
 #endif // CONFIG_H__
