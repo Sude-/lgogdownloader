@@ -45,9 +45,9 @@ OBJDIR_RELEASE = obj/Release
 DEP_RELEASE = 
 OUT_RELEASE = bin/Release/lgogdownloader
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/src/api.o $(OBJDIR_DEBUG)/src/downloader.o $(OBJDIR_DEBUG)/src/progressbar.o $(OBJDIR_DEBUG)/src/util.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/src/api.o $(OBJDIR_DEBUG)/src/downloader.o $(OBJDIR_DEBUG)/src/progressbar.o $(OBJDIR_DEBUG)/src/util.o $(OBJDIR_DEBUG)/src/blacklist.o
 
-OBJ_RELEASE = $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/src/api.o $(OBJDIR_RELEASE)/src/downloader.o $(OBJDIR_RELEASE)/src/progressbar.o $(OBJDIR_RELEASE)/src/util.o
+OBJ_RELEASE = $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/src/api.o $(OBJDIR_RELEASE)/src/downloader.o $(OBJDIR_RELEASE)/src/progressbar.o $(OBJDIR_RELEASE)/src/util.o $(OBJDIR_RELEASE)/src/blacklist.o
 
 all: debug release
 
@@ -79,6 +79,9 @@ $(OBJDIR_DEBUG)/src/progressbar.o: src/progressbar.cpp
 
 $(OBJDIR_DEBUG)/src/util.o: src/util.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/util.cpp -o $(OBJDIR_DEBUG)/src/util.o
+
+$(OBJDIR_DEBUG)/src/blacklist.o: src/blacklist.cpp
+	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/blacklist.cpp -o $(OBJDIR_DEBUG)/src/blacklist.o
 
 clean_debug: 
 	rm -f $(OBJ_DEBUG) $(OUT_DEBUG)
@@ -116,6 +119,9 @@ $(OBJDIR_RELEASE)/src/progressbar.o: src/progressbar.cpp
 
 $(OBJDIR_RELEASE)/src/util.o: src/util.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/util.cpp -o $(OBJDIR_RELEASE)/src/util.o
+
+$(OBJDIR_RELEASE)/src/blacklist.o: src/blacklist.cpp
+	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/blacklist.cpp -o $(OBJDIR_RELEASE)/src/blacklist.o
 
 clean_release: 
 	rm -f $(OBJ_RELEASE) $(OUT_RELEASE)

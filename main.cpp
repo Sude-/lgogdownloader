@@ -40,6 +40,8 @@ int main(int argc, char *argv[])
 
     config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
     config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
+    config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
+
     if (xdgcache)
         config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
     else
@@ -179,6 +181,26 @@ int main(int argc, char *argv[])
                 bpo::store(bpo::parse_config_file(ifs, options_cfg_all), vm);
                 bpo::notify(vm);
                 ifs.close();
+            }
+        }
+        if (boost::filesystem::exists(config.sBlacklistFilePath))
+        {
+            std::ifstream ifs(config.sBlacklistFilePath.c_str());
+            if (!ifs)
+            {
+                std::cout << "Could not open blacklist file: " << config.sBlacklistFilePath << std::endl;
+                return 1;
+            }
+            else
+            {
+                std::string line;
+                std::vector<std::string> lines;
+                while (!ifs.eof())
+                {
+                    std::getline(ifs, line);
+                    lines.push_back(std::move(line));
+                }
+                config.blacklist.initialize(lines);
             }
         }
 
