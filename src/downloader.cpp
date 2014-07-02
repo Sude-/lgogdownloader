@@ -1530,32 +1530,78 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     int res = 0;
     std::string postdata;
     std::ostringstream memory;
-    std::string buk;
+    std::string token;
+    std::string tagname_username;
+    std::string tagname_password;
+    std::string tagname_login;
+    std::string tagname_token;
 
-    // Get "buk" for login form
-    std::string json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
-
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    bool parsingSuccessful = jsonparser->parse(json, root);
-    if (!parsingSuccessful)
+    // Get login token
+    std::string html = this->getResponse("https://secure.gog.com/");
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    // Find auth_url
+    for (; it != end; ++it)
     {
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << json << std::endl;
-        #endif
-        std::cout << jsonparser->getFormatedErrorMessages();
+        if (it->tagName()=="input")
+        {
+            it->parseAttributes();
+            std::string id = it->attribute("id").second;
+            if (id == "auth_url")
+            {   // Found auth_url, get the necessary info for login
+                std::string login_form_html = this->getResponse(it->attribute("value").second);
+                tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
+                tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
+                tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
+                for (; login_it != login_it_end; ++login_it)
+                {
+                    if (login_it->tagName()=="input")
+                    {
+                        login_it->parseAttributes();
+                        std::string id_login = login_it->attribute("id").second;
+                        if (id_login == "login_username")
+                        {
+                            tagname_username = login_it->attribute("name").second;
+                        }
+                        else if (id_login == "login_password")
+                        {
+                            tagname_password = login_it->attribute("name").second;
+                        }
+                        else if (id_login == "login__token")
+                        {
+                            token = login_it->attribute("value").second; // login token
+                            tagname_token = login_it->attribute("name").second;
+                        }
+                    }
+                    else if (login_it->tagName()=="button")
+                    {
+                        login_it->parseAttributes();
+                        std::string id_login = login_it->attribute("id").second;
+                        if (id_login == "login_login")
+                        {
+                            tagname_login = login_it->attribute("name").second;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    if (token.empty())
+    {
+        std::cout << "Failed to get login token" << std::endl;
         return res = 0;
     }
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
-    #endif
-    buk = root["buk"].asString();
 
     //Create postdata - escape characters in email/password to support special characters
-    postdata = "log_email=" + (std::string)curl_easy_escape(curlhandle, email.c_str(),email.size())
-            + "&log_password=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
-            + "&buk=" + (std::string)curl_easy_escape(curlhandle, buk.c_str(), buk.size());
-    curl_easy_setopt(curlhandle, CURLOPT_URL, "https://secure.gog.com/login");
+    postdata = (std::string)curl_easy_escape(curlhandle, tagname_username.c_str(), tagname_username.size()) + "=" + (std::string)curl_easy_escape(curlhandle, email.c_str(), email.size())
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_password.c_str(), tagname_password.size()) + "=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_login.c_str(), tagname_login.size()) + "="
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token.c_str(), token.size());
+    curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login_check");
     curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
     curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
@@ -1563,6 +1609,9 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+
+    // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
     CURLcode result = curl_easy_perform(curlhandle);
     memory.str(std::string());
 
@@ -1573,11 +1622,35 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
             std::cout << curl_easy_strerror(result) << std::endl;
     }
 
+    // Clean up the redirect url for login
+    char *redirect_url;
+    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+    std::string url = (std::string)redirect_url;
+    url.assign(url.begin()+url.find("redirect_uri"), url.end());
+    url = htmlcxx::Uri::decode(url);
+    size_t position;
+    while ( (position = url.find("&amp;")) != std::string::npos )
+    {
+        url.replace(url.begin()+position, url.begin()+position+std::string("&amp;").length(), "&");
+    }
+    url = "https://auth.gog.com/auth?" + url;
+
+    curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
-    json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+    result = curl_easy_perform(curlhandle);
 
-    parsingSuccessful = jsonparser->parse(json, root);
+    if (result != CURLE_OK)
+    {
+        std::cout << curl_easy_strerror(result) << std::endl;
+    }
+
+    std::string json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
+
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    bool parsingSuccessful = jsonparser->parse(json, root);
     if (!parsingSuccessful)
     {
         #ifdef DEBUG
