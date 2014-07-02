@@ -17,6 +17,35 @@ These games are currently offered only for the Microsoft Windows\[rg] and Apple 
 /Status codes:/
 .nf
 
+[blacklist]
+.fi
+Allows user to specify individual files that should not be downloaded or mentioned as orphans.
+.sp 1
+Each line in the file specifies one blacklist expression, except for empty lines and lines starting with #.
+First few characters specify blacklist item type and flags.
+So far, only regular expression (perl variant) are supported, so each line must start with "Rp" characters.
+After a space comes the expression itself. Expressions are matched against file path relative to what was specified as \fI--directory\fP.
+
+\fIExample black list\fP
+.br
+# used to store manually downloaded mods/patches/maps/, don't mention it as orphans
+.br
+Rp ^[^/]*/manual/.*
+.br
+# included with every *divinity game, once is enough
+.br
+Rp beyond_divinity/extras/bd_ladymageknight\.zip
+.br
+Rp divinity_2_developers_cut/extras/divinity_2_ladymageknight\.zip
+.sp
+# extra 6GB is A LOT of space if you don't actually plan to mod your game
+.br
+Rp the_witcher_2/extras/the_witcher_2_redkit\.zip
+.br
+Rp the_witcher_2/extras/extras_pack_3_hu_pl_ru_tr_zh_\.zip
+.br
+Rp the_witcher_2/extras/extras_pack_2_fr_it_jp_\.zip
+
 [files]
 .fi
 .TP
@@ -30,6 +59,12 @@ If \fB$XDG_CONFIG_HOME\fP is not set, it will use \fI$HOME/.config/lgogdownloade
 Storage for XML files
 .br
 If \fB$XDG_CACHE_HOME\fP is not set, it will use \fI$HOME/.cache/lgogdownloader/xml/\fP.
+
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/blacklist.txt\fP
+Allows user to specify individual files that should not be downloaded or mentioned as orphans.
+.br
+It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 
 [availability]
 The latest version of this distribution is available from \fIhttps://github.com/Sude-/lgogdownloader\fP

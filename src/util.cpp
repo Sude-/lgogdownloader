@@ -16,6 +16,13 @@
 */
 std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory)
 {
+    return directory + makeRelativeFilepath(path, gamename, subdirectory);
+}
+
+/* Create filepath relative to download base directory specified in config.
+ */
+std::string Util::makeRelativeFilepath(const std::string& path, const std::string& gamename, std::string subdirectory)
+{
     std::string filepath;
 
     if (gamename.empty())
@@ -23,11 +30,11 @@ std::string Util::makeFilepath(const std::string& directory, const std::string& 
         if (path.at(0)=='/')
         {
             std::string tmp_path = path.substr(1,path.length());
-            filepath = directory + tmp_path;
+            filepath = tmp_path;
         }
         else
         {
-            filepath = directory + path;
+            filepath = path;
         }
     }
     else
@@ -37,7 +44,7 @@ std::string Util::makeFilepath(const std::string& directory, const std::string& 
         {
             subdirectory = "/" + subdirectory;
         }
-        filepath = directory + gamename + subdirectory + "/" + filename;
+        filepath = gamename + subdirectory + "/" + filename;
     }
 
     return filepath;
