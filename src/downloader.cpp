@@ -775,6 +775,7 @@ void Downloader::download()
                         XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                     if (!games[i].patches[j].name.empty())
                         std::cout << "Dowloading: " << games[i].patches[j].name << std::endl;
+                    std::cout << filepath << std::endl;
                     this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
                 }
@@ -887,6 +888,7 @@ void Downloader::download()
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                             if (!games[i].dlcs[j].patches[k].name.empty())
                                 std::cout << "Dowloading: " << games[i].dlcs[j].patches[k].name << std::endl;
+                            std::cout << filepath << std::endl;
                             this->downloadFile(url, filepath, XML, games[i].dlcs[j].gamename);
                             std::cout << std::endl;
                         }
