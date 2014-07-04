@@ -1804,6 +1804,10 @@ std::vector<gameItem> Downloader::getGames()
         #endif
         page_html = root["html"].asString();
         html += page_html;
+        if (page_html.empty() && i == 1)
+        {
+            std::cout << "No games were found on your account. Try --login to refresh your authorization." << std::endl;
+        }
         i++;
     } while (!page_html.empty());
 
