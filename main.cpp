@@ -21,6 +21,11 @@
 
 namespace bpo = boost::program_options;
 
+template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value>& vm, const std::string& option, const T& value)
+{
+    vm[option].value() = boost::any(value);
+}
+
 int main(int argc, char *argv[])
 {
     Config config;
@@ -288,10 +293,22 @@ int main(int argc, char *argv[])
     Downloader downloader(config);
     int result = downloader.init();
 
+    int iLoginResult = 0;
     if (config.bLogin)
-        return result;
-    else if (config.bSaveConfig)
     {
+        iLoginResult = result;
+        if (iLoginResult == 0)
+            return 1;
+    }
+
+    if (config.bSaveConfig || iLoginResult == 1)
+    {
+        if (iLoginResult == 1)
+        {
+            set_vm_value(vm, "token", downloader.config.sToken);
+            set_vm_value(vm, "secret", downloader.config.sSecret);
+            bpo::notify(vm);
+        }
         std::ofstream ofs(config.sConfigFilePath.c_str());
         if (ofs)
         {

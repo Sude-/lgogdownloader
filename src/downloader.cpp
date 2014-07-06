@@ -102,8 +102,8 @@ int Downloader::init()
 }
 
 /* Login
-    returns 1 if login fails
-    returns 0 if successful
+    returns 0 if login fails
+    returns 1 if successful
 */
 int Downloader::login()
 {
@@ -116,7 +116,7 @@ int Downloader::login()
     if (email.empty() || password.empty())
     {
         std::cout << "Email and/or password empty" << std::endl;
-        return 1;
+        return 0;
     }
     else
     {
@@ -124,7 +124,7 @@ int Downloader::login()
         if (!HTTP_Login(email, password))
         {
             std::cout << "HTTP: Login failed" << std::endl;
-            return 1;
+            return 0;
         }
         else
         {
@@ -134,24 +134,14 @@ int Downloader::login()
         if (!gogAPI->login(email, password))
         {
             std::cout << "API: Login failed" << std::endl;
-            return 1;
+            return 0;
         }
         else
         {
             std::cout << "API: Login successful" << std::endl;
-            // Save token and secret to config file
-            std::ofstream ofs(config.sConfigFilePath.c_str());
-            if (ofs)
-            {
-                ofs << "token = " << gogAPI->getToken() << std::endl << "secret = " << gogAPI->getSecret() << std::endl;
-                ofs.close();
-                return 0;
-            }
-            else
-            {
-                std::cout << "Failed to create config: " << config.sConfigFilePath << std::endl;
-                return 1;
-            }
+            config.sToken = gogAPI->getToken();
+            config.sSecret = gogAPI->getSecret();
+            return 1;
         }
     }
 }
