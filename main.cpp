@@ -353,7 +353,6 @@ int main(int argc, char *argv[])
 
                 if (!option_value_string.empty())
                 {
-                    std::cout << option << " = " << option_value_string << std::endl;
                     ofs << option << " = " << option_value_string << std::endl;
                 }
             }
