@@ -44,6 +44,7 @@ class Downloader
         Downloader(Config &conf);
         virtual ~Downloader();
         int init();
+        int login();
         void listGames();
         void updateCheck();
         void repair();
@@ -59,7 +60,6 @@ class Downloader
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
-        int login();
         int getGameDetails();
         void getGameList();
         size_t getResumePosition();

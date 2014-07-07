@@ -291,12 +291,12 @@ int main(int argc, char *argv[])
             config.sDirectory += "/";
 
     Downloader downloader(config);
-    int result = downloader.init();
+    int initResult = downloader.init();
 
     int iLoginResult = 0;
-    if (config.bLogin)
+    if (config.bLogin || initResult == 1)
     {
-        iLoginResult = result;
+        iLoginResult = downloader.login();
         if (iLoginResult == 0)
             return 1;
     }

@@ -79,8 +79,8 @@ int Downloader::init()
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
     bool bInitOK = gogAPI->init(); // Initialize the API
-    if (config.bLogin || !bInitOK)
-        return this->login();
+    if (!bInitOK)
+        return 1;
 
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/covers.xml");
