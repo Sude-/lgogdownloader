@@ -13,7 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#define VERSION_NUMBER "2.13"
+#define VERSION_NUMBER "2.14"
 
 #ifndef VERSION_STRING
 #   define VERSION_STRING "LGOGDownloader " VERSION_NUMBER
