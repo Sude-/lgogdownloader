@@ -374,7 +374,16 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         {
                             std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                             if (root["game"].isMember(patchname)) // Check that patch node exists
-                                patchnames.push_back(patchname);
+                            {
+                                unsigned int platformId;
+                                if (root["game"][patchname]["link"].asString().find("/mac/") != std::string::npos)
+                                    platformId = GlobalConstants::PLATFORM_MAC;
+                                else
+                                    platformId = GlobalConstants::PLATFORM_WINDOWS;
+
+                                if (type & platformId)
+                                    patchnames.push_back(patchname);
+                            }
                             patch_number_file++;
                         }
                         patch_number++;
