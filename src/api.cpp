@@ -286,24 +286,6 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             game.title = root["game"]["title"].asString();
             game.icon = root["game"]["icon"].asString();
 
-
-            // FIXME: Replace this ugly hack when GOG makes the API responses for Linux better
-            bool bIsLinux = false;
-            bool bIsMac = false;
-            if (type & (GlobalConstants::PLATFORM_LINUX | GlobalConstants::PLATFORM_MAC) )
-            {
-                if (type & GlobalConstants::PLATFORM_LINUX)
-                    bIsLinux = true;
-                else
-                    bIsLinux = false;
-                if (type & GlobalConstants::PLATFORM_MAC)
-                    bIsMac = true;
-                else
-                    bIsMac = false;
-                type |= GlobalConstants::PLATFORM_MAC; // For some reason Linux installers are under Mac installer node so add Mac to installer type
-            }
-
-
             // Installer details
             // Create a list of installers from JSON
             std::vector<std::pair<Json::Value,unsigned int>> installers;
@@ -345,18 +327,6 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             }
                         }
                         if (bDuplicate)
-                            continue;
-                    }
-
-                    // FIXME: Replace this ugly hack when GOG makes the API responses for Linux better
-                    if (bIsLinux && !bIsMac)
-                    {
-                        if (installer["link"].asString().find("/mac/") != std::string::npos)
-                            continue;
-                    }
-                    if (!bIsLinux && bIsMac)
-                    {
-                        if (installer["link"].asString().find("/linux/") != std::string::npos)
                             continue;
                     }
 
