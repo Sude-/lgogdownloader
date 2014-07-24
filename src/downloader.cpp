@@ -637,12 +637,6 @@ void Downloader::download()
             {
                 // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
                 std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
-                if (config.blacklist.isBlacklisted(games[i].installers[0].path, games[i].gamename))
-                {
-                    if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
-                    continue;
-                }
 
                 // Get base directory from filepath
                 boost::match_results<std::string::const_iterator> what;
