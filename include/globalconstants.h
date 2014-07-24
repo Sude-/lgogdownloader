@@ -60,12 +60,14 @@ namespace GlobalConstants
     // Platform constants
     const unsigned int PLATFORM_WINDOWS = 1;
     const unsigned int PLATFORM_MAC     = 2;
+    const unsigned int PLATFORM_LINUX   = 4;
 
     struct platformStruct {const unsigned int platformId; const std::string platformCode; const std::string platformString;};
     const std::vector<platformStruct> PLATFORMS =
     {
-        { PLATFORM_WINDOWS, "win", "Windows" },
-        { PLATFORM_MAC,     "mac", "Mac"     }
+        { PLATFORM_WINDOWS, "win",   "Windows" },
+        { PLATFORM_MAC,     "mac",   "Mac"     },
+        { PLATFORM_LINUX,   "linux", "Linux"   }
     };
 };
 
