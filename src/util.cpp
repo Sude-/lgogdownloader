@@ -8,6 +8,8 @@
 
 #include <boost/filesystem.hpp>
 #include <tinyxml.h>
+#include <jsoncpp/json/json.h>
+#include <fstream>
 
 /*
     Create filepath from specified directory and path
@@ -189,6 +191,68 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
         std::cout << "Can't create " << filenameXML << std::endl;
         return res;
     }
+
+    return res;
+}
+
+/*
+    Overrides global settings with game specific settings
+    returns 0 if fails
+    returns number of changed settings if succesful
+*/
+int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, std::string directory)
+{
+    int res = 0;
+
+    if (directory.empty())
+    {
+        char *xdghome = getenv("XDG_CONFIG_HOME");
+        if (xdghome)
+            directory = (std::string)xdghome + "/lgogdownloader";
+        else
+        {
+            std::string home = (std::string)getenv("HOME");
+            directory = home + "/.config/lgogdownloader";
+        }
+    }
+
+    std::string filepath = directory + "/" + gamename + ".conf";
+
+    // Make sure file exists
+    boost::filesystem::path path = filepath;
+    if (!boost::filesystem::exists(path)) {
+        return res;
+    }
+
+    std::ifstream json(filepath, std::ifstream::binary);
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    if (jsonparser->parse(json, root))
+    {
+        if (root.isMember("language"))
+        {
+            conf->iInstallerLanguage = root["language"].asUInt();
+            res++;
+        }
+        if (root.isMember("platform"))
+        {
+            conf->iInstallerType = root["platform"].asUInt();
+            res++;
+        }
+        if (root.isMember("dlc"))
+        {
+            conf->bDLC = root["dlc"].asBool();
+            res++;
+        }
+    }
+    else
+    {
+        std::cout << "Failed to parse game specific config" << std::endl;
+        std::cout << jsonparser->getFormatedErrorMessages() << std::endl;
+    }
+    delete jsonparser;
+    if (json)
+        json.close();
 
     return res;
 }

@@ -15,6 +15,13 @@
 #include <sstream>
 #include <rhash.h>
 
+struct gameSpecificConfig
+{
+    unsigned int iInstallerType;
+    unsigned int iInstallerLanguage;
+    bool bDLC;
+};
+
 namespace Util
 {
     std::string makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory = "");
@@ -22,6 +29,7 @@ namespace Util
     std::string getFileHash(const std::string& filename, unsigned hash_id);
     std::string getChunkHash(unsigned char* chunk, size_t chunk_size, unsigned hash_id);
     int createXML(std::string filepath, size_t chunk_size, std::string xml_dir = std::string());
+    int getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, std::string directory = std::string());
 }
 
 #endif // UTIL_H

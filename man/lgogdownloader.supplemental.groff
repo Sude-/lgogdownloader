@@ -66,5 +66,22 @@ Allows user to specify individual files that should not be downloaded or mention
 .br
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/gamename.conf\fP
+JSON formatted file. Sets game specific settings for \fBgamename\fP.
+.br
+Allowed settings are \fBlanguage\fP, \fBplatform\fP and \fBdlc\fP.
+.br
+The \fBdlc\fP option is limited to disabling DLC for specific game. It can't enable DLC listing/downloading if \fB--no-dlc\fP option is used.
+.br
+Must be in the following format:
+.br
+{
+    "language" : <int>,
+    "platform" : <int>,
+    "dlc" : <bool>
+.br
+}
+
 [availability]
 The latest version of this distribution is available from \fIhttps://github.com/Sude-/lgogdownloader\fP

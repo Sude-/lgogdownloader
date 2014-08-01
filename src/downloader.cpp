@@ -210,19 +210,27 @@ int Downloader::getGameDetails()
     {
         std::cout << "Getting game info " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
         bool bHasDLC = !gameItems[i].dlcnames.empty();
-        game = gogAPI->getGameDetails(gameItems[i].name, config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
+
+        gameSpecificConfig conf;
+        conf.bDLC = config.bDLC;
+        conf.iInstallerLanguage = config.iInstallerLanguage;
+        conf.iInstallerType = config.iInstallerType;
+        if (Util::getGameSpecificConfig(gameItems[i].name, &conf) > 0)
+            std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+
+        game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
                 game.extras = this->getExtras(gameItems[i].name, gameItems[i].id);
             }
-            if (game.dlcs.empty() && bHasDLC && config.bDLC)
+            if (game.dlcs.empty() && bHasDLC && conf.bDLC)
             {
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 {
                     gameDetails dlc;
-                    dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], config.iInstallerType, config.iInstallerLanguage, config.bDuplicateHandler);
+                    dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         dlc.extras = this->getExtras(gameItems[i].dlcnames[j], gameItems[i].id);
