@@ -7,6 +7,20 @@
 #ifndef DOWNLOADER_H
 #define DOWNLOADER_H
 
+#if __GNUC__
+#   if !(__x86_64__ || __ppc64__ || __LP64__)
+#       ifndef _LARGEFILE_SOURCE
+#           define _LARGEFILE_SOURCE
+#       endif
+#       ifndef _LARGEFILE64_SOURCE
+#           define _LARGEFILE64_SOURCE
+#       endif
+#       if !defined(_FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS == 32)
+#           define _FILE_OFFSET_BITS 64
+#       endif
+#   endif
+#endif
+
 #include "config.h"
 #include "api.h"
 #include "progressbar.h"
