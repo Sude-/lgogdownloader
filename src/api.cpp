@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
+#include <regex>
 #include <jsoncpp/json/json.h>
 
 size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
@@ -285,6 +286,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             game.gamename = game_name;
             game.title = root["game"]["title"].asString();
             game.icon = root["game"]["icon"].asString();
+            std::vector<std::string> membernames = root["game"].getMemberNames();
 
             // Installer details
             // Create a list of installers from JSON
@@ -365,32 +367,24 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a patch
-                    unsigned int patch_number = 0;
-                    const unsigned int maxTriesLangNum = 8;
-                    const unsigned int maxTriesPatchNum = 20;
+                    std::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+patch\\d+", std::regex_constants::icase); // regex for patch node names
                     std::vector<std::string> patchnames;
-                    while (patch_number < maxTriesLangNum)
+                    for (unsigned int j = 0; j < membernames.size(); ++j)
                     {
-                        unsigned int patch_number_file = 0;
-                        while (patch_number_file < maxTriesPatchNum)
-                        {
-                            std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
-                            if (root["game"].isMember(patchname)) // Check that patch node exists
-                            {
-                                unsigned int platformId;
-                                if (root["game"][patchname]["link"].asString().find("/mac/") != std::string::npos)
-                                    platformId = GlobalConstants::PLATFORM_MAC;
-                                else if (root["game"][patchname]["link"].asString().find("/linux/") != std::string::npos)
-                                    platformId = GlobalConstants::PLATFORM_LINUX;
-                                else
-                                    platformId = GlobalConstants::PLATFORM_WINDOWS;
+                        if (std::regex_match(membernames[j], re))
+                        {   // Regex matches, we have a patch node
+                            std::string patchname = membernames[j];
+                            unsigned int platformId;
+                            if (root["game"][patchname]["link"].asString().find("/mac/") != std::string::npos)
+                                platformId = GlobalConstants::PLATFORM_MAC;
+                            else if (root["game"][patchname]["link"].asString().find("/linux/") != std::string::npos)
+                                platformId = GlobalConstants::PLATFORM_LINUX;
+                            else
+                                platformId = GlobalConstants::PLATFORM_WINDOWS;
 
-                                if (type & platformId)
-                                    patchnames.push_back(patchname);
-                            }
-                            patch_number_file++;
+                            if (type & platformId)
+                                patchnames.push_back(patchname);
                         }
-                        patch_number++;
                     }
 
                     if (!patchnames.empty()) // found at least one patch
@@ -504,20 +498,12 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a language pack
-                    unsigned int lang_pack_number = 0;
-                    const unsigned int maxTries = 4;
+                    std::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+langpack\\d+", std::regex_constants::icase); // regex for language pack node names
                     std::vector<std::string> langpacknames;
-                    while (lang_pack_number < maxTries)
+                    for (unsigned int j = 0; j < membernames.size(); ++j)
                     {
-                        unsigned int lang_pack_number_file = 0;
-                        while (lang_pack_number_file < maxTries)
-                        {
-                            std::string langpackname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(lang_pack_number) + "langpack" + std::to_string(lang_pack_number_file);
-                            if (root["game"].isMember(langpackname)) // Check that language pack node exists
-                                langpacknames.push_back(langpackname);
-                            lang_pack_number_file++;
-                        }
-                        lang_pack_number++;
+                        if (std::regex_match(membernames[j], re))
+                            langpacknames.push_back(membernames[j]);
                     }
 
                     if (!langpacknames.empty()) // found at least one language pack
