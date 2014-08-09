@@ -366,12 +366,13 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 {
                     // Try to find a patch
                     unsigned int patch_number = 0;
-                    const unsigned int maxTries = 8;
+                    const unsigned int maxTriesLangNum = 8;
+                    const unsigned int maxTriesPatchNum = 20;
                     std::vector<std::string> patchnames;
-                    while (patch_number < maxTries)
+                    while (patch_number < maxTriesLangNum)
                     {
                         unsigned int patch_number_file = 0;
-                        while (patch_number_file < maxTries)
+                        while (patch_number_file < maxTriesPatchNum)
                         {
                             std::string patchname = GlobalConstants::LANGUAGES[i].languageCode + std::to_string(patch_number) + "patch" + std::to_string(patch_number_file);
                             if (root["game"].isMember(patchname)) // Check that patch node exists
