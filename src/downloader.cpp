@@ -288,6 +288,14 @@ void Downloader::listGames()
                 {
                     if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+                        if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
                         std::string languages;
                         for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
                         {
@@ -311,6 +319,15 @@ void Downloader::listGames()
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
                 {
+                    std::string subdir = config.bSubDirectories ? "extras" : "";
+                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
+                    if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                    {
+                        if (config.bVerbose)
+                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        continue;
+                    }
+
                     std::cout   << "\tid: " << games[i].extras[j].id << std::endl
                                 << "\tname: " << games[i].extras[j].name << std::endl
                                 << "\tpath: " << games[i].extras[j].path << std::endl
@@ -324,6 +341,15 @@ void Downloader::listGames()
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
                 {
+                    std::string subdir = config.bSubDirectories ? "patches" : "";
+                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
+                    if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                    {
+                        if (config.bVerbose)
+                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        continue;
+                    }
+
                     std::string languages;
                     for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
                     {
@@ -345,6 +371,15 @@ void Downloader::listGames()
                 std::cout << "language packs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
                 {
+                    std::string subdir = config.bSubDirectories ? "languagepacks" : "";
+                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
+                    if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                    {
+                        if (config.bVerbose)
+                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        continue;
+                    }
+
                     std::cout   << "\tid: " << games[i].languagepacks[j].id << std::endl
                                 << "\tname: " << games[i].languagepacks[j].name << std::endl
                                 << "\tpath: " << games[i].languagepacks[j].path << std::endl
@@ -359,6 +394,15 @@ void Downloader::listGames()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
+                        std::string subdir = (config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
                         std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
                                     << "\tid: " << games[i].dlcs[j].installers[k].id << std::endl
                                     << "\tname: " << games[i].dlcs[j].installers[k].name << std::endl
@@ -368,6 +412,14 @@ void Downloader::listGames()
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir)) {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
                         std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
                                     << "\tid: " << games[i].dlcs[j].patches[k].id << std::endl
                                     << "\tname: " << games[i].dlcs[j].patches[k].name << std::endl
@@ -377,6 +429,14 @@ void Downloader::listGames()
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
+                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
+                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
+                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir)) {
+                            if (config.bVerbose)
+                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
                         std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
                                     << "\tid: " << games[i].dlcs[j].extras[k].id << std::endl
                                     << "\tname: " << games[i].dlcs[j].extras[k].name << std::endl
