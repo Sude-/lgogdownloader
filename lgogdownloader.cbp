@@ -49,6 +49,7 @@
 			<Add library="rhash" />
 		</Linker>
 		<Unit filename="include/api.h" />
+		<Unit filename="include/blacklist.h" />
 		<Unit filename="include/config.h" />
 		<Unit filename="include/downloader.h" />
 		<Unit filename="include/globalconstants.h" />
@@ -56,6 +57,7 @@
 		<Unit filename="include/util.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="src/api.cpp" />
+		<Unit filename="src/blacklist.cpp" />
 		<Unit filename="src/downloader.cpp" />
 		<Unit filename="src/progressbar.cpp" />
 		<Unit filename="src/util.cpp" />
