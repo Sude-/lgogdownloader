@@ -12,7 +12,7 @@ LD = g++
 WINDRES = windres
 
 INC =  -Iinclude -I/usr/include/rhash
-CFLAGS =  -std=c++0x -Wall -fexceptions
+CFLAGS =  -std=c++11 -Wall -fexceptions -D_FILE_OFFSET_BITS=64
 RESINC = 
 LIBDIR = 
 LIB =  -lcurl -loauth -ljsoncpp -lhtmlcxx -lboost_system -lboost_filesystem -lboost_regex -lboost_program_options -lboost_date_time -ltinyxml -lrhash
