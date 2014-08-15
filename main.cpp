@@ -110,7 +110,6 @@ int main(int argc, char *argv[])
         bool bNoColor = false;
         bool bNoUnicode = false;
         bool bNoDuplicateHandler = false;
-        bool bNoCover = false;
         bool bNoInstallers = false;
         bool bNoExtras = false;
         bool bNoPatches = false;
@@ -149,7 +148,7 @@ int main(int argc, char *argv[])
             ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
             ("no-language-packs", bpo::value<bool>(&bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
             ("no-dlc", bpo::value<bool>(&bNoDLC)->zero_tokens()->default_value(false), "Don't download/list/repair DLCs")
-            ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images")
+            ("cover", bpo::value<bool>(&config.bCover)->zero_tokens()->default_value(false), "Download cover images")
             ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
@@ -239,7 +238,6 @@ int main(int argc, char *argv[])
         config.bColor = !bNoColor;
         config.bUnicode = !bNoUnicode;
         config.bDuplicateHandler = !bNoDuplicateHandler;
-        config.bCover = !bNoCover;
         config.bInstallers = !bNoInstallers;
         config.bExtras = !bNoExtras;
         config.bPatches = !bNoPatches;
