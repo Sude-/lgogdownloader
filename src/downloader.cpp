@@ -361,6 +361,7 @@ void Downloader::listGames()
                                 << "\tname: " << games[i].patches[j].name << std::endl
                                 << "\tpath: " << games[i].patches[j].path << std::endl
                                 << "\tsize: " << games[i].patches[j].size << std::endl
+                                << "\tupdated: " << (games[i].patches[j].updated ? "True" : "False") << std::endl
                                 << "\tlanguage: " << languages << std::endl
                                 << std::endl;
                 }
@@ -408,6 +409,7 @@ void Downloader::listGames()
                                     << "\tname: " << games[i].dlcs[j].installers[k].name << std::endl
                                     << "\tpath: " << games[i].dlcs[j].installers[k].path << std::endl
                                     << "\tsize: " << games[i].dlcs[j].installers[k].size << std::endl
+                                    << "\tupdated: " << (games[i].dlcs[j].installers[k].updated ? "True" : "False") << std::endl
                                     << std::endl;
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
@@ -801,6 +803,10 @@ void Downloader::download()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
+                // Not updated, skip to next patch
+                if (config.bUpdateCheck && !games[i].patches[j].updated)
+                    continue;
+
                 // Get link
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())

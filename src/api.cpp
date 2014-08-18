@@ -431,7 +431,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                     else
                                     {
                                         game.patches.push_back(
-                                                                gameFile(   false, /* patches don't have "updated" flag */
+                                                                gameFile(   patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString()),
                                                                             patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
                                                                             patch["name"].asString(),
                                                                             patch["link"].asString(),
@@ -477,7 +477,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                 else
                                 {
                                     game.patches.push_back(
-                                                            gameFile(   false, /* patches don't have "updated" flag */
+                                                            gameFile(   patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString()),
                                                                         patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
                                                                         patchnode["name"].asString(),
                                                                         patchnode["link"].asString(),
