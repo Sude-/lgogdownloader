@@ -9,8 +9,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
-#include <regex>
 #include <jsoncpp/json/json.h>
+
+#if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) >= 40900
+#   define _regex_namespace_ std
+#   include <regex>
+#else
+#   define _regex_namespace_ boost
+#   include <boost/regex.hpp>
+#endif
 
 size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     std::ostringstream *stream = (std::ostringstream*)userp;
@@ -367,11 +374,11 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a patch
-                    std::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+patch\\d+", std::regex_constants::icase); // regex for patch node names
+                    _regex_namespace_::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+patch\\d+", _regex_namespace_::regex_constants::icase); // regex for patch node names
                     std::vector<std::string> patchnames;
                     for (unsigned int j = 0; j < membernames.size(); ++j)
                     {
-                        if (std::regex_match(membernames[j], re))
+                        if (_regex_namespace_::regex_match(membernames[j], re))
                         {   // Regex matches, we have a patch node
                             std::string patchname = membernames[j];
                             unsigned int platformId;
@@ -498,11 +505,11 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 if (lang & GlobalConstants::LANGUAGES[i].languageId)
                 {
                     // Try to find a language pack
-                    std::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+langpack\\d+", std::regex_constants::icase); // regex for language pack node names
+                    _regex_namespace_::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+langpack\\d+", _regex_namespace_::regex_constants::icase); // regex for language pack node names
                     std::vector<std::string> langpacknames;
                     for (unsigned int j = 0; j < membernames.size(); ++j)
                     {
-                        if (std::regex_match(membernames[j], re))
+                        if (_regex_namespace_::regex_match(membernames[j], re))
                             langpacknames.push_back(membernames[j]);
                     }
 
