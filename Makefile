@@ -5,6 +5,8 @@
 
 WORKDIR = `pwd`
 
+DESTDIR = 
+
 CC = gcc
 CXX = g++
 AR = ar
@@ -131,9 +133,11 @@ clean_release:
 	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
 install:
-	install $(OUT_RELEASE) /usr/bin
+	mkdir -p $(DESTDIR)/usr/bin
+	install $(OUT_RELEASE) $(DESTDIR)/usr/bin
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
-		install $(MAN_DIR)/$(MAN_PAGE).gz /usr/share/man/man1; \
+		mkdir -p $(DESTDIR)/usr/share/man/man1; \
+		install $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1; \
 	fi
 
 uninstall:
