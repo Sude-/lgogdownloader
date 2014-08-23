@@ -132,7 +132,7 @@ clean_release:
 	rm -rf $(OBJDIR_RELEASE)/src
 	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
-install:
+install: release
 	mkdir -p $(DESTDIR)/usr/bin
 	install $(OUT_RELEASE) $(DESTDIR)/usr/bin
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
