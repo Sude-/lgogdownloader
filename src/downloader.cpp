@@ -1697,7 +1697,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     std::string tagname_token;
 
     // Get login token
-    std::string html = this->getResponse("https://secure.gog.com/");
+    std::string html = this->getResponse("https://www.gog.com/");
     htmlcxx::HTML::ParserDom parser;
     tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
@@ -1705,13 +1705,28 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     // Find auth_url
     for (; it != end; ++it)
     {
-        if (it->tagName()=="input")
+        if (it->tagName()=="script")
         {
-            it->parseAttributes();
-            std::string id = it->attribute("id").second;
-            if (id == "auth_url")
+            std::string auth_url;
+            for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+            {
+                tree<htmlcxx::HTML::Node>::iterator script_it = dom.child(it, i);
+                if (!script_it->isTag() && !script_it->isComment())
+                {
+                    if (script_it->text().find("GalaxyAccounts") != std::string::npos)
+                    {
+                        boost::match_results<std::string::const_iterator> what;
+                        boost::regex expression(".*'(http.*)'.*");
+                        boost::regex_match(script_it->text(), what, expression);
+                        auth_url = what[1];
+                        break;
+                    }
+                }
+            }
+
+            if (!auth_url.empty())
             {   // Found auth_url, get the necessary info for login
-                std::string login_form_html = this->getResponse(it->attribute("value").second);
+                std::string login_form_html = this->getResponse(auth_url);
                 tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
                 tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
                 tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
@@ -1782,20 +1797,11 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
             std::cout << curl_easy_strerror(result) << std::endl;
     }
 
-    // Clean up the redirect url for login
+    // Get redirect url
     char *redirect_url;
     curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-    std::string url = (std::string)redirect_url;
-    url.assign(url.begin()+url.find("redirect_uri"), url.end());
-    url = htmlcxx::Uri::decode(url);
-    size_t position;
-    while ( (position = url.find("&amp;")) != std::string::npos )
-    {
-        url.replace(url.begin()+position, url.begin()+position+std::string("&amp;").length(), "&");
-    }
-    url = "https://auth.gog.com/auth?" + url;
 
-    curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
@@ -1806,29 +1812,12 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
         std::cout << curl_easy_strerror(result) << std::endl;
     }
 
-    std::string json = this->getResponse("https://secure.gog.com/user/ajax/?a=get");
+    html = this->getResponse("https://www.gog.com/account/settings");
 
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    bool parsingSuccessful = jsonparser->parse(json, root);
-    if (!parsingSuccessful)
-    {
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << json << std::endl;
-        #endif
-        std::cout << jsonparser->getFormatedErrorMessages();
-        return res = 0;
-    }
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl << root << std::endl;
-    #endif
-
-    if (root["user"]["email"].asString() == email && (result == CURLE_OK || result == CURLE_TOO_MANY_REDIRECTS))
+    if (html.find(email) != std::string::npos)
         res = 1; // Login successful
     else
         res = 0; // Login failed
-
-    delete jsonparser;
 
     return res;
 }
@@ -1845,7 +1834,7 @@ std::vector<gameItem> Downloader::getGames()
 
     do
     {
-        std::string response = this->getResponse("https://secure.gog.com/account/ajax?a=gamesShelfMore&s=title&q=&t=0&p=" + std::to_string(i));
+        std::string response = this->getResponse("https://www.gog.com/account/ajax?a=gamesShelfMore&s=title&q=&t=0&p=" + std::to_string(i));
 
         // Parse JSON
         if (!jsonparser->parse(response, root))
@@ -1916,7 +1905,7 @@ std::vector<gameItem> Downloader::getGames()
                                         Json::Value root;
                                         Json::Reader *jsonparser = new Json::Reader;
 
-                                        std::string gameDataUrl = "https://secure.gog.com/account/ajax?a=gamesListDetails&g=" + game.id;
+                                        std::string gameDataUrl = "https://www.gog.com/account/ajax?a=gamesListDetails&g=" + game.id;
                                         std::string json = this->getResponse(gameDataUrl);
                                         // Parse JSON
                                         if (!jsonparser->parse(json, root))
@@ -1971,7 +1960,7 @@ std::vector<gameItem> Downloader::getGames()
                                             {
                                                 it->parseAttributes();
                                                 std::string href = it->attribute("href").second;
-                                                std::string search_string = "/downlink/file/"; // Extra links: https://secure.gog.com/downlink/file/gamename/id_number
+                                                std::string search_string = "/downlink/file/"; // Extra links: https://www.gog.com/downlink/file/gamename/id_number
                                                 if (href.find(search_string)!=std::string::npos)
                                                 {
                                                     std::string gamename;
@@ -2013,7 +2002,7 @@ std::vector<gameItem> Downloader::getFreeGames()
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     std::vector<gameItem> games;
-    std::string json = this->getResponse("https://secure.gog.com/games/ajax?a=search&f={\"price\":[\"free\"],\"sort\":\"title\"}&p=1&t=all");
+    std::string json = this->getResponse("https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&price=free&sort=title");
 
     // Parse JSON
     if (!jsonparser->parse(json, root))
@@ -2028,31 +2017,16 @@ std::vector<gameItem> Downloader::getFreeGames()
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << root << std::endl;
     #endif
-    std::string html = root["result"]["html"].asString();
-    delete jsonparser;
 
-    // Parse HTML to get game names
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    for (; it != end; ++it)
+    Json::Value products = root["products"];
+    for (unsigned int i = 0; i < products.size(); ++i)
     {
-        if (it->tagName()=="span")
-        {
-            it->parseAttributes();
-            std::string classname = it->attribute("class").second;
-            if (classname=="gog-price game-owned")
-            {
-                gameItem game;
-                // Game name is contained in data-gameindex attribute
-                game.name = it->attribute("data-gameindex").second;
-                game.id = it->attribute("data-gameid").second;
-                if (!game.name.empty() && !game.id.empty())
-                    games.push_back(game);
-            }
-        }
+        gameItem game;
+        game.name = products[i]["slug"].asString();
+        game.id = products[i]["id"].isInt() ? std::to_string(products[i]["id"].asInt()) : products[i]["id"].asString();
+        games.push_back(game);
     }
+    delete jsonparser;
 
     return games;
 }
@@ -2063,7 +2037,7 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
     Json::Reader *jsonparser = new Json::Reader;
     std::vector<gameFile> extras;
 
-    std::string gameDataUrl = "https://secure.gog.com/account/ajax?a=gamesListDetails&g=" + gameid;
+    std::string gameDataUrl = "https://www.gog.com/account/ajax?a=gamesListDetails&g=" + gameid;
     std::string json = this->getResponse(gameDataUrl);
     // Parse JSON
     if (!jsonparser->parse(json, root))
@@ -2091,7 +2065,7 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
         {
             it->parseAttributes();
             std::string href = it->attribute("href").second;
-            // Extra links https://secure.gog.com/downlink/file/gamename/id_number
+            // Extra links https://www.gog.com/downlink/file/gamename/id_number
             if (href.find("/downlink/file/" + gamename + "/")!=std::string::npos)
             {
                 std::string id, name, path;
