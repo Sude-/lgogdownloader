@@ -351,9 +351,9 @@ void Downloader::listGames()
                     }
 
                     std::string languages;
-                    for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
+                    for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the patch supports
                     {
-                        if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].languageId)
+                        if (games[i].patches[j].language & GlobalConstants::LANGUAGES[k].languageId)
                             languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
                     }
 
