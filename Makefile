@@ -133,9 +133,9 @@ clean_release:
 	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
 install: release
-	install -D -m 755 $(OUT_RELEASE) $(DESTDIR)/usr/bin
+	install -D -m 755 $(OUT_RELEASE) $(DESTDIR)/usr/bin/lgogdownloader
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
-		install -D -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1; \
+		install -D -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1/$(MAN_PAGE).gz; \
 	fi
 
 uninstall:
