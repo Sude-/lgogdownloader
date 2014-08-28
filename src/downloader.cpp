@@ -83,7 +83,7 @@ int Downloader::init()
         return 1;
 
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
-        coverXML = this->getResponse("https://sites.google.com/site/gogdownloader/covers.xml");
+        coverXML = this->getResponse(config.sCoverList);
 
     if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
         this->getGameList();
