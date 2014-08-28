@@ -133,11 +133,9 @@ clean_release:
 	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
 install: release
-	mkdir -p $(DESTDIR)/usr/bin
-	install $(OUT_RELEASE) $(DESTDIR)/usr/bin
+	install -D -m 755 $(OUT_RELEASE) $(DESTDIR)/usr/bin
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
-		mkdir -p $(DESTDIR)/usr/share/man/man1; \
-		install $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1; \
+		install -D -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1; \
 	fi
 
 uninstall:
