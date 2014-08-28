@@ -554,6 +554,18 @@ void Downloader::repair()
                     continue;
                 }
 
+                // Get XML data
+                std::string XML = "";
+                if (config.bRemoteXML)
+                {
+                    XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
+                    if (gogAPI->getError())
+                    {
+                        std::cout << gogAPI->getErrorMessage() << std::endl;
+                        gogAPI->clearError();
+                    }
+                }
+
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())
                 {
@@ -562,7 +574,7 @@ void Downloader::repair()
                     continue;
                 }
                 std::cout << "Repairing file " << filepath << std::endl;
-                this->repairFile(url, filepath, std::string(), games[i].gamename);
+                this->repairFile(url, filepath, XML, games[i].gamename);
                 std::cout << std::endl;
             }
         }
@@ -652,6 +664,18 @@ void Downloader::repair()
                             continue;
                         }
 
+                        // Get XML data
+                        std::string XML = "";
+                        if (config.bRemoteXML)
+                        {
+                            XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
+                            if (gogAPI->getError())
+                            {
+                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                gogAPI->clearError();
+                            }
+                        }
+
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                         if (gogAPI->getError())
                         {
@@ -660,7 +684,7 @@ void Downloader::repair()
                             continue;
                         }
                         std::cout << "Repairing file " << filepath << std::endl;
-                        this->repairFile(url, filepath, std::string(), games[i].dlcs[j].gamename);
+                        this->repairFile(url, filepath, XML, games[i].dlcs[j].gamename);
                         std::cout << std::endl;
                     }
                 }
