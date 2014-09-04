@@ -1838,10 +1838,69 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 
     html = this->getResponse("https://www.gog.com/account/settings");
 
-    if (html.find(email) != std::string::npos)
+    std::string account_email, username;
+    dom = parser.parseTree(html);
+    it = dom.begin();
+    end = dom.end();
+    bool bEmailFound = false;
+    bool bUsernameFound = false;
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="input")
+        {
+            it->parseAttributes();
+            if (it->attribute("id").second == "accountEditEmail")
+            {
+                account_email = it->attribute("value").second;
+                bEmailFound = true;
+            }
+        }
+        else if (it->tagName()=="span")
+        {
+            it->parseAttributes();
+            if (it->attribute("class").second == "nickname")
+            {
+                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+                {
+                    tree<htmlcxx::HTML::Node>::iterator nick_it = dom.child(it, i);
+                    if (!nick_it->isTag() && !nick_it->isComment())
+                    {
+                        username = nick_it->text();
+                        bUsernameFound = true;
+                    }
+                }
+            }
+        }
+
+        if (bUsernameFound && bEmailFound)
+            break;
+    }
+
+    if (email == account_email || email == username)
+    {
         res = 1; // Login successful
+    }
     else
+    {
+        #ifdef DEBUG
+            std::cerr   << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
+            if (!bEmailFound || !bUsernameFound)
+            {
+                if (!bEmailFound)
+                    std::cerr << "Could not find \"accountEditEmail\" input field on account settings page." << std::endl;
+                if (!bUsernameFound)
+                    std::cerr << "Could not find username on account settings page." << std::endl;
+            }
+            else
+            {
+                if (email != account_email)
+                    std::cerr << "Email (" << email << ") doesn't match account email (" << account_email << ")" << std::endl;
+                if (email != username)
+                    std::cerr << "Username (" << email << ") doesn't match account username (" << username << ")" << std::endl;
+            }
+        #endif
         res = 0; // Login failed
+    }
 
     return res;
 }
