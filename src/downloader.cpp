@@ -23,6 +23,7 @@
 #include <jsoncpp/json/json.h>
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/Uri.h>
+#include <boost/algorithm/string/case_conv.hpp>
 
 namespace bptime = boost::posix_time;
 
@@ -1876,7 +1877,12 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
             break;
     }
 
-    if (email == account_email || email == username)
+    // Convert to lowercase for comparison
+    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
+    boost::algorithm::to_lower(account_email);
+    boost::algorithm::to_lower(username);
+
+    if (email_lowercase == account_email || email_lowercase == username)
     {
         res = 1; // Login successful
     }
@@ -1893,10 +1899,10 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
             }
             else
             {
-                if (email != account_email)
-                    std::cerr << "Email (" << email << ") doesn't match account email (" << account_email << ")" << std::endl;
-                if (email != username)
-                    std::cerr << "Username (" << email << ") doesn't match account username (" << username << ")" << std::endl;
+                if (email_lowercase != account_email)
+                    std::cerr << "Email (" << email_lowercase << ") doesn't match account email (" << account_email << ")" << std::endl;
+                if (email_lowercase != username)
+                    std::cerr << "Username (" << email_lowercase << ") doesn't match account username (" << username << ")" << std::endl;
             }
         #endif
         res = 0; // Login failed
