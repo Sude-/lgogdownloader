@@ -6,6 +6,8 @@
 WORKDIR = `pwd`
 
 DESTDIR = 
+PREFIX = /usr
+MANPREFIX = $(PREFIX)/share
 
 CC = gcc
 CXX = g++
@@ -133,15 +135,17 @@ clean_release:
 	rm -f $(MAN_DIR)/$(MAN_PAGE) $(MAN_DIR)/$(MAN_PAGE).gz
 
 install: release
-	install -D -m 755 $(OUT_RELEASE) $(DESTDIR)/usr/bin/lgogdownloader
+	install -d $(DESTDIR)/$(PREFIX)/bin/
+	install -m 755 $(OUT_RELEASE) $(DESTDIR)/$(PREFIX)/bin/lgogdownloader
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
-		install -D -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/usr/share/man/man1/$(MAN_PAGE).gz; \
+		install -d $(DESTDIR)/$(MANPREFIX)/man/man1/; \
+		install -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/$(MANPREFIX)/man/man1/$(MAN_PAGE).gz; \
 	fi
 
 uninstall:
-	rm /usr/bin/lgogdownloader
-	if test -f /usr/share/man/man1/$(MAN_PAGE).gz; then \
-		rm /usr/share/man/man1/$(MAN_PAGE).gz; \
+	rm $(DESTDIR)/$(PREFIX)/bin/lgogdownloader
+	if test -f $(DESTDIR)/$(MANPREFIX)/man/man1/$(MAN_PAGE).gz; then \
+		rm $(DESTDIR)/$(MANPREFIX)/man/man1/$(MAN_PAGE).gz; \
 	fi
 
 .PHONY: before_debug after_debug clean_debug before_release after_release clean_release
