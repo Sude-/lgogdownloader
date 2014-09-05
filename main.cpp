@@ -98,6 +98,7 @@ int main(int argc, char *argv[])
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg)$"; // Limit to files with these extensions (".old" is for renamed older version files)
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
 
+    std::vector<std::string> unrecognized_options_cfg;
     bpo::variables_map vm;
     bpo::options_description options_cli_all("Options");
     bpo::options_description options_cli_no_cfg;
@@ -187,9 +188,11 @@ int main(int argc, char *argv[])
             }
             else
             {
-                bpo::store(bpo::parse_config_file(ifs, options_cfg_all), vm);
+                bpo::parsed_options parsed = bpo::parse_config_file(ifs, options_cfg_all, true);
+                bpo::store(parsed, vm);
                 bpo::notify(vm);
                 ifs.close();
+                unrecognized_options_cfg = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
             }
         }
         if (boost::filesystem::exists(config.sBlacklistFilePath))
@@ -305,6 +308,16 @@ int main(int argc, char *argv[])
     if (!config.sDirectory.empty())
         if (config.sDirectory.at(config.sDirectory.length()-1)!='/')
             config.sDirectory += "/";
+
+    if (!unrecognized_options_cfg.empty() && (!config.bSaveConfig || !config.bResetConfig))
+    {
+        std::cerr << "Unrecognized options in " << config.sConfigFilePath << std::endl;
+        for (unsigned int i = 0; i < unrecognized_options_cfg.size(); i+=2)
+        {
+            std::cerr << unrecognized_options_cfg[i] << " = " << unrecognized_options_cfg[i+1] << std::endl;
+        }
+        std::cerr << std::endl;
+    }
 
     Downloader downloader(config);
     int initResult = downloader.init();
