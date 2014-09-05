@@ -120,6 +120,7 @@ int main(int argc, char *argv[])
         bool bNoSubDirectories = false;
         bool bNoDeb = false;
         bool bNoTarGz = false;
+        bool bNoCover = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
@@ -137,6 +138,7 @@ int main(int argc, char *argv[])
             ("save-config", bpo::value<bool>(&config.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
             ("report", bpo::value<bool>(&config.bReport)->zero_tokens()->default_value(false), "Save report of downloaded/repaired files")
+            ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -266,6 +268,10 @@ int main(int argc, char *argv[])
         config.bDLC = !bNoDLC;
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
+
+        // Override cover option
+        if (bNoCover)
+            config.bCover = false;
     }
     catch (std::exception& e)
     {
