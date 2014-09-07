@@ -1966,6 +1966,20 @@ std::vector<gameItem> Downloader::getGames()
                 // Game name is contained in data-gameindex attribute
                 game.name = it->attribute("data-gameindex").second;
                 game.id = it->attribute("data-gameid").second;
+
+                // Get platform info
+                std::string tags = it->attribute("data-title").second;
+                unsigned int platform = GlobalConstants::PLATFORM_WINDOWS; // The tags don't specify Windows support so assume that there's always a Windows version
+
+                if (tags.find("linux") != std::string::npos)
+                    platform |= GlobalConstants::PLATFORM_LINUX;
+                if (tags.find("osx mac") != std::string::npos)
+                    platform |= GlobalConstants::PLATFORM_MAC;
+
+                // Skip if platform doesn't match
+                if (!(platform & config.iInstallerType))
+                    continue;
+
                 if (!game.name.empty() && !game.id.empty())
                 {
                     // Check for DLC
