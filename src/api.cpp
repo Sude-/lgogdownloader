@@ -26,13 +26,14 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     return count;
 }
 
-gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language, const int& t_silent)
+gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language, const unsigned int& t_platform, const int& t_silent)
 {
     this->updated = t_updated;
     this->id = t_id;
     this->name = t_name;
     this->path = t_path;
     this->size = t_size;
+    this->platform = t_platform;
     this->language = t_language;
     this->silent = t_silent;
 }
@@ -277,6 +278,12 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
     std::string url;
     gameDetails game;
     unsigned int type = platform;
+    struct gameFileInfo
+    {
+        Json::Value jsonNode;
+        unsigned int platform;
+        unsigned int language;
+    };
 
     url = this->config.get_game_details + game_name + "/" + "installer_win_en"; // can't get game details without file id, any file id seems to return all details which is good for us
     std::string json = this->getResponseOAuth(url);
@@ -297,7 +304,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             // Installer details
             // Create a list of installers from JSON
-            std::vector<std::pair<Json::Value,unsigned int>> installers;
+            std::vector<gameFileInfo> installers;
             for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
             {   // Check against the specified platforms
                 if (type & GlobalConstants::PLATFORMS[i].platformId)
@@ -308,7 +315,13 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         if (lang & GlobalConstants::LANGUAGES[j].languageId)
                         {   // Make sure that the installer exists in the JSON
                             if (root["game"].isMember(installer+GlobalConstants::LANGUAGES[j].languageCode))
-                                installers.push_back(std::make_pair(root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode],GlobalConstants::LANGUAGES[j].languageId));
+                            {
+                                gameFileInfo installerInfo;
+                                installerInfo.jsonNode = root["game"][installer+GlobalConstants::LANGUAGES[j].languageCode];
+                                installerInfo.platform = GlobalConstants::PLATFORMS[i].platformId;
+                                installerInfo.language = GlobalConstants::LANGUAGES[j].languageId;
+                                installers.push_back(installerInfo);
+                            }
                         }
                     }
                 }
@@ -316,10 +329,10 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
             for ( unsigned int i = 0; i < installers.size(); ++i )
             {
-                for ( unsigned int index = 0; index < installers[i].first.size(); ++index )
+                for ( unsigned int index = 0; index < installers[i].jsonNode.size(); ++index )
                 {
-                    Json::Value installer = installers[i].first[index];
-                    unsigned int language = installers[i].second;
+                    Json::Value installer = installers[i].jsonNode[index];
+                    unsigned int language = installers[i].language;
 
                     // Check for duplicate installers in different languages and add languageId of duplicate installer to the original installer
                     // https://secure.gog.com/forum/general/introducing_the_beta_release_of_the_new_gogcom_downloader/post1483
@@ -346,6 +359,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                             installer["link"].asString(),
                                                             installer["size"].asString(),
                                                             language,
+                                                            installers[i].platform,
                                                             installer["silent"].isInt() ? installer["silent"].asInt() : std::stoi(installer["silent"].asString())
                                                          )
                                             );
@@ -375,30 +389,31 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 {
                     // Try to find a patch
                     _regex_namespace_::regex re(GlobalConstants::LANGUAGES[i].languageCode + "\\d+patch\\d+", _regex_namespace_::regex_constants::icase); // regex for patch node names
-                    std::vector<std::string> patchnames;
+                    std::vector<gameFileInfo> patches;
                     for (unsigned int j = 0; j < membernames.size(); ++j)
                     {
                         if (_regex_namespace_::regex_match(membernames[j], re))
                         {   // Regex matches, we have a patch node
-                            std::string patchname = membernames[j];
-                            unsigned int platformId;
-                            if (root["game"][patchname]["link"].asString().find("/mac/") != std::string::npos)
-                                platformId = GlobalConstants::PLATFORM_MAC;
-                            else if (root["game"][patchname]["link"].asString().find("/linux/") != std::string::npos)
-                                platformId = GlobalConstants::PLATFORM_LINUX;
+                            gameFileInfo patchInfo;
+                            patchInfo.jsonNode = root["game"][membernames[j]];
+                            patchInfo.language = GlobalConstants::LANGUAGES[i].languageId;
+                            if (patchInfo.jsonNode["link"].asString().find("/mac/") != std::string::npos)
+                                patchInfo.platform = GlobalConstants::PLATFORM_MAC;
+                            else if (patchInfo.jsonNode["link"].asString().find("/linux/") != std::string::npos)
+                                patchInfo.platform = GlobalConstants::PLATFORM_LINUX;
                             else
-                                platformId = GlobalConstants::PLATFORM_WINDOWS;
+                                patchInfo.platform = GlobalConstants::PLATFORM_WINDOWS;
 
-                            if (type & platformId)
-                                patchnames.push_back(patchname);
+                            if (type & patchInfo.platform)
+                                patches.push_back(patchInfo);
                         }
                     }
 
-                    if (!patchnames.empty()) // found at least one patch
+                    if (!patches.empty()) // found at least one patch
                     {
-                        for (unsigned int i = 0; i < patchnames.size(); ++i)
+                        for (unsigned int j = 0; j < patches.size(); ++j)
                         {
-                            Json::Value patchnode = root["game"][patchnames[i]];
+                            Json::Value patchnode = patches[j].jsonNode;
                             if (patchnode.isArray()) // Patch has multiple files
                             {
                                 for ( unsigned int index = 0; index < patchnode.size(); ++index )
@@ -431,7 +446,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                                                 patch["name"].asString(),
                                                                                 patch["link"].asString(),
                                                                                 patch["size"].asString(),
-                                                                                GlobalConstants::LANGUAGES[i].languageId
+                                                                                GlobalConstants::LANGUAGES[i].languageId,
+                                                                                patches[j].platform
                                                                             )
                                                                 );
                                     }
@@ -443,7 +459,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                                             patch["name"].asString(),
                                                                             patch["link"].asString(),
                                                                             patch["size"].asString(),
-                                                                            GlobalConstants::LANGUAGES[i].languageId
+                                                                            GlobalConstants::LANGUAGES[i].languageId,
+                                                                            patches[j].platform
                                                                         )
                                                             );
                                     }
@@ -455,11 +472,11 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                 if (useDuplicateHandler)
                                 {
                                     bool bDuplicate = false;
-                                    for (unsigned int j = 0; j < game.patches.size(); ++j)
+                                    for (unsigned int k = 0; k < game.patches.size(); ++k)
                                     {
-                                        if (game.patches[j].path == patchnode["link"].asString())
+                                        if (game.patches[k].path == patchnode["link"].asString())
                                         {
-                                            game.patches[j].language |= GlobalConstants::LANGUAGES[i].languageId; // Add language code to patch
+                                            game.patches[k].language |= GlobalConstants::LANGUAGES[i].languageId; // Add language code to patch
                                             bDuplicate = true;
                                             break;
                                         }
@@ -477,7 +494,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                                             patchnode["name"].asString(),
                                                                             patchnode["link"].asString(),
                                                                             patchnode["size"].asString(),
-                                                                            GlobalConstants::LANGUAGES[i].languageId
+                                                                            GlobalConstants::LANGUAGES[i].languageId,
+                                                                            patches[j].platform
                                                                         )
                                                             );
                                 }
@@ -489,7 +507,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                                                         patchnode["name"].asString(),
                                                                         patchnode["link"].asString(),
                                                                         patchnode["size"].asString(),
-                                                                        GlobalConstants::LANGUAGES[i].languageId
+                                                                        GlobalConstants::LANGUAGES[i].languageId,
+                                                                        patches[j].platform
                                                                      )
                                                             );
                                 }
