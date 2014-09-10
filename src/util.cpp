@@ -133,19 +133,26 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
     chunks = (remaining == 0) ? filesize/chunk_size : (filesize/chunk_size)+1;
     std::cout   << "Filesize: " << filesize << " bytes" << std::endl
                 << "Chunks: " << chunks << std::endl
-                << "Chunk size: " << (chunk_size >> 20) << " MB" << std::endl
-                << "MD5: " << std::flush;
-    std::string file_md5 = Util::getFileHash(filepath.c_str(), RHASH_MD5);
-    std::cout << file_md5 << std::endl;
+                << "Chunk size: " << (chunk_size >> 20) << " MB" << std::endl;
 
     TiXmlDocument xml;
     TiXmlElement *fileElem = new TiXmlElement("file");
     fileElem->SetAttribute("name", filename);
-    fileElem->SetAttribute("md5", file_md5);
     fileElem->SetAttribute("chunks", chunks);
     fileElem->SetAttribute("total_size", std::to_string(filesize));
 
     std::cout << "Getting MD5 for chunks" << std::endl;
+
+    rhash rhash_context;
+    rhash_library_init();
+    rhash_context = rhash_init(RHASH_MD5);
+    if(!rhash_context)
+    {
+        std::cerr << "error: couldn't initialize rhash context" << std::endl;
+        return res;
+    }
+    char rhash_result[rhash_get_hash_length(RHASH_MD5)];
+
     for (i = 0; i < chunks; i++) {
         size_t range_begin = i*chunk_size;
         fseek(infile, range_begin, SEEK_SET);
@@ -165,7 +172,10 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
             free(chunk);
             return res;
         }
+
         std::string hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
+        rhash_update(rhash_context, chunk, chunk_size); // Update hash for the whole file
+
         free(chunk);
 
         TiXmlElement *chunkElem = new TiXmlElement("chunk");
@@ -180,9 +190,18 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
         std::cout << "Chunks hashed " << (i+1) << " / " << chunks << "\r" << std::flush;
     }
     fclose(infile);
+
+    rhash_final(rhash_context, NULL);
+    rhash_print(rhash_result, rhash_context, RHASH_MD5, RHPR_HEX);
+    rhash_free(rhash_context);
+
+    std::string file_md5 = rhash_result;
+    std::cout << std::endl << "MD5: " << file_md5 << std::endl;
+    fileElem->SetAttribute("md5", file_md5);
+
     xml.LinkEndChild(fileElem);
 
-    std::cout << std::endl << "Writing XML: " << filenameXML << std::endl;
+    std::cout << "Writing XML: " << filenameXML << std::endl;
     if ((xmlfile=fopen(filenameXML.c_str(), "w"))!=NULL) {
         xml.Print(xmlfile);
         fclose(xmlfile);
