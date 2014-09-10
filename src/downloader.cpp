@@ -1728,6 +1728,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
     tree<htmlcxx::HTML::Node>::iterator end = dom.end();
     // Find auth_url
+    bool bFoundAuthUrl = false;
     for (; it != end; ++it)
     {
         if (it->tagName()=="script")
@@ -1751,7 +1752,12 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
 
             if (!auth_url.empty())
             {   // Found auth_url, get the necessary info for login
+                bFoundAuthUrl = true;
                 std::string login_form_html = this->getResponse(auth_url);
+                #ifdef DEBUG
+                    std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
+                    std::cerr << login_form_html << std::endl;
+                #endif
                 tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
                 tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
                 tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
@@ -1788,6 +1794,11 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
                 break;
             }
         }
+    }
+
+    if (!bFoundAuthUrl)
+    {
+        std::cout << "Failed to find url for login form" << std::endl;
     }
 
     if (token.empty())
