@@ -34,45 +34,6 @@ int main(int argc, char *argv[])
     char *xdgcache = getenv("XDG_CACHE_HOME");
     std::string home = (std::string)getenv("HOME");
 
-    if (xdgconfig)
-    {
-        config.sConfigDirectory = (std::string)xdgconfig + "/lgogdownloader";
-    }
-    else
-    {
-        config.sConfigDirectory = home + "/.config/lgogdownloader";
-    }
-
-    config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
-    config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
-    config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
-
-    if (xdgcache)
-        config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
-    else
-        config.sXMLDirectory = home + "/.cache/lgogdownloader/xml";
-
-    // Create lgogdownloader directories
-    boost::filesystem::path path = config.sXMLDirectory;
-    if (!boost::filesystem::exists(path))
-    {
-        if (!boost::filesystem::create_directories(path))
-        {
-            std::cout << "Failed to create directory: " << path << std::endl;
-            return 1;
-        }
-    }
-
-    path = config.sConfigDirectory;
-    if (!boost::filesystem::exists(path))
-    {
-        if (!boost::filesystem::create_directories(path))
-        {
-            std::cout << "Failed to create directory: " << path << std::endl;
-            return 1;
-        }
-    }
-
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
     unsigned int platform_sum = 0;
@@ -180,6 +141,58 @@ int main(int argc, char *argv[])
         bpo::store(bpo::parse_command_line(argc, argv, options_cli_all), vm);
         bpo::notify(vm);
 
+        if (vm.count("help"))
+        {
+            std::cout   << config.sVersionString << std::endl
+                        << options_cli_all << std::endl;
+            return 0;
+        }
+
+        if (vm.count("version"))
+        {
+            std::cout << VERSION_STRING << std::endl;
+            return 0;
+        }
+
+        if (xdgconfig)
+        {
+            config.sConfigDirectory = (std::string)xdgconfig + "/lgogdownloader";
+        }
+        else
+        {
+            config.sConfigDirectory = home + "/.config/lgogdownloader";
+        }
+
+        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
+        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
+        config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
+
+        if (xdgcache)
+            config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
+        else
+            config.sXMLDirectory = home + "/.cache/lgogdownloader/xml";
+
+        // Create lgogdownloader directories
+        boost::filesystem::path path = config.sXMLDirectory;
+        if (!boost::filesystem::exists(path))
+        {
+            if (!boost::filesystem::create_directories(path))
+            {
+                std::cout << "Failed to create directory: " << path << std::endl;
+                return 1;
+            }
+        }
+
+        path = config.sConfigDirectory;
+        if (!boost::filesystem::exists(path))
+        {
+            if (!boost::filesystem::create_directories(path))
+            {
+                std::cout << "Failed to create directory: " << path << std::endl;
+                return 1;
+            }
+        }
+
         if (boost::filesystem::exists(config.sConfigFilePath))
         {
             std::ifstream ifs(config.sConfigFilePath.c_str());
@@ -229,19 +242,6 @@ int main(int argc, char *argv[])
             if (bNoTarGz)
                 lines.push_back("Rp .*\\.tar\\.gz$");
             config.blacklist.initialize(lines);
-        }
-
-        if (vm.count("help"))
-        {
-            std::cout   << config.sVersionString << std::endl
-                        << options_cli_all << std::endl;
-            return 0;
-        }
-
-        if (vm.count("version"))
-        {
-            std::cout << VERSION_STRING << std::endl;
-            return 0;
         }
 
         if (vm.count("chunk-size"))
