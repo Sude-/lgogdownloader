@@ -775,7 +775,7 @@ void Downloader::download()
                     if (config.bRemoteXML)
                         XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (!games[i].installers[j].name.empty())
-                        std::cout << "Dowloading: " << games[i].installers[j].name << std::endl;
+                        std::cout << "Downloading: " << games[i].installers[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
@@ -809,7 +809,7 @@ void Downloader::download()
                 if (!url.empty())
                 {
                     if (!games[i].extras[j].name.empty())
-                        std::cout << "Dowloading: " << games[i].extras[j].name << std::endl;
+                        std::cout << "Downloading: " << games[i].extras[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     CURLcode result = this->downloadFile(url, filepath);
                     std::cout << std::endl;
@@ -857,7 +857,7 @@ void Downloader::download()
                     if (config.bRemoteXML)
                         XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                     if (!games[i].patches[j].name.empty())
-                        std::cout << "Dowloading: " << games[i].patches[j].name << std::endl;
+                        std::cout << "Downloading: " << games[i].patches[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
@@ -894,7 +894,7 @@ void Downloader::download()
                     if (config.bRemoteXML)
                         XML = gogAPI->getXML(games[i].gamename, games[i].languagepacks[j].id);
                     if (!games[i].languagepacks[j].name.empty())
-                        std::cout << "Dowloading: " << games[i].gamename << " " << games[i].languagepacks[j].name << std::endl;
+                        std::cout << "Downloading: " << games[i].gamename << " " << games[i].languagepacks[j].name << std::endl;
                     std::cout << filepath << std::endl;
                     this->downloadFile(url, filepath, XML, games[i].gamename);
                     std::cout << std::endl;
@@ -934,7 +934,7 @@ void Downloader::download()
                             if (config.bRemoteXML)
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                             if (!games[i].dlcs[j].installers[k].name.empty())
-                                std::cout << "Dowloading: " << games[i].dlcs[j].installers[k].name << std::endl;
+                                std::cout << "Downloading: " << games[i].dlcs[j].installers[k].name << std::endl;
                             std::cout << filepath << std::endl;
                             this->downloadFile(url, filepath, XML, games[i].dlcs[j].gamename);
                             std::cout << std::endl;
@@ -970,7 +970,7 @@ void Downloader::download()
                             if (config.bRemoteXML)
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                             if (!games[i].dlcs[j].patches[k].name.empty())
-                                std::cout << "Dowloading: " << games[i].dlcs[j].patches[k].name << std::endl;
+                                std::cout << "Downloading: " << games[i].dlcs[j].patches[k].name << std::endl;
                             std::cout << filepath << std::endl;
                             this->downloadFile(url, filepath, XML, games[i].dlcs[j].gamename);
                             std::cout << std::endl;
