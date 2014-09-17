@@ -1381,10 +1381,25 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (this->config.bDownload)
         {
             std::cout << "Redownloading file" << std::endl;
-            boost::filesystem::path path = filepath;
-            if (!boost::filesystem::remove(path))
+
+            boost::filesystem::path new_name = filepath + ".old"; // Rename old file by appending ".old" to filename
+            std::cout << "Renaming old file to " << new_name.string() << std::endl;
+            if (boost::filesystem::exists(new_name))
+            {   // One even older file exists, delete the older file before renaming
+                std::cout << "Old renamed file found, deleting old renamed file" << std::endl;
+                if (!boost::filesystem::remove(new_name))
+                {
+                    std::cout << "Failed to delete " << new_name.string() << std::endl;
+                    std::cout << "Skipping file" << std::endl;
+                    return res = 0;
+                }
+            }
+            boost::system::error_code ec;
+            boost::filesystem::rename(pathname, new_name, ec); // Rename the file
+            if (ec)
             {
-                std::cout << "Failed to delete " << path << std::endl;
+                std::cout << "Failed to rename " << filepath << " to " << new_name.string() << std::endl;
+                std::cout << "Skipping file" << std::endl;
                 res = 0;
             }
             else
