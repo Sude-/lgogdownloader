@@ -91,10 +91,10 @@ int Downloader::init()
 
     if (config.bReport && (config.bDownload || config.bRepair))
     {
-        this->report_ofs.open("lgogdownloader-report.log");
+        this->report_ofs.open(config.sReportFilePath);
         if (!this->report_ofs)
         {
-            std::cout << "Failed to create lgogdownloader-report.log" << std::endl;
+            std::cout << "Failed to create " << config.sReportFilePath << std::endl;
             return 1;
         }
     }

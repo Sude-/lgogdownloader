@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
         bool bNoDeb = false;
         bool bNoTarGz = false;
         bool bNoCover = false;
+        config.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
@@ -98,7 +99,7 @@ int main(int argc, char *argv[])
             ("status", bpo::value<bool>(&config.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version")
             ("save-config", bpo::value<bool>(&config.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
-            ("report", bpo::value<bool>(&config.bReport)->zero_tokens()->default_value(false), "Save report of downloaded/repaired files")
+            ("report", bpo::value<std::string>(&config.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
         ;
         // Commandline options (config file)
@@ -253,6 +254,9 @@ int main(int argc, char *argv[])
         if (vm.count("check-orphans"))
             if (config.sOrphanRegex.empty())
                 config.sOrphanRegex = orphans_regex_default;
+
+        if (vm.count("report"))
+            config.bReport = true;
 
         if (config.iWait > 0)
             config.iWait *= 1000;

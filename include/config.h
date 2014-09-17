@@ -53,6 +53,7 @@ class Config
         std::string sBlacklistFilePath;
         std::string sOrphanRegex;
         std::string sCoverList;
+        std::string sReportFilePath;
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
         int iRetries;
