@@ -16,3 +16,13 @@ gameFile::~gameFile()
 {
     //dtor
 }
+
+void gameFile::setFilepath(const std::string& path)
+{
+    this->filepath = path;
+}
+
+std::string gameFile::getFilepath()
+{
+    return this->filepath;
+}

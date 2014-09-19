@@ -3,6 +3,7 @@
 
 #include "globalconstants.h"
 #include "gamefile.h"
+#include "config.h"
 
 #include <iostream>
 #include <vector>
@@ -10,6 +11,7 @@
 class gameDetails
 {
     public:
+        gameDetails();
         std::vector<gameFile> extras;
         std::vector<gameFile> installers;
         std::vector<gameFile> patches;
@@ -18,6 +20,8 @@ class gameDetails
         std::string gamename;
         std::string title;
         std::string icon;;
+        void makeFilepaths(const Config& config);
+        virtual ~gameDetails();
     protected:
     private:
 };

@@ -18,9 +18,12 @@ class gameFile
         unsigned int platform;
         unsigned int language;
         int silent;
+        void setFilepath(const std::string& path);
+        std::string getFilepath();
         virtual ~gameFile();
     protected:
     private:
+        std::string filepath;
 };
 
 #endif // GAMEFILE_H

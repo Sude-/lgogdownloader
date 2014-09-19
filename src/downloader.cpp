@@ -239,6 +239,9 @@ int Downloader::getGameDetails()
                     game.dlcs.push_back(dlc);
                 }
             }
+
+            game.makeFilepaths(config);
+
             if (!config.bUpdateCheck)
                 games.push_back(game);
             else
@@ -289,8 +292,8 @@ void Downloader::listGames()
                 {
                     if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
-                        if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                        std::string filepath = games[i].installers[j].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -320,9 +323,8 @@ void Downloader::listGames()
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
                 {
-                    std::string subdir = config.bSubDirectories ? "extras" : "";
-                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
-                    if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                    std::string filepath = games[i].extras[j].getFilepath();
+                    if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
                             std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -342,9 +344,8 @@ void Downloader::listGames()
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
                 {
-                    std::string subdir = config.bSubDirectories ? "patches" : "";
-                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
-                    if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                    std::string filepath = games[i].patches[j].getFilepath();
+                    if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
                             std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -373,9 +374,8 @@ void Downloader::listGames()
                 std::cout << "language packs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
                 {
-                    std::string subdir = config.bSubDirectories ? "languagepacks" : "";
-                    std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
-                    if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                    std::string filepath = games[i].languagepacks[j].getFilepath();
+                    if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
                             std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -396,9 +396,8 @@ void Downloader::listGames()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string subdir = (config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -415,9 +414,8 @@ void Downloader::listGames()
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir)) {
+                        std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
                             continue;
@@ -432,9 +430,8 @@ void Downloader::listGames()
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir)) {
+                        std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
                             continue;
@@ -475,8 +472,8 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
-                if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                std::string filepath = games[i].installers[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -519,9 +516,8 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                std::string subdir = config.bSubDirectories ? "extras" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].extras[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -546,9 +542,8 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
-                std::string subdir = config.bSubDirectories ? "patches" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].patches[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -585,9 +580,8 @@ void Downloader::repair()
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
-                std::string subdir = config.bSubDirectories ? "languagepacks" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].languagepacks[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -614,9 +608,8 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string subdir = (config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -657,9 +650,8 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir)) {
+                        std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
                             continue;
@@ -693,9 +685,8 @@ void Downloader::repair()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir)) {
+                        std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
                             continue;
@@ -731,7 +722,7 @@ void Downloader::download()
             if (!games[i].installers.empty())
             {
                 // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[0].path, games[i].gamename);
+                std::string filepath = games[i].installers[0].getFilepath();
 
                 // Get base directory from filepath
                 boost::match_results<std::string::const_iterator> what;
@@ -751,8 +742,8 @@ void Downloader::download()
                 if (config.bUpdateCheck && !games[i].installers[j].updated)
                     continue;
 
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
-                if (config.blacklist.isBlacklisted(games[i].installers[j].path, games[i].gamename))
+                std::string filepath = games[i].installers[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -796,9 +787,8 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string subdir = config.bSubDirectories ? "extras" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].extras[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].extras[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -841,9 +831,8 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string subdir = config.bSubDirectories ? "patches" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].patches[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].patches[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -878,9 +867,8 @@ void Downloader::download()
                     continue;
                 }
 
-                std::string subdir = config.bSubDirectories ? "languagepacks" : "";
-                std::string filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, subdir);
-                if (config.blacklist.isBlacklisted(games[i].languagepacks[j].path, games[i].gamename, subdir))
+                std::string filepath = games[i].languagepacks[j].getFilepath();
+                if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
                         std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -909,9 +897,8 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].installers[k].path, games[i].gamename, subdir))
+                        std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -945,9 +932,8 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].patches[k].path, games[i].gamename, subdir))
+                        std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -981,9 +967,8 @@ void Downloader::download()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        std::string subdir = config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "";
-                        std::string filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, subdir);
-                        if (config.blacklist.isBlacklisted(games[i].dlcs[j].extras[k].path, games[i].gamename, subdir))
+                        std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
                                 std::cout << "skipped blacklisted file " << filepath << std::endl;
@@ -2401,7 +2386,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].installers[j].path, games[i].gamename);
+                boost::filesystem::path filepath = games[i].installers[j].getFilepath();
 
                 std::string remoteHash;
                 std::string localHash;
@@ -2431,7 +2416,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].extras[j].path, games[i].gamename, config.bSubDirectories ? "extras" : "");
+                boost::filesystem::path filepath = games[i].extras[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
@@ -2452,7 +2437,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].patches[j].path, games[i].gamename, config.bSubDirectories ? "patches" : "");
+                boost::filesystem::path filepath = games[i].patches[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
@@ -2473,7 +2458,7 @@ void Downloader::checkStatus()
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
-                boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].languagepacks[j].path, games[i].gamename, config.bSubDirectories ? "languagepacks" : "");
+                boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
@@ -2498,7 +2483,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].installers[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename : "");
+                        boost::filesystem::path filepath = games[i].dlcs[j].installers[k].getFilepath();
 
                         std::string remoteHash;
                         std::string localHash;
@@ -2528,7 +2513,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].patches[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/patches" : "");
+                        boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
@@ -2549,7 +2534,7 @@ void Downloader::checkStatus()
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
-                        boost::filesystem::path filepath = Util::makeFilepath(config.sDirectory, games[i].dlcs[j].extras[k].path, games[i].gamename, config.bSubDirectories ? "dlc/" + games[i].dlcs[j].gamename + "/extras" : "");
+                        boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
