@@ -49,9 +49,9 @@ OBJDIR_RELEASE = obj/Release
 DEP_RELEASE = 
 OUT_RELEASE = bin/Release/lgogdownloader
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/src/api.o $(OBJDIR_DEBUG)/src/downloader.o $(OBJDIR_DEBUG)/src/progressbar.o $(OBJDIR_DEBUG)/src/util.o $(OBJDIR_DEBUG)/src/blacklist.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/src/api.o $(OBJDIR_DEBUG)/src/downloader.o $(OBJDIR_DEBUG)/src/progressbar.o $(OBJDIR_DEBUG)/src/util.o $(OBJDIR_DEBUG)/src/blacklist.o $(OBJDIR_DEBUG)/src/gamedetails.o $(OBJDIR_DEBUG)/src/gamefile.o
 
-OBJ_RELEASE = $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/src/api.o $(OBJDIR_RELEASE)/src/downloader.o $(OBJDIR_RELEASE)/src/progressbar.o $(OBJDIR_RELEASE)/src/util.o $(OBJDIR_RELEASE)/src/blacklist.o
+OBJ_RELEASE = $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/src/api.o $(OBJDIR_RELEASE)/src/downloader.o $(OBJDIR_RELEASE)/src/progressbar.o $(OBJDIR_RELEASE)/src/util.o $(OBJDIR_RELEASE)/src/blacklist.o $(OBJDIR_RELEASE)/src/gamedetails.o $(OBJDIR_RELEASE)/src/gamefile.o
 
 all: debug release
 
@@ -86,6 +86,12 @@ $(OBJDIR_DEBUG)/src/util.o: src/util.cpp
 
 $(OBJDIR_DEBUG)/src/blacklist.o: src/blacklist.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/blacklist.cpp -o $(OBJDIR_DEBUG)/src/blacklist.o
+
+$(OBJDIR_DEBUG)/src/gamefile.o: src/gamefile.cpp
+	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/gamefile.cpp -o $(OBJDIR_DEBUG)/src/gamefile.o
+
+$(OBJDIR_DEBUG)/src/gamedetails.o: src/gamedetails.cpp
+	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/gamedetails.cpp -o $(OBJDIR_DEBUG)/src/gamedetails.o
 
 clean_debug: 
 	rm -f $(OBJ_DEBUG) $(OUT_DEBUG)
@@ -126,6 +132,12 @@ $(OBJDIR_RELEASE)/src/util.o: src/util.cpp
 
 $(OBJDIR_RELEASE)/src/blacklist.o: src/blacklist.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/blacklist.cpp -o $(OBJDIR_RELEASE)/src/blacklist.o
+
+$(OBJDIR_RELEASE)/src/gamefile.o: src/gamefile.cpp
+	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/gamefile.cpp -o $(OBJDIR_RELEASE)/src/gamefile.o
+
+$(OBJDIR_RELEASE)/src/gamedetails.o: src/gamedetails.cpp
+	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/gamedetails.cpp -o $(OBJDIR_RELEASE)/src/gamedetails.o
 
 clean_release: 
 	rm -f $(OBJ_RELEASE) $(OUT_RELEASE)

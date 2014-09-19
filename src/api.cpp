@@ -5,6 +5,7 @@
  * http://www.wtfpl.net/ for more details. */
 
 #include "api.h"
+#include "gamefile.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -24,23 +25,6 @@ size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     size_t count = size * nmemb;
     stream->write(ptr, count);
     return count;
-}
-
-gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language, const unsigned int& t_platform, const int& t_silent)
-{
-    this->updated = t_updated;
-    this->id = t_id;
-    this->name = t_name;
-    this->path = t_path;
-    this->size = t_size;
-    this->platform = t_platform;
-    this->language = t_language;
-    this->silent = t_silent;
-}
-
-gameFile::~gameFile()
-{
-
 }
 
 API::API(const std::string& token, const std::string& secret)

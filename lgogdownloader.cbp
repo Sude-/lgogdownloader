@@ -14,6 +14,7 @@
 				<Compiler>
 					<Add option="-g" />
 					<Add option="-DDEBUG" />
+					<Add directory="include" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -23,6 +24,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
@@ -52,6 +54,8 @@
 		<Unit filename="include/blacklist.h" />
 		<Unit filename="include/config.h" />
 		<Unit filename="include/downloader.h" />
+		<Unit filename="include/gamedetails.h" />
+		<Unit filename="include/gamefile.h" />
 		<Unit filename="include/globalconstants.h" />
 		<Unit filename="include/progressbar.h" />
 		<Unit filename="include/util.h" />
@@ -59,6 +63,8 @@
 		<Unit filename="src/api.cpp" />
 		<Unit filename="src/blacklist.cpp" />
 		<Unit filename="src/downloader.cpp" />
+		<Unit filename="src/gamedetails.cpp" />
+		<Unit filename="src/gamefile.cpp" />
 		<Unit filename="src/progressbar.cpp" />
 		<Unit filename="src/util.cpp" />
 		<Extensions>

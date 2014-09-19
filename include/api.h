@@ -8,6 +8,7 @@
 #define API_H
 
 #include "globalconstants.h"
+#include "gamedetails.h"
 
 #include <iostream>
 #include <vector>
@@ -17,32 +18,6 @@ extern "C" {
 }
 #include <cstring>
 #include <sys/time.h>
-
-class gameFile {
-    public:
-        gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN, const unsigned int& t_platform = GlobalConstants::PLATFORM_WINDOWS, const int& t_silent = 0);
-        int updated;
-        std::string id;
-        std::string name;
-        std::string path;
-        std::string size;
-        unsigned int platform;
-        unsigned int language;
-        int silent;
-        virtual ~gameFile();
-};
-
-class gameDetails {
-    public:
-        std::vector<gameFile> extras;
-        std::vector<gameFile> installers;
-        std::vector<gameFile> patches;
-        std::vector<gameFile> languagepacks;
-        std::vector<gameDetails> dlcs;
-        std::string gamename;
-        std::string title;
-        std::string icon;
-};
 
 class userDetails {
     public:
