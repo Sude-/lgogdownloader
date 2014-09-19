@@ -325,8 +325,14 @@ int main(int argc, char *argv[])
 
     // Make sure that directory has trailing slash
     if (!config.sDirectory.empty())
+    {
         if (config.sDirectory.at(config.sDirectory.length()-1)!='/')
             config.sDirectory += "/";
+    }
+    else
+    {
+        config.sDirectory = "./"; // Directory wasn't specified, use current directory
+    }
 
     if (!unrecognized_options_cfg.empty() && (!config.bSaveConfig || !config.bResetConfig))
     {
