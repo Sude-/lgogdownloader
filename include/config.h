@@ -54,6 +54,12 @@ class Config
         std::string sOrphanRegex;
         std::string sCoverList;
         std::string sReportFilePath;
+        std::string sInstallersSubdir;
+        std::string sExtrasSubdir;
+        std::string sPatchesSubdir;
+        std::string sLanguagePackSubdir;
+        std::string sDLCSubdir;
+        std::string sGameSubdir;
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
         int iRetries;

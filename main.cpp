@@ -59,6 +59,9 @@ int main(int argc, char *argv[])
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg)$"; // Limit to files with these extensions (".old" is for renamed older version files)
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
 
+    // Help text for subdir options
+    std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %dlcname%";
+
     std::vector<std::string> unrecognized_options_cfg;
     bpo::variables_map vm;
     bpo::options_description options_cli_all("Options");
@@ -104,7 +107,7 @@ int main(int argc, char *argv[])
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
-            ("directory", bpo::value<std::string>(&config.sDirectory)->default_value(""), "Set download directory")
+            ("directory", bpo::value<std::string>(&config.sDirectory)->default_value("."), "Set download directory")
             ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
@@ -129,6 +132,12 @@ int main(int argc, char *argv[])
             ("retries", bpo::value<int>(&config.iRetries)->default_value(3), "Set maximum number of retries on failed download")
             ("wait", bpo::value<int>(&config.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
             ("cover-list", bpo::value<std::string>(&config.sCoverList)->default_value("https://sites.google.com/site/gogdownloader/covers.xml"), "Set URL for cover list")
+            ("subdir-installers", bpo::value<std::string>(&config.sInstallersSubdir)->default_value(""), ("Set subdirectory for extras" + subdir_help_text).c_str())
+            ("subdir-extras", bpo::value<std::string>(&config.sExtrasSubdir)->default_value("extras"), ("Set subdirectory for extras" + subdir_help_text).c_str())
+            ("subdir-patches", bpo::value<std::string>(&config.sPatchesSubdir)->default_value("patches"), ("Set subdirectory for patches" + subdir_help_text).c_str())
+            ("subdir-language-packs", bpo::value<std::string>(&config.sLanguagePackSubdir)->default_value("languagepacks"), ("Set subdirectory for language packs" + subdir_help_text).c_str())
+            ("subdir-dlc", bpo::value<std::string>(&config.sDLCSubdir)->default_value("dlc/%dlcname%"), ("Set subdirectory for dlc" + subdir_help_text).c_str())
+            ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
         ;
         // Options read from config file
         options_cfg_only.add_options()

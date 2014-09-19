@@ -7,6 +7,7 @@
 #include "util.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
 #include <tinyxml.h>
 #include <jsoncpp/json/json.h>
 #include <fstream>
@@ -16,9 +17,11 @@
     Remove the leading slash from path if needed
     Use gamename as base directory if specified
 */
-std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory)
+std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory, const unsigned int& platformId, const std::string& dlcname)
 {
-    return directory + makeRelativeFilepath(path, gamename, subdirectory);
+    std::string dir = directory + makeRelativeFilepath(path, gamename, subdirectory);
+    Util::filepathReplaceReservedStrings(dir, gamename, platformId, dlcname);
+    return dir;
 }
 
 /* Create filepath relative to download base directory specified in config.
@@ -46,7 +49,7 @@ std::string Util::makeRelativeFilepath(const std::string& path, const std::strin
         {
             subdirectory = "/" + subdirectory;
         }
-        filepath = gamename + subdirectory + "/" + filename;
+        filepath = subdirectory + "/" + filename;
     }
 
     return filepath;
@@ -274,4 +277,33 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
         json.close();
 
     return res;
+}
+
+int Util::replaceString(std::string& str, const std::string& to_replace, const std::string& replace_with)
+{
+    size_t pos = str.find(to_replace);
+    if (pos == std::string::npos)
+    {
+        return 0;
+    }
+    str.replace(str.begin()+pos, str.begin()+pos+to_replace.length(), replace_with);
+    return 1;
+}
+
+void Util::filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId, const std::string& dlcname)
+{
+    std::string platform;
+    while (Util::replaceString(str, "%gamename%", gamename));
+    while (Util::replaceString(str, "%dlcname%", dlcname));
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    {
+        if ((platformId & GlobalConstants::PLATFORMS[i].platformId) == GlobalConstants::PLATFORMS[i].platformId)
+        {
+            platform = boost::algorithm::to_lower_copy(GlobalConstants::PLATFORMS[i].platformString);
+            break;
+        }
+    }
+
+    while (Util::replaceString(str, "%platform%", platform));
+    while (Util::replaceString(str, "//", "/")); // Replace any double slashes with single slash
 }

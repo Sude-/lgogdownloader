@@ -2232,40 +2232,70 @@ void Downloader::checkOrphans()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         std::cout << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
-        boost::filesystem::path path (config.sDirectory + games[i].gamename);
         std::vector<boost::filesystem::path> filepath_vector;
-        std::size_t pathlen = config.sDirectory.length();
 
         try
         {
-            if (boost::filesystem::exists(path))
+            std::vector<boost::filesystem::path> paths;
+            std::vector<unsigned int> platformIds;
+            platformIds.push_back(0);
+            for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
             {
-                if (boost::filesystem::is_directory(path))
+                platformIds.push_back(GlobalConstants::PLATFORMS[j].platformId);
+            }
+            for (unsigned int j = 0; j < platformIds.size(); ++j)
+            {
+                std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
+                Util::filepathReplaceReservedStrings(directory, games[i].gamename, platformIds[j]);
+                boost::filesystem::path path (directory);
+                if (boost::filesystem::exists(path))
                 {
-                    // Recursively iterate over files in directory
-                    boost::filesystem::recursive_directory_iterator end_iter;
-                    boost::filesystem::recursive_directory_iterator dir_iter(path);
-                    while (dir_iter != end_iter)
+                    bool bDuplicate = false;
+                    for (unsigned int k = 0; k < paths.size(); ++k)
                     {
-                        if (boost::filesystem::is_regular_file(dir_iter->status()))
+                        if (path == paths[k])
                         {
-                            std::string filepath = dir_iter->path().string();
-                            if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
-                                if (config.bVerbose)
-                                    std::cout << "skipped blacklisted file " << filepath << std::endl;
-                            } else {
-                                boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
-                                boost::match_results<std::string::const_iterator> what;
-                                if (boost::regex_search(filepath, what, expression))
-                                    filepath_vector.push_back(dir_iter->path());
-                            }
+                            bDuplicate = true;
+                            break;
                         }
-                        dir_iter++;
                     }
+                    if (!bDuplicate)
+                        paths.push_back(path);
                 }
             }
-            else
-                std::cout << path << " does not exist" << std::endl;
+
+            for (unsigned int j = 0; j < paths.size(); ++j)
+            {
+                std::size_t pathlen = config.sDirectory.length();
+                if (boost::filesystem::exists(paths[j]))
+                {
+                    if (boost::filesystem::is_directory(paths[j]))
+                    {
+                        // Recursively iterate over files in directory
+                        boost::filesystem::recursive_directory_iterator end_iter;
+                        boost::filesystem::recursive_directory_iterator dir_iter(paths[j]);
+                        while (dir_iter != end_iter)
+                        {
+                            if (boost::filesystem::is_regular_file(dir_iter->status()))
+                            {
+                                std::string filepath = dir_iter->path().string();
+                                if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
+                                    if (config.bVerbose)
+                                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                } else {
+                                    boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
+                                    boost::match_results<std::string::const_iterator> what;
+                                    if (boost::regex_search(filepath, what, expression))
+                                        filepath_vector.push_back(dir_iter->path());
+                                }
+                            }
+                            dir_iter++;
+                        }
+                    }
+                }
+                else
+                    std::cout << paths[j] << " does not exist" << std::endl;
+            }
         }
         catch (const boost::filesystem::filesystem_error& ex)
         {
