@@ -18,7 +18,7 @@
 #include <iomanip>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <tinyxml.h>
 #include <jsoncpp/json/json.h>
 #include <htmlcxx/html/ParserDom.h>
@@ -1093,17 +1093,8 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         {   // File exists but is not the same version
             fclose(outfile);
             std::cout << "Remote file is different, renaming local file" << std::endl;
-            boost::filesystem::path new_name = filepath + ".old"; // Rename old file by appending ".old" to filename
-            if (boost::filesystem::exists(new_name))
-            {   // One even older file exists, delete the older file before renaming
-                std::cout << "Old renamed file found, deleting old file" << std::endl;
-                if (!boost::filesystem::remove(new_name))
-                {
-                    std::cout << "Failed to delete " << new_name.string() << std::endl;
-                    std::cout << "Skipping file" << std::endl;
-                    return res;
-                }
-            }
+            std::string date_old = "." + bptime::to_iso_string(bptime::second_clock::local_time()) + ".old";
+            boost::filesystem::path new_name = filepath + date_old; // Rename old file by appending date and ".old" to filename
             boost::system::error_code ec;
             boost::filesystem::rename(pathname, new_name, ec); // Rename the file
             if (ec)
@@ -1367,18 +1358,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         {
             std::cout << "Redownloading file" << std::endl;
 
-            boost::filesystem::path new_name = filepath + ".old"; // Rename old file by appending ".old" to filename
+            std::string date_old = "." + bptime::to_iso_string(bptime::second_clock::local_time()) + ".old";
+            boost::filesystem::path new_name = filepath + date_old; // Rename old file by appending date and ".old" to filename
             std::cout << "Renaming old file to " << new_name.string() << std::endl;
-            if (boost::filesystem::exists(new_name))
-            {   // One even older file exists, delete the older file before renaming
-                std::cout << "Old renamed file found, deleting old renamed file" << std::endl;
-                if (!boost::filesystem::remove(new_name))
-                {
-                    std::cout << "Failed to delete " << new_name.string() << std::endl;
-                    std::cout << "Skipping file" << std::endl;
-                    return res = 0;
-                }
-            }
             boost::system::error_code ec;
             boost::filesystem::rename(pathname, new_name, ec); // Rename the file
             if (ec)
