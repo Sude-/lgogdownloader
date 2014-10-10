@@ -42,6 +42,7 @@ void gameDetails::makeFilepaths(const Config& config)
     {
         subdir = config.bSubDirectories ? config.sLanguagePackSubdir : "";
         filepath = Util::makeFilepath(directory, this->languagepacks[i].path, this->gamename, subdir, 0);
+        this->languagepacks[i].setFilepath(filepath);
     }
 
     for (unsigned int i = 0; i < this->dlcs.size(); ++i)
