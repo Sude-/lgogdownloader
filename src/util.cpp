@@ -293,8 +293,6 @@ int Util::replaceString(std::string& str, const std::string& to_replace, const s
 void Util::filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId, const std::string& dlcname)
 {
     std::string platform;
-    while (Util::replaceString(str, "%gamename%", gamename));
-    while (Util::replaceString(str, "%dlcname%", dlcname));
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
         if ((platformId & GlobalConstants::PLATFORMS[i].platformId) == GlobalConstants::PLATFORMS[i].platformId)
@@ -303,7 +301,16 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
             break;
         }
     }
+    if (platform.empty())
+    {
+        if (str.find("%gamename%/%platform%") != std::string::npos)
+            platform = "";
+        else
+            platform = "no_platform";
+    }
 
+    while (Util::replaceString(str, "%gamename%", gamename));
+    while (Util::replaceString(str, "%dlcname%", dlcname));
     while (Util::replaceString(str, "%platform%", platform));
     while (Util::replaceString(str, "//", "/")); // Replace any double slashes with single slash
 }
