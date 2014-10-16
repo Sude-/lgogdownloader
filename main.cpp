@@ -208,6 +208,16 @@ int main(int argc, char *argv[])
             }
         }
 
+        path = config.sCacheDirectory;
+        if (!boost::filesystem::exists(path))
+        {
+            if (!boost::filesystem::create_directories(path))
+            {
+                std::cout << "Failed to create directory: " << path << std::endl;
+                return 1;
+            }
+        }
+
         if (boost::filesystem::exists(config.sConfigFilePath))
         {
             std::ifstream ifs(config.sConfigFilePath.c_str());
