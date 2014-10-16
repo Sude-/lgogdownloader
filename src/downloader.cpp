@@ -86,7 +86,9 @@ int Downloader::init()
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse(config.sCoverList);
 
-    if (!config.bUpdateCheck) // updateCheck() calls getGameList() if needed
+    // updateCheck() calls getGameList() if needed
+    // getGameList() is not needed when using cache unless we want to list games from account
+    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) )
         this->getGameList();
 
     if (config.bReport && (config.bDownload || config.bRepair))
