@@ -205,6 +205,31 @@ void Downloader::getGameList()
 */
 int Downloader::getGameDetails()
 {
+    if (config.bUseCache)
+    {
+        int result = this->loadGameDetailsCache();
+        if (result == 0)
+        {
+            for (unsigned int i = 0; i < this->games.size(); ++i)
+                this->games[i].makeFilepaths(config);
+            return 0;
+        }
+        else
+        {
+            if (result == 1)
+            {
+                std::cout << "Cache doesn't exist." << std::endl;
+                std::cout << "Create cache with --update-cache" << std::endl;
+            }
+            else if (result == 3)
+            {
+                std::cout << "Cache is too old." << std::endl;
+                std::cout << "Update cache with --update-cache or use bigger --cache-valid" << std::endl;
+            }
+            return 1;
+        }
+    }
+
     gameDetails game;
     int updated = 0;
     for (unsigned int i = 0; i < gameItems.size(); ++i)
@@ -216,8 +241,11 @@ int Downloader::getGameDetails()
         conf.bDLC = config.bDLC;
         conf.iInstallerLanguage = config.iInstallerLanguage;
         conf.iInstallerType = config.iInstallerType;
-        if (Util::getGameSpecificConfig(gameItems[i].name, &conf) > 0)
-            std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+        if (!config.bUpdateCache) // Disable game specific config files for cache update
+        {
+            if (Util::getGameSpecificConfig(gameItems[i].name, &conf) > 0)
+                std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+        }
 
         game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
@@ -2616,4 +2644,205 @@ std::string Downloader::getRemoteFileHash(const std::string& gamename, const std
         }
     }
     return remoteHash;
+}
+
+/* Load game details from cache file
+    returns 0 if successful
+    returns 1 if cache file doesn't exist
+    returns 2 if JSON parsing failed
+    returns 3 if cache is too old
+    returns 4 if JSON doesn't contain "games" node
+*/
+int Downloader::loadGameDetailsCache()
+{
+    int res = 0;
+    std::string cachepath = config.sCacheDirectory + "/gamedetails.json";
+
+    // Make sure file exists
+    boost::filesystem::path path = cachepath;
+    if (!boost::filesystem::exists(path)) {
+        return res = 1;
+    }
+
+    bptime::ptime now = bptime::second_clock::local_time();
+    bptime::ptime cachedate;
+
+    std::ifstream json(cachepath, std::ifstream::binary);
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    if (jsonparser->parse(json, root))
+    {
+        if (root.isMember("date"))
+        {
+            cachedate = bptime::from_iso_string(root["date"].asString());
+            if ((now - cachedate) > bptime::minutes(config.iCacheValid))
+            {
+                // cache is too old
+                delete jsonparser;
+                json.close();
+                return res = 3;
+            }
+        }
+
+        if (root.isMember("games"))
+        {
+            this->games = getGameDetailsFromJsonNode(root["games"]);
+            res = 0;
+        }
+        else
+        {
+            res = 4;
+        }
+    }
+    else
+    {
+        res = 2;
+        std::cout << "Failed to parse cache" << std::endl;
+        std::cout << jsonparser->getFormatedErrorMessages() << std::endl;
+    }
+    delete jsonparser;
+    if (json)
+        json.close();
+
+    return res;
+}
+/* Save game details to cache file
+    returns 0 if successful
+    returns 1 if fails
+*/
+int Downloader::saveGameDetailsCache()
+{
+    int res = 0;
+    std::string cachepath = config.sCacheDirectory + "/gamedetails.json";
+
+    Json::Value json;
+
+    json["date"] = bptime::to_iso_string(bptime::second_clock::local_time());
+
+    for (unsigned int i = 0; i < this->games.size(); ++i)
+        json["games"].append(this->games[i].getDetailsAsJson());
+
+    std::ofstream ofs(cachepath);
+    if (!ofs)
+    {
+        res = 1;
+    }
+    else
+    {
+        Json::StyledStreamWriter jsonwriter;
+        jsonwriter.write(ofs, json);
+        ofs.close();
+    }
+    return res;
+}
+
+std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level)
+{
+    std::vector<gameDetails> details;
+
+    // If root node is not array and we use root.size() it will return the number of nodes --> limit to 1 "array" node to make sure it is handled properly
+    for (unsigned int i = 0; i < (root.isArray() ? root.size() : 1); ++i)
+    {
+        Json::Value gameDetailsNode = (root.isArray() ? root[i] : root); // This json node can be array or non-array so take that into account
+        gameDetails game;
+        game.gamename = gameDetailsNode["gamename"].asString();
+
+        // DLCs are handled as part of the game so make sure that filtering is done with base game name
+        if (recursion_level == 0) // recursion level is 0 when handling base game
+        {
+            boost::regex expression(config.sGameRegex);
+            boost::match_results<std::string::const_iterator> what;
+            if (!boost::regex_search(game.gamename, what, expression)) // Check if name matches the specified regex
+                continue;
+        }
+        game.title = gameDetailsNode["title"].asString();
+        game.icon = gameDetailsNode["icon"].asString();
+
+        // Make a vector of valid node names to make things easier
+        std::vector<std::string> nodes;
+        nodes.push_back("extras");
+        nodes.push_back("installers");
+        nodes.push_back("patches");
+        nodes.push_back("languagepacks");
+        nodes.push_back("dlcs");
+
+        gameSpecificConfig conf;
+        conf.bDLC = config.bDLC;
+        conf.iInstallerLanguage = config.iInstallerLanguage;
+        conf.iInstallerType = config.iInstallerType;
+        if (Util::getGameSpecificConfig(game.gamename, &conf) > 0)
+            std::cout << game.gamename << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+
+        for (unsigned int j = 0; j < nodes.size(); ++j)
+        {
+            std::string nodeName = nodes[j];
+            if (gameDetailsNode.isMember(nodeName))
+            {
+                Json::Value fileDetailsNodeVector = gameDetailsNode[nodeName];
+                for (unsigned int index = 0; index < fileDetailsNodeVector.size(); ++index)
+                {
+                    Json::Value fileDetailsNode = fileDetailsNodeVector[index];
+                    gameFile fileDetails;
+
+                    if (nodeName != "dlcs")
+                    {
+                        fileDetails.updated = fileDetailsNode["updated"].asInt();
+                        fileDetails.id = fileDetailsNode["id"].asString();
+                        fileDetails.name = fileDetailsNode["name"].asString();
+                        fileDetails.path = fileDetailsNode["path"].asString();
+                        fileDetails.size = fileDetailsNode["size"].asString();
+                        fileDetails.platform = fileDetailsNode["platform"].asUInt();
+                        fileDetails.language = fileDetailsNode["language"].asUInt();
+                        fileDetails.silent = fileDetailsNode["silent"].asInt();
+
+                        if (nodeName != "extras" && !(fileDetails.platform & conf.iInstallerType))
+                            continue;
+                        if (nodeName != "extras" && !(fileDetails.language & conf.iInstallerLanguage))
+                            continue;
+                    }
+
+                    if (nodeName == "extras" && config.bExtras)
+                        game.extras.push_back(fileDetails);
+                    else if (nodeName == "installers" && config.bInstallers)
+                        game.installers.push_back(fileDetails);
+                    else if (nodeName == "patches" && config.bPatches)
+                        game.patches.push_back(fileDetails);
+                    else if (nodeName == "languagepacks" && config.bLanguagePacks)
+                        game.languagepacks.push_back(fileDetails);
+                    else if (nodeName == "dlcs" && conf.bDLC)
+                        game.dlcs = this->getGameDetailsFromJsonNode(fileDetailsNode, recursion_level + 1);
+                }
+            }
+        }
+        if (!game.extras.empty() || !game.installers.empty() || !game.patches.empty() || !game.languagepacks.empty() || !game.dlcs.empty())
+            details.push_back(game);
+    }
+    return details;
+}
+
+void Downloader::updateCache()
+{
+    // Make sure that all details get cached
+    unsigned int all_platforms = GlobalConstants::PLATFORM_WINDOWS;
+    unsigned int all_languages = GlobalConstants::LANGUAGE_EN;
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+        all_platforms |= GlobalConstants::PLATFORMS[i].platformId;
+    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+        all_languages |= GlobalConstants::LANGUAGES[i].languageId;
+
+    config.bExtras = true;
+    config.bInstallers = true;
+    config.bPatches = true;
+    config.bLanguagePacks = true;
+    config.bDLC = true;
+    config.sGameRegex = ".*";
+    config.iInstallerLanguage = all_languages;
+    config.iInstallerType = all_platforms;
+
+    this->getGameList();
+    this->getGameDetails();
+    if (this->saveGameDetailsCache())
+        std::cout << "Failed to save cache" << std::endl;
+
+    return;
 }

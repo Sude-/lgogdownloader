@@ -25,6 +25,7 @@
 #include "api.h"
 #include "progressbar.h"
 #include <curl/curl.h>
+#include <jsoncpp/json/json.h>
 #include <ctime>
 #include <fstream>
 
@@ -65,6 +66,7 @@ class Downloader
         void download();
         void checkOrphans();
         void checkStatus();
+        void updateCache();
         CURL* curlhandle;
         Timer timer;
         Config config;
@@ -81,7 +83,9 @@ class Downloader
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
         std::string getRemoteFileHash(const std::string& gamename, const std::string& id);
-
+        int loadGameDetailsCache();
+        int saveGameDetailsCache();
+        std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);
         int HTTP_Login(const std::string& email, const std::string& password);
         std::vector<gameItem> getGames();
         std::vector<gameItem> getFreeGames();

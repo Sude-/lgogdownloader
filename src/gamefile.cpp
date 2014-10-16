@@ -12,6 +12,11 @@ gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::str
     this->silent = t_silent;
 }
 
+gameFile::gameFile()
+{
+    //ctor
+}
+
 gameFile::~gameFile()
 {
     //dtor
@@ -25,4 +30,20 @@ void gameFile::setFilepath(const std::string& path)
 std::string gameFile::getFilepath()
 {
     return this->filepath;
+}
+
+Json::Value gameFile::getAsJson()
+{
+    Json::Value json;
+
+    json["updated"] = this->updated;
+    json["id"] = this->id;
+    json["name"] = this->name;
+    json["path"] = this->path;
+    json["size"] = this->size;
+    json["platform"] = this->platform;
+    json["language"] = this->language;
+    json["silent"] = this->silent;
+
+    return json;
 }

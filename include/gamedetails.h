@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <vector>
+#include <jsoncpp/json/json.h>
 
 class gameDetails
 {
@@ -21,6 +22,7 @@ class gameDetails
         std::string title;
         std::string icon;;
         void makeFilepaths(const Config& config);
+        Json::Value getDetailsAsJson();
         virtual ~gameDetails();
     protected:
     private:

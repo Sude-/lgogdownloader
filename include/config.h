@@ -40,8 +40,11 @@ class Config
         bool bResetConfig;
         bool bReport;
         bool bSubDirectories;
+        bool bUseCache;
+        bool bUpdateCache;
         std::string sGameRegex;
         std::string sDirectory;
+        std::string sCacheDirectory;
         std::string sXMLFile;
         std::string sXMLDirectory;
         std::string sToken;
@@ -64,6 +67,7 @@ class Config
         unsigned int iInstallerLanguage;
         int iRetries;
         int iWait;
+        int iCacheValid;
         size_t iChunkSize;
         curl_off_t iDownloadRate;
         long int iTimeout;

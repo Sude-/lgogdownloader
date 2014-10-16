@@ -5,10 +5,12 @@
 
 #include <iostream>
 #include <vector>
+#include <jsoncpp/json/json.h>
 
 class gameFile
 {
     public:
+        gameFile();
         gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN, const unsigned int& t_platform = GlobalConstants::PLATFORM_WINDOWS, const int& t_silent = 0);
         int updated;
         std::string id;
@@ -20,6 +22,7 @@ class gameFile
         int silent;
         void setFilepath(const std::string& path);
         std::string getFilepath();
+        Json::Value getAsJson();
         virtual ~gameFile();
     protected:
     private:

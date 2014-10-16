@@ -69,3 +69,31 @@ void gameDetails::makeFilepaths(const Config& config)
         }
     }
 }
+
+Json::Value gameDetails::getDetailsAsJson()
+{
+    Json::Value json;
+
+    json["gamename"] = this->gamename;
+    json["title"] = this->title;
+    json["icon"] = this->icon;
+
+    for (unsigned int i = 0; i < this->extras.size(); ++i)
+        json["extras"].append(this->extras[i].getAsJson());
+    for (unsigned int i = 0; i < this->installers.size(); ++i)
+        json["installers"].append(this->installers[i].getAsJson());
+    for (unsigned int i = 0; i < this->patches.size(); ++i)
+        json["patches"].append(this->patches[i].getAsJson());
+    for (unsigned int i = 0; i < this->languagepacks.size(); ++i)
+        json["languagepacks"].append(this->languagepacks[i].getAsJson());
+
+    if (!this->dlcs.empty())
+    {
+        for (unsigned int i = 0; i < this->dlcs.size(); ++i)
+        {
+            json["dlcs"].append(this->dlcs[i].getDetailsAsJson());
+        }
+    }
+
+    return json;
+}

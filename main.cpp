@@ -34,6 +34,13 @@ int main(int argc, char *argv[])
     char *xdgcache = getenv("XDG_CACHE_HOME");
     std::string home = (std::string)getenv("HOME");
 
+    if (xdgcache)
+        config.sCacheDirectory = (std::string)xdgcache + "/lgogdownloader";
+    else
+        config.sCacheDirectory = home + "/.cache/lgogdownloader";
+
+    config.sXMLDirectory = config.sCacheDirectory + "/xml";
+
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
     unsigned int platform_sum = 0;
@@ -104,6 +111,7 @@ int main(int argc, char *argv[])
             ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
             ("report", bpo::value<std::string>(&config.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
+            ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -138,6 +146,8 @@ int main(int argc, char *argv[])
             ("subdir-language-packs", bpo::value<std::string>(&config.sLanguagePackSubdir)->default_value("languagepacks"), ("Set subdirectory for language packs" + subdir_help_text).c_str())
             ("subdir-dlc", bpo::value<std::string>(&config.sDLCSubdir)->default_value("dlc/%dlcname%"), ("Set subdirectory for dlc" + subdir_help_text).c_str())
             ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
+            ("use-cache", bpo::value<bool>(&config.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
+            ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -176,11 +186,6 @@ int main(int argc, char *argv[])
         config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
         config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
         config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
-
-        if (xdgcache)
-            config.sXMLDirectory = (std::string)xdgcache + "/lgogdownloader/xml";
-        else
-            config.sXMLDirectory = home + "/.cache/lgogdownloader/xml";
 
         // Create lgogdownloader directories
         boost::filesystem::path path = config.sXMLDirectory;
@@ -438,6 +443,8 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    else if (config.bUpdateCache)
+        downloader.updateCache();
     else if (config.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
     else if (config.bRepair) // Repair file
