@@ -1754,7 +1754,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
                     if (script_it->text().find("GalaxyAccounts") != std::string::npos)
                     {
                         boost::match_results<std::string::const_iterator> what;
-                        boost::regex expression(".*'(https://auth.gog.com/.*)'.*");
+                        boost::regex expression(".*'(https://auth.gog.com/.*?)'.*");
                         boost::regex_match(script_it->text(), what, expression);
                         auth_url = what[1];
                         break;
