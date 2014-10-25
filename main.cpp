@@ -26,6 +26,40 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
     vm[option].value() = boost::any(value);
 }
 
+// Parse the priority string, making it an array of numeric codes, and override the ORed type if required
+void handle_priority(const std::string &what, const std::string &priority_string, std::vector<unsigned int> &priority, unsigned int &type)
+{
+    size_t idx = 0, found;
+
+    while ((found = priority_string.find(',', idx)) != std::string::npos)
+	{
+	    priority.push_back(std::stoi(priority_string.substr(idx, found - idx)));
+	    idx = found + 1;
+	}
+    priority.push_back(std::stoi(priority_string.substr(idx)));
+
+    unsigned int wanted = 0;
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (handle_priority): for " << what << " found ";
+    #endif
+    for (std::vector<unsigned int>::iterator it = priority.begin(); it != priority.end(); it++)
+	{
+	    wanted += *it;
+            #ifdef DEBUG
+  	      std::cerr << *it << " ";
+            #endif
+	}
+    #ifdef DEBUG
+        std::cerr << std::endl;
+    #endif
+
+    if (wanted != type)
+	{
+            type = wanted;
+	    std::cout << "Warning: for " << what << " the priority string doesn't match the enabled installers, forcing enabled installers to " << type << std::endl;
+	}
+}
+
 int main(int argc, char *argv[])
 {
     Config config;
@@ -68,6 +102,8 @@ int main(int argc, char *argv[])
 
     // Help text for subdir options
     std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %dlcname%";
+    // Help text for priority options
+    std::string priority_help_text = "\nIf set, only the first matching one will be downloaded. If unset, all matching combinations will be downloaded.\nSyntax: use a string separated by \",\"";
 
     std::vector<std::string> unrecognized_options_cfg;
     bpo::variables_map vm;
@@ -148,6 +184,9 @@ int main(int argc, char *argv[])
             ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
             ("use-cache", bpo::value<bool>(&config.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
             ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
+            ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" for French first, then English if no French version").c_str())
+            ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" for Linux first, then Windows if no Linux version").c_str())
+
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -300,6 +339,13 @@ int main(int argc, char *argv[])
         // Override cover option
         if (bNoCover)
             config.bCover = false;
+
+	// Handle priority business
+	if (!config.sLanguagePriority.empty())
+	    handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage);
+	if (!config.sPlatformPriority.empty())
+	    handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerType);
+
     }
     catch (std::exception& e)
     {

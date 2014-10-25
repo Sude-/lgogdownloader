@@ -63,6 +63,11 @@ class Config
         std::string sLanguagePackSubdir;
         std::string sDLCSubdir;
         std::string sGameSubdir;
+	std::string sLanguagePriority;
+	std::string sPlatformPriority;
+	std::vector<unsigned int> vLanguagePriority;
+	std::vector<unsigned int> vPlatformPriority;
+
         unsigned int iInstallerType;
         unsigned int iInstallerLanguage;
         int iRetries;
