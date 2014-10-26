@@ -252,6 +252,8 @@ int Downloader::getGameDetails()
         game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
+            game.filterWithPriorities(config);
+
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
                 game.extras = this->getExtras(gameItems[i].name, gameItems[i].id);
@@ -262,6 +264,7 @@ int Downloader::getGameDetails()
                 {
                     gameDetails dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
+                    dlc.filterWithPriorities(config);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         dlc.extras = this->getExtras(gameItems[i].dlcnames[j], gameItems[i].id);
@@ -2817,7 +2820,10 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
             }
         }
         if (!game.extras.empty() || !game.installers.empty() || !game.patches.empty() || !game.languagepacks.empty() || !game.dlcs.empty())
-            details.push_back(game);
+            {
+                game.filterWithPriorities(config);
+                details.push_back(game);
+            }
     }
     return details;
 }
@@ -2840,6 +2846,8 @@ void Downloader::updateCache()
     config.sGameRegex = ".*";
     config.iInstallerLanguage = all_languages;
     config.iInstallerType = all_platforms;
+    config.vLanguagePriority.clear();
+    config.vPlatformPriority.clear();
 
     this->getGameList();
     this->getGameDetails();

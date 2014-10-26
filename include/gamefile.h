@@ -19,6 +19,7 @@ class gameFile
         std::string size;
         unsigned int platform;
         unsigned int language;
+        int score;
         int silent;
         void setFilepath(const std::string& path);
         std::string getFilepath();

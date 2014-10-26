@@ -11,6 +11,61 @@ gameDetails::~gameDetails()
     //dtor
 }
 
+void gameDetails::filterWithPriorities(const Config& config)
+{
+    if (config.vPlatformPriority.empty() && config.vLanguagePriority.empty())
+        return;
+
+    filterListWithPriorities(installers, config);
+    filterListWithPriorities(patches, config);
+    filterListWithPriorities(languagepacks, config);
+}
+
+void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const Config& config)
+{
+    /*
+      Compute the score of each item - we use a scoring mechanism and we keep all ties
+      Like if someone asked French then English and Linux then Windows, but there are
+      only Windows French, Windows English and Linux English versions, we'll get the
+      Windows French and Linux English ones.
+      Score is inverted: lower is better.
+    */
+    int bestscore = -1;
+
+    for (std::vector<gameFile>::iterator fileDetails = list.begin(); fileDetails != list.end(); fileDetails++)
+        {
+            fileDetails->score = 0;
+            if (!config.vPlatformPriority.empty())
+                {
+                    for (size_t i = 0; i != config.vPlatformPriority.size(); i++)
+                        if (fileDetails->platform & config.vPlatformPriority[i])
+                            {
+                                fileDetails->score += i;
+                                break;
+                            }
+                }
+            if (!config.vLanguagePriority.empty())
+                {
+                    for (size_t i = 0; i != config.vLanguagePriority.size(); i++)
+                        if (fileDetails->language & config.vLanguagePriority[i])
+                            {
+                                fileDetails->score += i;
+                                break;
+                            }
+                }
+            if ((fileDetails->score < bestscore) or (bestscore < 0))
+                bestscore = fileDetails->score;
+        }
+
+    for (std::vector<gameFile>::iterator fileDetails = list.begin(); fileDetails != list.end(); )
+        {
+            if (fileDetails->score > bestscore)
+                fileDetails = list.erase(fileDetails);
+            else
+                fileDetails++;
+        }
+}
+
 void gameDetails::makeFilepaths(const Config& config)
 {
     std::string filepath;
