@@ -314,3 +314,23 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
     while (Util::replaceString(str, "%platform%", platform));
     while (Util::replaceString(str, "//", "/")); // Replace any double slashes with single slash
 }
+
+void Util::setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions)
+{
+    if (boost::filesystem::exists(path))
+    {
+        if (boost::filesystem::is_regular_file(path))
+        {
+            boost::filesystem::file_status s = boost::filesystem::status(path);
+            if (s.permissions() != permissions)
+            {
+                boost::system::error_code ec;
+                boost::filesystem::permissions(path, permissions, ec);
+                if (ec)
+                {
+                    std::cout << "Failed to set file permissions for " << path.string() << std::endl;
+                }
+            }
+        }
+    }
+}

@@ -41,6 +41,8 @@ Downloader::~Downloader()
     delete gogAPI;
     curl_easy_cleanup(curlhandle);
     curl_global_cleanup();
+    // Make sure that cookie file is only readable/writable by owner
+    Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
 }
 
 

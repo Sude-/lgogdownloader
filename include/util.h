@@ -16,6 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include <rhash.h>
+#include <boost/filesystem.hpp>
 
 struct gameSpecificConfig
 {
@@ -34,6 +35,7 @@ namespace Util
     int getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, std::string directory = std::string());
     int replaceString(std::string& str, const std::string& to_replace, const std::string& replace_with);
     void filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId = 0, const std::string& dlcname = "");
+    void setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions);
 }
 
 #endif // UTIL_H

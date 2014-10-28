@@ -416,6 +416,10 @@ int main(int argc, char *argv[])
             return 1;
     }
 
+    // Make sure that config file and cookie file are only readable/writable by owner
+    Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+    Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+
     if (config.bSaveConfig || iLoginResult == 1)
     {
         if (iLoginResult == 1)
@@ -472,6 +476,7 @@ int main(int argc, char *argv[])
                 }
             }
             ofs.close();
+            Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             return 0;
         }
         else
@@ -491,6 +496,7 @@ int main(int argc, char *argv[])
                 ofs << "secret = " << config.sSecret << std::endl;
             }
             ofs.close();
+            Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             return 0;
         }
         else
