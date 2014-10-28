@@ -83,5 +83,16 @@ Must be in the following format:
 .br
 }
 
+[priorities]
+For both languages and platforms, the default behavior is to download all enabled ones.
+The \fBlanguage-priority\fB and \fBplatform-priority\fB switches enable a priority-based mode: only the first matching one will be downloaded.
+.PP
+For example, setting \fBlanguage\fB to 5 means both French and English will be downloaded (if available) for all games. Setting \fBlanguage-priority\fB to 4,1 means that the French version (and only that one) will be downloaded if available, and if not, the English version will be downloaded. 
+.PP
+You're allowed to "stack" codes in the priority string if needed. If you set \fBlanguage-priority\fB 132,1 it means it'll download both Spanish (128) and French (4) versions if they are available, and the English (1) one only if none of French and Spanish are available.
+.PP
+Ideally the \fBlanguage\fB and \fBplatform\fB settings should match the sum of all enabled codes in the "priority" versions. If they don't, they'll be overrided with a warning.
+
 [availability]
 The latest version of this distribution is available from \fIhttps://github.com/Sude-/lgogdownloader\fP
+

@@ -518,9 +518,9 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
                     if (!langpacknames.empty()) // found at least one language pack
                     {
-                        for (unsigned int i = 0; i < langpacknames.size(); ++i)
+                        for (unsigned int j = 0; j < langpacknames.size(); ++j)
                         {
-                            Json::Value langpack = root["game"][langpacknames[i]];
+                            Json::Value langpack = root["game"][langpacknames[j]];
                             game.languagepacks.push_back(
                                                         gameFile(   false, /* language packs don't have "updated" flag */
                                                                     langpack["id"].isInt() ? std::to_string(langpack["id"].asInt()) : langpack["id"].asString(),

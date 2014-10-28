@@ -21,10 +21,12 @@ class gameDetails
         std::string gamename;
         std::string title;
         std::string icon;;
+        void filterWithPriorities(const Config& config);
         void makeFilepaths(const Config& config);
         Json::Value getDetailsAsJson();
         virtual ~gameDetails();
     protected:
+        void filterListWithPriorities(std::vector<gameFile>& list, const Config& config);
     private:
 };
 
