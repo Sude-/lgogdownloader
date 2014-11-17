@@ -211,6 +211,12 @@ int Downloader::getGameDetails()
 {
     if (config.bUseCache && !config.bUpdateCache)
     {
+        // GameRegex filter alias for all games
+        if (config.sGameRegex == "all")
+            config.sGameRegex = ".*";
+        else if (config.sGameRegex == "free")
+            std::cout << "Warning: regex alias \"free\" doesn't work with cached details" << std::endl;
+
         int result = this->loadGameDetailsCache();
         if (result == 0)
         {
