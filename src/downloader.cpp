@@ -209,7 +209,7 @@ void Downloader::getGameList()
 */
 int Downloader::getGameDetails()
 {
-    if (config.bUseCache)
+    if (config.bUseCache && !config.bUpdateCache)
     {
         int result = this->loadGameDetailsCache();
         if (result == 0)
@@ -2720,6 +2720,13 @@ int Downloader::loadGameDetailsCache()
 int Downloader::saveGameDetailsCache()
 {
     int res = 0;
+
+    // Don't try to save cache if we don't have any game details
+    if (this->games.empty())
+    {
+        return 1;
+    }
+
     std::string cachepath = config.sCacheDirectory + "/gamedetails.json";
 
     Json::Value json;
