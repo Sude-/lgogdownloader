@@ -1743,8 +1743,14 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     std::string tagname_password;
     std::string tagname_login;
     std::string tagname_token;
+    std::string tagname_login_id;
+    std::string login_id_value;
 
-    // Get login token
+    /*
+        Login using login_username to validate login_id
+    */
+
+    // Get login token and auth url
     std::string html = this->getResponse("https://www.gog.com/");
     htmlcxx::HTML::ParserDom parser;
     tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
@@ -1752,11 +1758,11 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     tree<htmlcxx::HTML::Node>::iterator end = dom.end();
     // Find auth_url
     bool bFoundAuthUrl = false;
+    std::string auth_url;
     for (; it != end; ++it)
     {
         if (it->tagName()=="script")
         {
-            std::string auth_url;
             for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
             {
                 tree<htmlcxx::HTML::Node>::iterator script_it = dom.child(it, i);
@@ -1871,14 +1877,186 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
         std::cout << curl_easy_strerror(result) << std::endl;
     }
 
-    html = this->getResponse("https://www.gog.com/account/settings");
-
+    // Check that login with login_username
+    html = memory.str();
     std::string account_email, username;
     dom = parser.parseTree(html);
     it = dom.begin();
     end = dom.end();
     bool bEmailFound = false;
     bool bUsernameFound = false;
+    for (; it != end; ++it)
+    {
+        if (it->tagName()=="p")
+        {
+            it->parseAttributes();
+            if (it->attribute("class").second == "user__email")
+            {
+                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+                {
+                    tree<htmlcxx::HTML::Node>::iterator email_it = dom.child(it, i);
+                    if (!email_it->isTag() && !email_it->isComment())
+                    {
+                        account_email = email_it->text();
+                        bEmailFound = true;
+                    }
+                }
+            }
+        }
+        else if (it->tagName()=="h3")
+        {
+            it->parseAttributes();
+            if (it->attribute("class").second == "user__name")
+            {
+                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+                {
+                    tree<htmlcxx::HTML::Node>::iterator nick_it = dom.child(it, i);
+                    if (!nick_it->isTag() && !nick_it->isComment())
+                    {
+                        username = nick_it->text();
+                        bUsernameFound = true;
+                    }
+                }
+            }
+        }
+
+        if (bUsernameFound && bEmailFound)
+            break;
+    }
+
+    // Convert to lowercase for comparison
+    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
+    boost::algorithm::to_lower(account_email);
+    boost::algorithm::to_lower(username);
+
+    if (email_lowercase == account_email || email_lowercase == username)
+    {
+        res = 1; // Login successful
+    }
+    else
+    {
+        #ifdef DEBUG
+            std::cerr   << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
+            if (!bEmailFound || !bUsernameFound)
+            {
+                if (!bEmailFound)
+                    std::cerr << "Could not find \"login_username\" input field." << std::endl;
+                if (!bUsernameFound)
+                    std::cerr << "Could not find username." << std::endl;
+            }
+            else
+            {
+                if (email_lowercase != account_email)
+                    std::cerr << "Email (" << email_lowercase << ") doesn't match account email (" << account_email << ")" << std::endl;
+                if (email_lowercase != username)
+                    std::cerr << "Username (" << email_lowercase << ") doesn't match account username (" << username << ")" << std::endl;
+            }
+        #endif
+        return res = 0; // Login failed
+    }
+
+
+    /*
+        Login using login_id
+    */
+
+    std::string login_form_html = this->getResponse(auth_url);
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
+        std::cerr << login_form_html << std::endl;
+    #endif
+    tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
+    tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
+    for (; login_it != login_it_end; ++login_it)
+    {
+        if (login_it->tagName()=="input")
+        {
+            login_it->parseAttributes();
+            std::string id_login = login_it->attribute("id").second;
+            if (id_login == "login_id")
+            {
+                tagname_login_id = login_it->attribute("name").second;
+                login_id_value = login_it->attribute("value").second;
+            }
+            else if (id_login == "login_password")
+            {
+                tagname_password = login_it->attribute("name").second;
+            }
+            else if (id_login == "login__token")
+            {
+                token = login_it->attribute("value").second; // login token
+                tagname_token = login_it->attribute("name").second;
+            }
+        }
+        else if (login_it->tagName()=="button")
+        {
+            login_it->parseAttributes();
+            std::string id_login = login_it->attribute("id").second;
+            if (id_login == "login_login")
+            {
+                tagname_login = login_it->attribute("name").second;
+            }
+        }
+    }
+
+    if (token.empty())
+    {
+        std::cout << "Failed to get login token" << std::endl;
+        return res = 0;
+    }
+
+    //Create postdata - escape characters in email/password to support special characters
+    postdata = (std::string)curl_easy_escape(curlhandle, tagname_login_id.c_str(), tagname_login_id.size()) + "=" + (std::string)curl_easy_escape(curlhandle, login_id_value.c_str(), login_id_value.size())
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_password.c_str(), tagname_password.size()) + "=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_login.c_str(), tagname_login.size()) + "="
+            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token.c_str(), token.size());
+
+    std::string login_url = auth_url;
+    Util::replaceString(login_url, "https://auth.gog.com", "https://login.gog.com");
+    curl_easy_setopt(curlhandle, CURLOPT_URL, login_url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+
+    // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
+    result = curl_easy_perform(curlhandle);
+    memory.str(std::string());
+
+    if (result != CURLE_OK)
+    {
+        // Expected to hit maximum amount of redirects so don't print error on it
+        if (result != CURLE_TOO_MANY_REDIRECTS)
+            std::cout << curl_easy_strerror(result) << std::endl;
+    }
+
+    // Get redirect url
+    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+
+    curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+    curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+    result = curl_easy_perform(curlhandle);
+
+    if (result != CURLE_OK)
+    {
+        std::cout << curl_easy_strerror(result) << std::endl;
+    }
+
+
+    html = this->getResponse("https://www.gog.com/account/settings");
+
+    dom = parser.parseTree(html);
+    it = dom.begin();
+    end = dom.end();
+    bEmailFound = false;
+    bUsernameFound = false;
     for (; it != end; ++it)
     {
         if (it->tagName()=="input")
@@ -1912,7 +2090,7 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     }
 
     // Convert to lowercase for comparison
-    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
+    //std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
     boost::algorithm::to_lower(account_email);
     boost::algorithm::to_lower(username);
 
