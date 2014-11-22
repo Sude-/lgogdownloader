@@ -306,7 +306,7 @@ int Downloader::getGameDetails()
         else
         {
             std::cout << gogAPI->getErrorMessage() << std::endl;
-            return 1;
+            continue;
         }
     }
     std::cout << std::endl;
