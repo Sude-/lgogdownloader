@@ -1624,7 +1624,8 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
 {
     // on entry: dltotal - how much remains to download till the end of the file (bytes)
     //           dlnow   - how much was downloaded from the start of the program (bytes)
-    unsigned int bar_length  = 26;
+    int bar_length      = 26;
+    int min_bar_length  = 5;
     Downloader* downloader = static_cast<Downloader*>(clientp);
 
     double rate; //  average download speed in B/s
@@ -1660,6 +1661,7 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     if (downloader->timer.getTimeBetweenUpdates()>=100 || dlnow == dltotal)
     {
         downloader->timer.reset();
+        int iTermWidth = Util::getTerminalWidth();
         bptime::time_duration eta(bptime::seconds((long)((dltotal - dlnow) / rate)));
         std::stringstream eta_ss;
         if (eta.hours() > 23)
@@ -1690,7 +1692,6 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
 
         // assuming that config is provided.
         printf("\033[0K\r%3.0f%% ", fraction * 100);
-        downloader->progressbar->draw(bar_length, fraction);
 
         // Download rate unit conversion
         std::string rate_unit;
@@ -1704,8 +1705,18 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
             rate /= 1024;
             rate_unit = "kB/s";
         }
-        printf(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
-        fflush(stdout);
+        char status_text[200]; // We're probably never going to go as high as 200 characters but it's better to use too big number here than too small
+        sprintf(status_text, " %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
+        int status_text_length = strlen(status_text) + 6;
+
+        if ((status_text_length + bar_length) > iTermWidth)
+            bar_length -= (status_text_length + bar_length) - iTermWidth;
+
+        // Don't draw progressbar if length is less than min_bar_length
+        if (bar_length >= min_bar_length)
+            downloader->progressbar->draw(bar_length, fraction);
+
+        std::cout << status_text << std::flush;
     }
 
     return 0;

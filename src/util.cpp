@@ -11,6 +11,7 @@
 #include <tinyxml.h>
 #include <jsoncpp/json/json.h>
 #include <fstream>
+#include <sys/ioctl.h>
 
 /*
     Create filepath from specified directory and path
@@ -333,4 +334,11 @@ void Util::setFilePermissions(const boost::filesystem::path& path, const boost::
             }
         }
     }
+}
+
+int Util::getTerminalWidth()
+{
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    return static_cast<int>(w.ws_col);
 }
