@@ -2645,7 +2645,7 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
     }
     else
     {
-        if (boost::filesystem::exists(path))
+        if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
         {
             localHash = Util::getFileHash(path.string(), RHASH_MD5);
         }
