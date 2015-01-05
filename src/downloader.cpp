@@ -2461,7 +2461,7 @@ void Downloader::checkStatus()
                 localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
 
-                if (boost::filesystem::exists(filepath))
+                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
                     filesize = boost::filesystem::file_size(filepath);
 
@@ -2486,7 +2486,7 @@ void Downloader::checkStatus()
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
-                if (boost::filesystem::exists(filepath))
+                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
                     filesize = boost::filesystem::file_size(filepath);
                     std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
@@ -2507,7 +2507,7 @@ void Downloader::checkStatus()
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
-                if (boost::filesystem::exists(filepath))
+                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
                     filesize = boost::filesystem::file_size(filepath);
                     std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
@@ -2528,7 +2528,7 @@ void Downloader::checkStatus()
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 size_t filesize;
 
-                if (boost::filesystem::exists(filepath))
+                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
                     filesize = boost::filesystem::file_size(filepath);
                     std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
@@ -2558,7 +2558,7 @@ void Downloader::checkStatus()
                         localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         remoteHash = this->getRemoteFileHash(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
 
-                        if (boost::filesystem::exists(filepath))
+                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
                             filesize = boost::filesystem::file_size(filepath);
 
@@ -2583,7 +2583,7 @@ void Downloader::checkStatus()
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
 
-                        if (boost::filesystem::exists(filepath))
+                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
                             filesize = boost::filesystem::file_size(filepath);
                             std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
@@ -2604,7 +2604,7 @@ void Downloader::checkStatus()
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         size_t filesize;
 
-                        if (boost::filesystem::exists(filepath))
+                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
                             filesize = boost::filesystem::file_size(filepath);
                             std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
