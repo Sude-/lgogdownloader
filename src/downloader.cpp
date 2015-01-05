@@ -2237,6 +2237,15 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
                 // Get name from path
                 name.assign(path.begin()+path.find_last_of("/")+1,path.end());
 
+                if (name.empty())
+                {
+                    #ifdef DEBUG
+                        std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl;
+                        std::cerr << "Skipped file without a name (game: " << gamename << ", gameid: " << gameid << ", fileid: " << id << ")" << std::endl;
+                    #endif
+                    continue;
+                }
+
                 extras.push_back(
                                     gameFile (  false,
                                                 id,
