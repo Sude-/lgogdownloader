@@ -9,7 +9,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <tinyxml.h>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include <fstream>
 #include <sys/ioctl.h>
 

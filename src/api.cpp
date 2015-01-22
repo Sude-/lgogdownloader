@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sstream>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 
 #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) >= 40900
 #   define _regex_namespace_ std

@@ -15,7 +15,7 @@ AR = ar
 LD = g++
 WINDRES = windres
 
-INC =  -Iinclude -I/usr/include/rhash
+INC =  -Iinclude -I/usr/include/rhash -I/usr/include/jsoncpp
 CFLAGS =  -std=c++11 -Wall -fexceptions -D_FILE_OFFSET_BITS=64
 RESINC = 
 LIBDIR = 

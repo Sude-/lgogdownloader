@@ -25,7 +25,7 @@
 #include "api.h"
 #include "progressbar.h"
 #include <curl/curl.h>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include <ctime>
 #include <fstream>
 
