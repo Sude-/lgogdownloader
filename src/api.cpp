@@ -233,6 +233,7 @@ std::string API::getResponse(const std::string& url)
     CURLcode result = curl_easy_perform(curlhandle);
     std::string response = memory.str();
     memory.str(std::string());
+
     if (result == CURLE_HTTP_RETURNED_ERROR)
     {
         long int response_code = 0;
@@ -241,6 +242,19 @@ std::string API::getResponse(const std::string& url)
             this->setError("HTTP ERROR: " + std::to_string(response_code));
         else
             this->setError("HTTP ERROR: failed to get error code: " + static_cast<std::string>(curl_easy_strerror(result)));
+
+        #ifdef DEBUG
+            curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, false);
+            result = curl_easy_perform(curlhandle);
+            std::string debug_response = memory.str();
+            memory.str(std::string());
+            std::cerr << "Response (CURLE_HTTP_RETURNED_ERROR):";
+            if (debug_response.empty())
+                std::cerr << " Response was empty" << std::endl;
+            else
+                std::cerr << std::endl << debug_response << std::endl;
+            curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
+        #endif
     }
 
     return response;
