@@ -89,7 +89,10 @@ class Downloader
         int HTTP_Login(const std::string& email, const std::string& password);
         std::vector<gameItem> getGames();
         std::vector<gameItem> getFreeGames();
-        std::vector<gameFile> getExtras(const std::string& gamename, const std::string& gameid);
+        std::vector<gameFile> getExtrasFromHTML(const std::string& html, const std::string& gamename, const std::string& gameid);
+        std::string getGameDetailsHTML(const std::string& gamename, const std::string& gameid);
+        std::string getSerialsFromHTML(const std::string& html);
+        void saveSerials(const std::string& serials, const std::string& filepath);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);

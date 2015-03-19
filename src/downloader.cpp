@@ -261,21 +261,37 @@ int Downloader::getGameDetails()
         if (!gogAPI->getError())
         {
             game.filterWithPriorities(config);
+            std::string gameDetailsHTML;
 
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
-                game.extras = this->getExtras(gameItems[i].name, gameItems[i].id);
+                gameDetailsHTML = this->getGameDetailsHTML(gameItems[i].name, gameItems[i].id);
+                game.extras = this->getExtrasFromHTML(gameDetailsHTML, gameItems[i].name, gameItems[i].id);
+            }
+            if (config.bSaveSerials)
+            {
+                if (gameDetailsHTML.empty())
+                    gameDetailsHTML = this->getGameDetailsHTML(gameItems[i].name, gameItems[i].id);
+                game.serials = this->getSerialsFromHTML(gameDetailsHTML);
             }
             if (game.dlcs.empty() && bHasDLC && conf.bDLC)
             {
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 {
                     gameDetails dlc;
+                    std::string gameDetailsHTML_dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
                     dlc.filterWithPriorities(config);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
-                        dlc.extras = this->getExtras(gameItems[i].dlcnames[j], gameItems[i].id);
+                        gameDetailsHTML_dlc = this->getGameDetailsHTML(gameItems[i].dlcnames[j], gameItems[i].id);
+                        dlc.extras = this->getExtrasFromHTML(gameDetailsHTML_dlc, gameItems[i].dlcnames[j], gameItems[i].id);
+                    }
+                    if (config.bSaveSerials)
+                    {
+                        if (gameDetailsHTML_dlc.empty())
+                            gameDetailsHTML_dlc = this->getGameDetailsHTML(gameItems[i].dlcnames[j], gameItems[i].id);
+                        dlc.serials = this->getSerialsFromHTML(gameDetailsHTML_dlc);
                     }
                     game.dlcs.push_back(dlc);
                 }
@@ -326,6 +342,9 @@ void Downloader::listGames()
             std::cout   << "gamename: " << games[i].gamename << std::endl
                         << "title: " << games[i].title << std::endl
                         << "icon: " << "http://static.gog.com" << games[i].icon << std::endl;
+            if (!games[i].serials.empty())
+                std::cout << "serials:" << std::endl << games[i].serials << std::endl;
+
             // List installers
             if (config.bInstallers)
             {
@@ -436,6 +455,12 @@ void Downloader::listGames()
                 std::cout << "DLCs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
                 {
+                    if (!games[i].dlcs[j].serials.empty())
+                    {
+                        std::cout   << "\tDLC gamename: " << games[i].dlcs[j].gamename << std::endl
+                                    << "\tserials:" << games[i].dlcs[j].serials << std::endl;
+                    }
+
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
@@ -758,6 +783,12 @@ void Downloader::download()
 
     for (unsigned int i = 0; i < games.size(); ++i)
     {
+        if (config.bSaveSerials && !games[i].serials.empty())
+        {
+            std::string filepath = games[i].getSerialsFilepath();
+            this->saveSerials(games[i].serials, filepath);
+        }
+
         // Download covers
         if (config.bCover && !config.bUpdateCheck)
         {
@@ -935,6 +966,12 @@ void Downloader::download()
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
             {
+                if (config.bSaveSerials && !games[i].dlcs[j].serials.empty())
+                {
+                    std::string filepath = games[i].dlcs[j].getSerialsFilepath();
+                    this->saveSerials(games[i].dlcs[j].serials, filepath);
+                }
+
                 if (config.bInstallers)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
@@ -2180,29 +2217,35 @@ std::vector<gameItem> Downloader::getFreeGames()
     return games;
 }
 
-std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const std::string& gameid)
+std::string Downloader::getGameDetailsHTML(const std::string& gamename, const std::string& gameid)
 {
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    std::vector<gameFile> extras;
-
     std::string gameDataUrl = "https://www.gog.com/account/ajax?a=gamesListDetails&g=" + gameid;
     std::string json = this->getResponse(gameDataUrl);
+
     // Parse JSON
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
     if (!jsonparser->parse(json, root))
     {
         #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << json << std::endl;
+            std::cerr << "DEBUG INFO (Downloader::getGameDetailsHTML)" << std::endl << json << std::endl;
         #endif
         std::cout << jsonparser->getFormatedErrorMessages();
         delete jsonparser;
         exit(1);
     }
     #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl << root << std::endl;
+        std::cerr << "DEBUG INFO (Downloader::getGameDetailsHTML)" << std::endl << root << std::endl;
     #endif
     std::string html = root["details"]["html"].asString();
     delete jsonparser;
+
+    return html;
+}
+
+std::vector<gameFile> Downloader::getExtrasFromHTML(const std::string& html, const std::string& gamename, const std::string& gameid)
+{
+    std::vector<gameFile> extras;
 
     htmlcxx::HTML::ParserDom parser;
     tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
@@ -2240,7 +2283,7 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
                 if (name.empty())
                 {
                     #ifdef DEBUG
-                        std::cerr << "DEBUG INFO (Downloader::getExtras)" << std::endl;
+                        std::cerr << "DEBUG INFO (getExtrasFromHTML)" << std::endl;
                         std::cerr << "Skipped file without a name (game: " << gamename << ", gameid: " << gameid << ", fileid: " << id << ")" << std::endl;
                     #endif
                     continue;
@@ -2259,6 +2302,60 @@ std::vector<gameFile> Downloader::getExtras(const std::string& gamename, const s
     }
 
     return extras;
+}
+
+
+std::string Downloader::getSerialsFromHTML(const std::string& html)
+{
+    std::ostringstream serials;
+
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
+    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+    for (; it != end; ++it)
+    {
+        if (it->tagName() == "div")
+        {
+            it->parseAttributes();
+            std::string classname = it->attribute("class").second;
+            if (classname == "list_serial_h")
+            {
+                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+                {
+                    tree<htmlcxx::HTML::Node>::iterator serials_it = dom.child(it, i);
+                    if (!serials_it->isComment())
+                    {
+                        std::string tag_text;
+                        if (!serials_it->isTag())
+                        {
+                            if (!serials_it->text().empty())
+                                tag_text = serials_it->text();
+                        }
+                        else if (serials_it->tagName() == "span")
+                        {
+                            for (unsigned int j = 0; j < dom.number_of_children(serials_it); ++j)
+                            {
+                                tree<htmlcxx::HTML::Node>::iterator serials_span_it = dom.child(serials_it, j);
+                                if (!serials_span_it->isTag() && !serials_span_it->isComment())
+                                    tag_text = serials_span_it->text();
+                            }
+                        }
+
+                        if (!tag_text.empty())
+                        {
+                            boost::regex expression("^\\h+|\\h+$");
+                            std::string text = boost::regex_replace(tag_text, expression, "");
+                            if (!text.empty())
+                                serials << text << std::endl;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return serials.str();
 }
 
 void Downloader::checkOrphans()
@@ -2798,6 +2895,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         }
         game.title = gameDetailsNode["title"].asString();
         game.icon = gameDetailsNode["icon"].asString();
+        game.serials = gameDetailsNode["serials"].asString();
 
         // Make a vector of valid node names to make things easier
         std::vector<std::string> nodes;
@@ -2889,6 +2987,52 @@ void Downloader::updateCache()
     this->getGameDetails();
     if (this->saveGameDetailsCache())
         std::cout << "Failed to save cache" << std::endl;
+
+    return;
+}
+
+// Save serials to file
+void Downloader::saveSerials(const std::string& serials, const std::string& filepath)
+{
+    bool bFileExists = boost::filesystem::exists(filepath);
+
+    if (bFileExists)
+        return;
+
+    // Get directory from filepath
+    boost::filesystem::path pathname = filepath;
+    std::string directory = pathname.parent_path().string();
+
+    // Check that directory exists and create subdirectories
+    boost::filesystem::path path = directory;
+    if (boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::is_directory(path))
+        {
+            std::cout << path << " is not directory" << std::endl;
+            return;
+        }
+    }
+    else
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return;
+        }
+    }
+
+    std::ofstream ofs(filepath);
+    if (ofs)
+    {
+        std::cout << "Saving serials: " << filepath << std::endl;
+        ofs << serials;
+        ofs.close();
+    }
+    else
+    {
+        std::cout << "Failed to create file: " << filepath << std::endl;
+    }
 
     return;
 }

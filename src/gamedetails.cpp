@@ -71,6 +71,7 @@ void gameDetails::makeFilepaths(const Config& config)
     std::string filepath;
     std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
     std::string subdir;
+    this->serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
 
     for (unsigned int i = 0; i < this->installers.size(); ++i)
     {
@@ -102,6 +103,8 @@ void gameDetails::makeFilepaths(const Config& config)
 
     for (unsigned int i = 0; i < this->dlcs.size(); ++i)
     {
+        subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
+        this->dlcs[i].serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
         for (unsigned int j = 0; j < this->dlcs[i].installers.size(); ++j)
         {
             subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
@@ -132,6 +135,7 @@ Json::Value gameDetails::getDetailsAsJson()
     json["gamename"] = this->gamename;
     json["title"] = this->title;
     json["icon"] = this->icon;
+    json["serials"] = this->serials;
 
     for (unsigned int i = 0; i < this->extras.size(); ++i)
         json["extras"].append(this->extras[i].getAsJson());
@@ -151,4 +155,9 @@ Json::Value gameDetails::getDetailsAsJson()
     }
 
     return json;
+}
+
+std::string gameDetails::getSerialsFilepath()
+{
+    return this->serialsFilepath;
 }

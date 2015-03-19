@@ -20,14 +20,17 @@ class gameDetails
         std::vector<gameDetails> dlcs;
         std::string gamename;
         std::string title;
-        std::string icon;;
+        std::string icon;
+        std::string serials;
         void filterWithPriorities(const Config& config);
         void makeFilepaths(const Config& config);
+        std::string getSerialsFilepath();
         Json::Value getDetailsAsJson();
         virtual ~gameDetails();
     protected:
         void filterListWithPriorities(std::vector<gameFile>& list, const Config& config);
     private:
+        std::string serialsFilepath;
 };
 
 #endif // GAMEDETAILS_H
