@@ -837,7 +837,14 @@ void Downloader::download()
                 {
                     std::string XML;
                     if (config.bRemoteXML)
+                    {
                         XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                        }
+                    }
                     if (!games[i].installers[j].name.empty())
                         std::cout << "Downloading: " << games[i].installers[j].name << std::endl;
                     std::cout << filepath << std::endl;
@@ -917,7 +924,14 @@ void Downloader::download()
                 {
                     std::string XML;
                     if (config.bRemoteXML)
+                    {
                         XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                        }
+                    }
                     if (!games[i].patches[j].name.empty())
                         std::cout << "Downloading: " << games[i].patches[j].name << std::endl;
                     std::cout << filepath << std::endl;
@@ -953,7 +967,14 @@ void Downloader::download()
                 {
                     std::string XML;
                     if (config.bRemoteXML)
+                    {
                         XML = gogAPI->getXML(games[i].gamename, games[i].languagepacks[j].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                        }
+                    }
                     if (!games[i].languagepacks[j].name.empty())
                         std::cout << "Downloading: " << games[i].gamename << " " << games[i].languagepacks[j].name << std::endl;
                     std::cout << filepath << std::endl;
@@ -998,7 +1019,14 @@ void Downloader::download()
                         {
                             std::string XML;
                             if (config.bRemoteXML)
+                            {
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
+                                if (gogAPI->getError())
+                                {
+                                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                                    gogAPI->clearError();
+                                }
+                            }
                             if (!games[i].dlcs[j].installers[k].name.empty())
                                 std::cout << "Downloading: " << games[i].dlcs[j].installers[k].name << std::endl;
                             std::cout << filepath << std::endl;
@@ -1033,7 +1061,14 @@ void Downloader::download()
                         {
                             std::string XML;
                             if (config.bRemoteXML)
+                            {
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
+                                if (gogAPI->getError())
+                                {
+                                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                                    gogAPI->clearError();
+                                }
+                            }
                             if (!games[i].dlcs[j].patches[k].name.empty())
                                 std::cout << "Downloading: " << games[i].dlcs[j].patches[k].name << std::endl;
                             std::cout << filepath << std::endl;
@@ -2763,6 +2798,11 @@ std::string Downloader::getRemoteFileHash(const std::string& gamename, const std
 {
     std::string remoteHash;
     std::string xml_data = gogAPI->getXML(gamename, id);
+    if (gogAPI->getError())
+    {
+        std::cout << gogAPI->getErrorMessage() << std::endl;
+        gogAPI->clearError();
+    }
     if (!xml_data.empty())
     {
         TiXmlDocument remote_xml;
