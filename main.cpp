@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
         bool bNoDeb = false;
         bool bNoTarGz = false;
         bool bNoCover = false;
+        bool bNoPlatformDetection = false;
         config.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -148,6 +149,7 @@ int main(int argc, char *argv[])
             ("report", bpo::value<std::string>(&config.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
+            ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -335,6 +337,7 @@ int main(int argc, char *argv[])
         config.bDLC = !bNoDLC;
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
+        config.bPlatformDetection = !bNoPlatformDetection;
 
         // Override cover option
         if (bNoCover)

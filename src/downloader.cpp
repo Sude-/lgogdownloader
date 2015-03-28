@@ -2060,7 +2060,7 @@ std::vector<gameItem> Downloader::getGames()
                     platform |= GlobalConstants::PLATFORM_MAC;
 
                 // Skip if platform doesn't match
-                if (!(platform & config.iInstallerType))
+                if (config.bPlatformDetection && !(platform & config.iInstallerType))
                     continue;
 
                 if (!game.name.empty() && !game.id.empty())

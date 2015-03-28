@@ -43,6 +43,7 @@ class Config
         bool bUseCache;
         bool bUpdateCache;
         bool bSaveSerials;
+        bool bPlatformDetection;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sCacheDirectory;
