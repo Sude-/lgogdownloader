@@ -1625,9 +1625,9 @@ int Downloader::downloadCovers(const std::string& gamename, const std::string& d
                         result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
                         std::cout << "HTTP ERROR: ";
                         if (result == CURLE_OK)
-                            std::cout << response_code << std::endl;
+                            std::cout << response_code << " (" << cover_url << ")" << std::endl;
                         else
-                            std::cout << "failed to get error code: " << curl_easy_strerror(result) << std::endl;
+                            std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << cover_url << ")" << std::endl;
                     }
 
                     coverNode = gameNode->IterateChildren(coverNode);
@@ -1683,9 +1683,9 @@ std::string Downloader::getResponse(const std::string& url)
             result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
             std::cout << "HTTP ERROR: ";
             if (result == CURLE_OK)
-                std::cout << response_code << std::endl;
+                std::cout << response_code << " (" << url << ")" << std::endl;
             else
-                std::cout << "failed to get error code: " << curl_easy_strerror(result) << std::endl;
+                std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << url << ")" << std::endl;
         }
     }
 

@@ -239,9 +239,9 @@ std::string API::getResponse(const std::string& url)
         long int response_code = 0;
         result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
         if (result == CURLE_OK)
-            this->setError("HTTP ERROR: " + std::to_string(response_code));
+            this->setError("HTTP ERROR: " + std::to_string(response_code) + " (" + url + ")");
         else
-            this->setError("HTTP ERROR: failed to get error code: " + static_cast<std::string>(curl_easy_strerror(result)));
+            this->setError("HTTP ERROR: failed to get error code: " + static_cast<std::string>(curl_easy_strerror(result)) + " (" + url + ")");
 
         #ifdef DEBUG
             curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, false);
