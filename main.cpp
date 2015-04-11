@@ -150,6 +150,7 @@ int main(int argc, char *argv[])
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
+            ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -512,6 +513,8 @@ int main(int argc, char *argv[])
         downloader.updateCache();
     else if (config.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
+    else if (!config.sFileIdString.empty())
+        downloader.downloadFileWithId(config.sFileIdString);
     else if (config.bRepair) // Repair file
         downloader.repair();
     else if (config.bDownload) // Download games

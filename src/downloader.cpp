@@ -90,7 +90,7 @@ int Downloader::init()
 
     // updateCheck() calls getGameList() if needed
     // getGameList() is not needed when using cache unless we want to list games from account
-    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) )
+    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) && config.sFileIdString.empty() )
         this->getGameList();
 
     if (config.bReport && (config.bDownload || config.bRepair))
@@ -3072,6 +3072,45 @@ void Downloader::saveSerials(const std::string& serials, const std::string& file
     else
     {
         std::cout << "Failed to create file: " << filepath << std::endl;
+    }
+
+    return;
+}
+
+void Downloader::downloadFileWithId(const std::string& fileid_string)
+{
+    size_t pos = fileid_string.find("/");
+    if (pos == std::string::npos)
+    {
+        std::cout << "Invalid file id " << fileid_string << ": could not find separator \"/\"" << std::endl;
+    }
+    else
+    {
+        std::string gamename, fileid, url;
+        gamename.assign(fileid_string.begin(), fileid_string.begin()+pos);
+        fileid.assign(fileid_string.begin()+pos+1, fileid_string.end());
+
+        if (fileid.find("installer") != std::string::npos)
+            url = gogAPI->getInstallerLink(gamename, fileid);
+        else if (fileid.find("patch") != std::string::npos)
+            url = gogAPI->getPatchLink(gamename, fileid);
+        else
+            url = gogAPI->getExtraLink(gamename, fileid);
+
+        if (!gogAPI->getError())
+        {
+            std::string filename, filepath;
+            filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
+            filepath = Util::makeFilepath(config.sDirectory, filename, gamename);
+            std::cout << "Downloading: " << filepath << std::endl;
+            this->downloadFile(url, filepath, std::string(), gamename);
+            std::cout << std::endl;
+        }
+        else
+        {
+            std::cout << gogAPI->getErrorMessage() << std::endl;
+            gogAPI->clearError();
+        }
     }
 
     return;
