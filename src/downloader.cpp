@@ -2989,7 +2989,10 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                     else if (nodeName == "languagepacks" && config.bLanguagePacks)
                         game.languagepacks.push_back(fileDetails);
                     else if (nodeName == "dlcs" && conf.bDLC)
-                        game.dlcs = this->getGameDetailsFromJsonNode(fileDetailsNode, recursion_level + 1);
+                    {
+                        std::vector<gameDetails> dlcs = this->getGameDetailsFromJsonNode(fileDetailsNode, recursion_level + 1);
+                        game.dlcs.insert(game.dlcs.end(), dlcs.begin(), dlcs.end());
+                    }
                 }
             }
         }
