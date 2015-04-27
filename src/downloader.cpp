@@ -1643,6 +1643,7 @@ int Downloader::downloadCovers(const std::string& gamename, const std::string& d
 
 CURLcode Downloader::beginDownload()
 {
+    this->TimeAndSize.clear();
     this->timer.reset();
     CURLcode result = curl_easy_perform(curlhandle);
     this->resume_position = 0;
@@ -1734,6 +1735,20 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     {
         downloader->timer.reset();
         int iTermWidth = Util::getTerminalWidth();
+
+        // 10 second average download speed
+        // Don't use static value of 10 seconds because update interval depends on when and how often progress callback is called
+        downloader->TimeAndSize.push_back(std::make_pair(time(NULL), static_cast<size_t>(dlnow)));
+        if (downloader->TimeAndSize.size() > 100) // 100 * 100ms = 10s
+        {
+            downloader->TimeAndSize.pop_front();
+            time_t time_first = downloader->TimeAndSize.front().first;
+            size_t size_first = downloader->TimeAndSize.front().second;
+            time_t time_last = downloader->TimeAndSize.back().first;
+            size_t size_last = downloader->TimeAndSize.back().second;
+            rate = (size_last - size_first) / static_cast<double>((time_last - time_first));
+        }
+
         bptime::time_duration eta(bptime::seconds((long)((dltotal - dlnow) / rate)));
         std::stringstream eta_ss;
         if (eta.hours() > 23)

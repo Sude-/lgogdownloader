@@ -28,6 +28,7 @@
 #include <json/json.h>
 #include <ctime>
 #include <fstream>
+#include <deque>
 
 class Timer
 {
@@ -72,6 +73,7 @@ class Downloader
         Timer timer;
         Config config;
         ProgressBar* progressbar;
+        std::deque< std::pair<time_t, size_t> > TimeAndSize;
     protected:
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
