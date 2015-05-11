@@ -261,38 +261,69 @@ int Downloader::getGameDetails()
         if (!gogAPI->getError())
         {
             game.filterWithPriorities(config);
-            std::string gameDetailsHTML;
+            Json::Value gameDetailsJSON;
 
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
-                gameDetailsHTML = this->getGameDetailsHTML(gameItems[i].name, gameItems[i].id);
-                game.extras = this->getExtrasFromHTML(gameDetailsHTML, gameItems[i].name, gameItems[i].id);
+                gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                game.extras = this->getExtrasFromJSON(gameDetailsJSON, gameItems[i].name);
             }
             if (config.bSaveSerials)
             {
-                if (gameDetailsHTML.empty())
-                    gameDetailsHTML = this->getGameDetailsHTML(gameItems[i].name, gameItems[i].id);
-                game.serials = this->getSerialsFromHTML(gameDetailsHTML);
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                game.serials = this->getSerialsFromJSON(gameDetailsJSON);
             }
             if (game.dlcs.empty() && bHasDLC && conf.bDLC)
             {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 {
                     gameDetails dlc;
-                    std::string gameDetailsHTML_dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
-                    dlc.filterWithPriorities(config);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
-                        gameDetailsHTML_dlc = this->getGameDetailsHTML(gameItems[i].dlcnames[j], gameItems[i].id);
-                        dlc.extras = this->getExtrasFromHTML(gameDetailsHTML_dlc, gameItems[i].dlcnames[j], gameItems[i].id);
+                        // Make sure we get extras for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("extras"))
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["extras"], urls);
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.extras = this->getExtrasFromJSON(gameDetailsJSON["dlcs"][k], gameItems[i].dlcnames[j]);
+                                }
+                            }
+                        }
                     }
+
                     if (config.bSaveSerials)
                     {
-                        if (gameDetailsHTML_dlc.empty())
-                            gameDetailsHTML_dlc = this->getGameDetailsHTML(gameItems[i].dlcnames[j], gameItems[i].id);
-                        dlc.serials = this->getSerialsFromHTML(gameDetailsHTML_dlc);
+                        // Make sure we save serial for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("cdKey") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
+                            {
+                                // Assuming that only DLC with installers can have serial
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
+                            }
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.serials = this->getSerialsFromJSON(gameDetailsJSON["dlcs"][k]);
+                                }
+                            }
+                        }
                     }
+
                     game.dlcs.push_back(dlc);
                 }
             }
@@ -1970,75 +2001,36 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
         std::cout << curl_easy_strerror(result) << std::endl;
     }
 
-    html = this->getResponse("https://www.gog.com/account/settings");
+    html = this->getResponse("https://www.gog.com/account/settings/personal");
 
-    std::string account_email, username;
+    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
     dom = parser.parseTree(html);
     it = dom.begin();
     end = dom.end();
-    bool bEmailFound = false;
-    bool bUsernameFound = false;
     for (; it != end; ++it)
     {
-        if (it->tagName()=="input")
+        if (it->tagName()=="strong")
         {
             it->parseAttributes();
-            if (it->attribute("id").second == "accountEditEmail")
-            {
-                account_email = it->attribute("value").second;
-                bEmailFound = true;
-            }
-        }
-        else if (it->tagName()=="span")
-        {
-            it->parseAttributes();
-            if (it->attribute("class").second == "nickname")
+            if (it->attribute("class").second == "settings-item__value settings-item__section")
             {
                 for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
                 {
-                    tree<htmlcxx::HTML::Node>::iterator nick_it = dom.child(it, i);
-                    if (!nick_it->isTag() && !nick_it->isComment())
+                    tree<htmlcxx::HTML::Node>::iterator tag_it = dom.child(it, i);
+                    if (!tag_it->isTag() && !tag_it->isComment())
                     {
-                        username = nick_it->text();
-                        bUsernameFound = true;
+                        std::string tag_text = boost::algorithm::to_lower_copy(tag_it->text());
+                        if (tag_text == email_lowercase)
+                        {
+                            res = 1; // Login successful
+                            break;
+                        }
                     }
                 }
             }
         }
-
-        if (bUsernameFound && bEmailFound)
+        if (res == 1) // Login was successful so no need to go through the remaining tags
             break;
-    }
-
-    // Convert to lowercase for comparison
-    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
-    boost::algorithm::to_lower(account_email);
-    boost::algorithm::to_lower(username);
-
-    if (email_lowercase == account_email || email_lowercase == username)
-    {
-        res = 1; // Login successful
-    }
-    else
-    {
-        #ifdef DEBUG
-            std::cerr   << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
-            if (!bEmailFound || !bUsernameFound)
-            {
-                if (!bEmailFound)
-                    std::cerr << "Could not find \"accountEditEmail\" input field on account settings page." << std::endl;
-                if (!bUsernameFound)
-                    std::cerr << "Could not find username on account settings page." << std::endl;
-            }
-            else
-            {
-                if (email_lowercase != account_email)
-                    std::cerr << "Email (" << email_lowercase << ") doesn't match account email (" << account_email << ")" << std::endl;
-                if (email_lowercase != username)
-                    std::cerr << "Username (" << email_lowercase << ") doesn't match account username (" << username << ")" << std::endl;
-            }
-        #endif
-        res = 0; // Login failed
     }
 
     return res;
@@ -2051,12 +2043,11 @@ std::vector<gameItem> Downloader::getGames()
     Json::Value root;
     Json::Reader *jsonparser = new Json::Reader;
     int i = 1;
-    std::string html = "";
-    std::string page_html = "";
+    bool bAllPagesParsed = false;
 
     do
     {
-        std::string response = this->getResponse("https://www.gog.com/account/ajax?a=gamesShelfMore&s=title&q=&t=0&p=" + std::to_string(i));
+        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
 
         // Parse JSON
         if (!jsonparser->parse(response, root))
@@ -2071,163 +2062,61 @@ std::vector<gameItem> Downloader::getGames()
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << root << std::endl;
         #endif
-        page_html = root["html"].asString();
-        html += page_html;
-        if (page_html.empty() && i == 1)
+        if (root["page"].asInt() == root["totalPages"].asInt())
+            bAllPagesParsed = true;
+        if (root["products"].isArray())
         {
-            std::cout << "No games were found on your account. Try --login to refresh your authorization." << std::endl;
-        }
-        i++;
-    } while (!page_html.empty());
-
-    delete jsonparser;
-
-    // Parse HTML to get game names
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    for (; it != end; ++it)
-    {
-        if (it->tagName()=="div")
-        {
-            it->parseAttributes();
-            std::string classname = it->attribute("class").second;
-            if (classname=="shelf_game")
+            for (unsigned int i = 0; i < root["products"].size(); ++i)
             {
+                Json::Value product = root["products"][i];
                 gameItem game;
-                // Game name is contained in data-gameindex attribute
-                game.name = it->attribute("data-gameindex").second;
-                game.id = it->attribute("data-gameid").second;
+                game.name = product["slug"].asString();
+                game.id = product["id"].asString();
 
-                // Get platform info
-                std::string tags = it->attribute("data-title").second;
-                unsigned int platform = GlobalConstants::PLATFORM_WINDOWS; // The tags don't specify Windows support so assume that there's always a Windows version
-
-                if (tags.find("linux") != std::string::npos)
-                    platform |= GlobalConstants::PLATFORM_LINUX;
-                if (tags.find("osx mac") != std::string::npos)
+                unsigned int platform = 0;
+                if (product["worksOn"]["Windows"].asBool())
+                    platform |= GlobalConstants::PLATFORM_WINDOWS;
+                if (product["worksOn"]["Mac"].asBool())
                     platform |= GlobalConstants::PLATFORM_MAC;
+                if (product["worksOn"]["Linux"].asBool())
+                    platform |= GlobalConstants::PLATFORM_LINUX;
 
                 // Skip if platform doesn't match
                 if (config.bPlatformDetection && !(platform & config.iInstallerType))
                     continue;
 
-                if (!game.name.empty() && !game.id.empty())
+                if (config.bDLC)
                 {
-                    // Check for DLC
-                    if (config.bDLC)
+                    int dlcCount = product["dlcCount"].asInt();
+                    if (dlcCount != 0)
                     {
-                        tree<htmlcxx::HTML::Node>::iterator dlc_it = it;
-                        tree<htmlcxx::HTML::Node>::iterator dlc_end = it.end();
-                        for (; dlc_it != dlc_end; ++dlc_it)
+                        std::string gameinfo = this->getResponse("https://www.gog.com/account/gameDetails/" + game.id + ".json");
+                        Json::Value info;
+                        if (!jsonparser->parse(gameinfo, info))
                         {
-                            if (dlc_it->tagName()=="div")
-                            {
-                                dlc_it->parseAttributes();
-                                std::string classname_dlc = dlc_it->attribute("class").second;
-                                if (classname_dlc == "shelf-game-dlc-counter")
-                                {
-                                    std::string content;
-                                    for (unsigned int i = 0; i < dom.number_of_children(dlc_it); ++i)
-                                    {
-                                        tree<htmlcxx::HTML::Node>::iterator it = dom.child(dlc_it, i);
-                                        if (!it->isTag() && !it->isComment())
-                                            content += it->text();
-                                    }
-                                    // Get game names if game has DLC
-                                    if (content.find("DLC")!=std::string::npos)
-                                    {
-                                        Json::Value root;
-                                        Json::Reader *jsonparser = new Json::Reader;
-
-                                        std::string gameDataUrl = "https://www.gog.com/account/ajax?a=gamesListDetails&g=" + game.id;
-                                        std::string json = this->getResponse(gameDataUrl);
-                                        // Parse JSON
-                                        if (!jsonparser->parse(json, root))
-                                        {
-                                            #ifdef DEBUG
-                                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << json << std::endl;
-                                            #endif
-                                            std::cout << jsonparser->getFormatedErrorMessages();
-                                            delete jsonparser;
-                                            exit(1);
-                                        }
-                                        #ifdef DEBUG
-                                            std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << root << std::endl;
-                                        #endif
-                                        std::string html = root["details"]["html"].asString();
-                                        delete jsonparser;
-
-                                        // Parse HTML to get game names for DLC
-                                        htmlcxx::HTML::ParserDom parser;
-                                        tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-                                        tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-                                        tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-                                        for (; it != end; ++it)
-                                        {
-                                            if (it->tagName()=="div")
-                                            {
-                                                it->parseAttributes();
-                                                std::string gamename = it->attribute("data-gameindex").second;
-                                                if (!gamename.empty() && gamename!=game.name)
-                                                {
-                                                    bool bDuplicate = false;
-                                                    for (unsigned int i = 0; i < game.dlcnames.size(); ++i)
-                                                    {
-                                                        if (gamename == game.dlcnames[i])
-                                                        {
-                                                            bDuplicate = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                    if (!bDuplicate)
-                                                        game.dlcnames.push_back(gamename);
-                                                }
-                                            }
-                                        }
-
-                                        // Try getting game names for DLCs from extra links. Catches game names for DLCs that don't have installers.
-                                        it = dom.begin();
-                                        end = dom.end();
-                                        for (; it != end; ++it)
-                                        {
-                                            if (it->tagName()=="a")
-                                            {
-                                                it->parseAttributes();
-                                                std::string href = it->attribute("href").second;
-                                                std::string search_string = "/downlink/file/"; // Extra links: https://www.gog.com/downlink/file/gamename/id_number
-                                                if (href.find(search_string)!=std::string::npos)
-                                                {
-                                                    std::string gamename;
-                                                    gamename.assign(href.begin()+href.find(search_string)+search_string.length(), href.begin()+href.find_last_of("/"));
-                                                    if (!gamename.empty() && gamename!=game.name)
-                                                    {
-                                                        bool bDuplicate = false;
-                                                        for (unsigned int i = 0; i < game.dlcnames.size(); ++i)
-                                                        {
-                                                            if (gamename == game.dlcnames[i])
-                                                            {
-                                                                bDuplicate = true;
-                                                                break;
-                                                            }
-                                                        }
-                                                        if (!bDuplicate)
-                                                            game.dlcnames.push_back(gamename);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            #ifdef DEBUG
+                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << gameinfo << std::endl;
+                            #endif
+                            std::cout << jsonparser->getFormatedErrorMessages();
+                            delete jsonparser;
+                            exit(1);
+                        }
+                        else
+                        {
+                            #ifdef DEBUG
+                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << info << std::endl;
+                            #endif
+                            game.dlcnames = Util::getDLCNamesFromJSON(info["dlcs"]);
                         }
                     }
-                    games.push_back(game);
                 }
+                games.push_back(game);
             }
         }
-    }
+        i++;
+    } while (!bAllPagesParsed);
+
+    delete jsonparser;
 
     return games;
 }
@@ -2267,9 +2156,9 @@ std::vector<gameItem> Downloader::getFreeGames()
     return games;
 }
 
-std::string Downloader::getGameDetailsHTML(const std::string& gamename, const std::string& gameid)
+Json::Value Downloader::getGameDetailsJSON(const std::string& gameid)
 {
-    std::string gameDataUrl = "https://www.gog.com/account/ajax?a=gamesListDetails&g=" + gameid;
+    std::string gameDataUrl = "https://www.gog.com/account/gameDetails/" + gameid + ".json";
     std::string json = this->getResponse(gameDataUrl);
 
     // Parse JSON
@@ -2278,129 +2167,109 @@ std::string Downloader::getGameDetailsHTML(const std::string& gamename, const st
     if (!jsonparser->parse(json, root))
     {
         #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::getGameDetailsHTML)" << std::endl << json << std::endl;
+            std::cerr << "DEBUG INFO (Downloader::getGameDetailsJSON)" << std::endl << json << std::endl;
         #endif
         std::cout << jsonparser->getFormatedErrorMessages();
         delete jsonparser;
         exit(1);
     }
     #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::getGameDetailsHTML)" << std::endl << root << std::endl;
+        std::cerr << "DEBUG INFO (Downloader::getGameDetailsJSON)" << std::endl << root << std::endl;
     #endif
-    std::string html = root["details"]["html"].asString();
     delete jsonparser;
 
-    return html;
+    return root;
 }
 
-std::vector<gameFile> Downloader::getExtrasFromHTML(const std::string& html, const std::string& gamename, const std::string& gameid)
+std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, const std::string& gamename)
 {
     std::vector<gameFile> extras;
 
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    for (; it != end; ++it)
+    std::vector<std::string> downloaderUrls;
+    Util::getDownloaderUrlsFromJSON(json["extras"], downloaderUrls);
+
+    for (unsigned int i = 0; i < json["extras"].size(); ++i)
     {
-        if (it->tagName()=="a")
+        std::string id, name, path, downloaderUrl;
+        name = json["extras"][i]["name"].asString();
+        downloaderUrl = json["extras"][i]["downloaderUrl"].asString();
+        id.assign(downloaderUrl.begin()+downloaderUrl.find_last_of("/")+1, downloaderUrl.end());
+
+        // Get path from download link
+        std::string url = gogAPI->getExtraLink(gamename, id);
+        url = htmlcxx::Uri::decode(url);
+        if (url.find("/extras/") != std::string::npos)
         {
-            it->parseAttributes();
-            std::string href = it->attribute("href").second;
-            // Extra links https://www.gog.com/downlink/file/gamename/id_number
-            if (href.find("/downlink/file/" + gamename + "/")!=std::string::npos)
-            {
-                std::string id, name, path;
-                id.assign(href.begin()+href.find_last_of("/")+1, href.end());
-
-                // Get path from download link
-                std::string url = gogAPI->getExtraLink(gamename, id);
-                url = htmlcxx::Uri::decode(url);
-                if (url.find("/extras/") != std::string::npos)
-                {
-                    path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
-                    path = "/" + gamename + path;
-                }
-                else
-                {
-                    path.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
-                    path = "/" + gamename + "/extras/" + path;
-                }
-
-                // Get name from path
-                name.assign(path.begin()+path.find_last_of("/")+1,path.end());
-
-                if (name.empty())
-                {
-                    #ifdef DEBUG
-                        std::cerr << "DEBUG INFO (getExtrasFromHTML)" << std::endl;
-                        std::cerr << "Skipped file without a name (game: " << gamename << ", gameid: " << gameid << ", fileid: " << id << ")" << std::endl;
-                    #endif
-                    continue;
-                }
-
-                extras.push_back(
-                                    gameFile (  false,
-                                                id,
-                                                name,
-                                                path,
-                                                std::string()
-                                            )
-                                 );
-            }
+            path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
+            path = "/" + gamename + path;
         }
+        else
+        {
+            path.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
+            path = "/" + gamename + "/extras/" + path;
+        }
+
+        // Get name from path if name was not specified
+        if (name.empty())
+            name.assign(path.begin()+path.find_last_of("/")+1,path.end());
+
+        if (name.empty())
+        {
+            #ifdef DEBUG
+                std::cerr << "DEBUG INFO (getExtrasFromJSON)" << std::endl;
+                std::cerr << "Skipped file without a name (game: " << gamename << ", fileid: " << id << ")" << std::endl;
+            #endif
+            continue;
+        }
+
+        extras.push_back(
+                            gameFile (  false,
+                                        id,
+                                        name,
+                                        path,
+                                        std::string()
+                                    )
+                         );
     }
 
     return extras;
 }
 
 
-std::string Downloader::getSerialsFromHTML(const std::string& html)
+std::string Downloader::getSerialsFromJSON(const Json::Value& json)
 {
     std::ostringstream serials;
 
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    for (; it != end; ++it)
+    std::string cdkey = json["cdKey"].asString();
+    if (cdkey.find("<span>") == std::string::npos)
     {
-        if (it->tagName() == "div")
+        serials << cdkey;
+    }
+    else
+    {
+        htmlcxx::HTML::ParserDom parser;
+        tree<htmlcxx::HTML::Node> dom = parser.parseTree(cdkey);
+        tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
+        tree<htmlcxx::HTML::Node>::iterator end = dom.end();
+        for (; it != end; ++it)
         {
-            it->parseAttributes();
-            std::string classname = it->attribute("class").second;
-            if (classname == "list_serial_h")
+            std::string tag_text;
+            if (it->tagName() == "span")
             {
-                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
+                for (unsigned int j = 0; j < dom.number_of_children(it); ++j)
                 {
-                    tree<htmlcxx::HTML::Node>::iterator serials_it = dom.child(it, i);
-                    if (!serials_it->isComment())
-                    {
-                        std::string tag_text;
-                        if (!serials_it->isTag())
-                        {
-                            if (!serials_it->text().empty())
-                                tag_text = serials_it->text();
-                        }
-                        else if (serials_it->tagName() == "span")
-                        {
-                            for (unsigned int j = 0; j < dom.number_of_children(serials_it); ++j)
-                            {
-                                tree<htmlcxx::HTML::Node>::iterator serials_span_it = dom.child(serials_it, j);
-                                if (!serials_span_it->isTag() && !serials_span_it->isComment())
-                                    tag_text = serials_span_it->text();
-                            }
-                        }
-
-                        if (!tag_text.empty())
-                        {
-                            boost::regex expression("^\\h+|\\h+$");
-                            std::string text = boost::regex_replace(tag_text, expression, "");
-                            if (!text.empty())
-                                serials << text << std::endl;
-                        }
-                    }
+                    tree<htmlcxx::HTML::Node>::iterator span_it = dom.child(it, j);
+                    if (!span_it->isTag() && !span_it->isComment())
+                        tag_text = span_it->text();
                 }
+            }
+
+            if (!tag_text.empty())
+            {
+                boost::regex expression("^\\h+|\\h+$");
+                std::string text = boost::regex_replace(tag_text, expression, "");
+                if (!text.empty())
+                    serials << text << std::endl;
             }
         }
     }

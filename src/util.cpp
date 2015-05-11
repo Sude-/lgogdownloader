@@ -342,3 +342,46 @@ int Util::getTerminalWidth()
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     return static_cast<int>(w.ws_col);
 }
+
+
+void Util::getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls)
+{
+    if(root.size() > 0) {
+        for(Json::ValueIterator it = root.begin() ; it != root.end() ; ++it)
+        {
+            if (it.key() == "downloaderUrl")
+                urls.push_back(it->asString());
+            else
+                getDownloaderUrlsFromJSON(*it, urls);
+        }
+    }
+    return;
+}
+
+std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
+{
+    std::vector<std::string> urls, dlcnames;
+    getDownloaderUrlsFromJSON(root, urls);
+
+    for (unsigned int i = 0; i < urls.size(); ++i)
+    {
+        std::string gamename;
+        std::string match_string = "gogdownloader://";
+        if (urls[i].find(match_string) == std::string::npos)
+            continue;
+
+        gamename.assign(urls[i].begin()+urls[i].find(match_string)+match_string.length(), urls[i].begin()+urls[i].find_last_of("/"));
+        bool bDuplicate = false;
+        for (unsigned int j = 0; j < dlcnames.size(); ++j)
+        {
+            if (gamename == dlcnames[j])
+            {
+                bDuplicate = true;
+                break;
+            }
+        }
+        if (!bDuplicate)
+            dlcnames.push_back(gamename);
+    }
+    return dlcnames;
+}
