@@ -62,7 +62,13 @@ before_debug:
 	test -d $(OBJDIR_DEBUG) || mkdir -p $(OBJDIR_DEBUG)
 	test -d $(OBJDIR_DEBUG)/src || mkdir -p $(OBJDIR_DEBUG)/src
 
-after_debug: 
+after_debug: out_debug
+ifdef HELP2MAN
+	if ! test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
+		help2man -N -i $(MAN_DIR)/lgogdownloader.supplemental.groff -o $(MAN_DIR)/$(MAN_PAGE) $(OUT_DEBUG); \
+		gzip -f -9 $(MAN_DIR)/$(MAN_PAGE); \
+	fi
+endif
 
 debug: before_debug out_debug after_debug
 
@@ -106,8 +112,10 @@ before_release:
 
 after_release: out_release
 ifdef HELP2MAN
-	help2man -N -i $(MAN_DIR)/lgogdownloader.supplemental.groff -o $(MAN_DIR)/$(MAN_PAGE) $(OUT_RELEASE)
-	gzip -f -9 $(MAN_DIR)/$(MAN_PAGE)
+	if ! test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
+		help2man -N -i $(MAN_DIR)/lgogdownloader.supplemental.groff -o $(MAN_DIR)/$(MAN_PAGE) $(OUT_RELEASE); \
+		gzip -f -9 $(MAN_DIR)/$(MAN_PAGE); \
+	fi
 endif
 
 release: before_release out_release after_release
@@ -148,7 +156,11 @@ clean_release:
 
 install: release
 	install -d $(DESTDIR)/$(PREFIX)/bin/
-	install -m 755 $(OUT_RELEASE) $(DESTDIR)/$(PREFIX)/bin/lgogdownloader
+	if test -f $(OUT_DEBUG); then \
+		install -m 755 $(OUT_DEBUG) $(DESTDIR)/$(PREFIX)/bin/lgogdownloader; \
+	else \
+		install -m 755 $(OUT_RELEASE) $(DESTDIR)/$(PREFIX)/bin/lgogdownloader; \
+	fi
 	if test -f $(MAN_DIR)/$(MAN_PAGE).gz; then \
 		install -d $(DESTDIR)/$(MANPREFIX)/man/man1/; \
 		install -m 644 $(MAN_DIR)/$(MAN_PAGE).gz $(DESTDIR)/$(MANPREFIX)/man/man1/$(MAN_PAGE).gz; \
