@@ -2246,7 +2246,7 @@ std::string Downloader::getSerialsFromJSON(const Json::Value& json)
     std::string cdkey = json["cdKey"].asString();
     if (cdkey.find("<span>") == std::string::npos)
     {
-        serials << cdkey;
+        serials << cdkey << std::endl;
     }
     else
     {
