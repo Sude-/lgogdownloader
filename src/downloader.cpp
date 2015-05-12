@@ -276,15 +276,15 @@ int Downloader::getGameDetails()
             }
             if (game.dlcs.empty() && bHasDLC && conf.bDLC)
             {
-                if (gameDetailsJSON.empty())
-                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
-
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 {
                     gameDetails dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+
                         // Make sure we get extras for the right DLC
                         for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
                         {
@@ -304,6 +304,9 @@ int Downloader::getGameDetails()
 
                     if (config.bSaveSerials)
                     {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+
                         // Make sure we save serial for the right DLC
                         for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
                         {
