@@ -350,7 +350,10 @@ void Util::getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::s
         for(Json::ValueIterator it = root.begin() ; it != root.end() ; ++it)
         {
             if (it.key() == "downloaderUrl")
-                urls.push_back(it->asString());
+            {
+                Json::Value& url = *it;
+                urls.push_back(url.asString());
+            }
             else
                 getDownloaderUrlsFromJSON(*it, urls);
         }
