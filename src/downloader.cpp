@@ -2074,7 +2074,7 @@ std::vector<gameItem> Downloader::getGames()
                 Json::Value product = root["products"][i];
                 gameItem game;
                 game.name = product["slug"].asString();
-                game.id = product["id"].asString();
+                game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
 
                 unsigned int platform = 0;
                 if (product["worksOn"]["Windows"].asBool())
