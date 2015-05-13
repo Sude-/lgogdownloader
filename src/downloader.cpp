@@ -2243,7 +2243,14 @@ std::string Downloader::getSerialsFromJSON(const Json::Value& json)
 {
     std::ostringstream serials;
 
+    if (!json.isMember("cdKey"))
+        return std::string();
+
     std::string cdkey = json["cdKey"].asString();
+
+    if (cdkey.empty())
+        return std::string();
+
     if (cdkey.find("<span>") == std::string::npos)
     {
         serials << cdkey << std::endl;
