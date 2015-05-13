@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
             ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" for French first, then English if no French version").c_str())
             ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" for Linux first, then Windows if no Linux version").c_str())
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
+            ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -509,6 +510,8 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+    else if (config.bShowWishlist)
+        downloader.showWishlist();
     else if (config.bUpdateCache)
         downloader.updateCache();
     else if (config.bUpdateCheck) // Update check has priority over download and list

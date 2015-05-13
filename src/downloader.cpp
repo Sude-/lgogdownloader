@@ -3012,3 +3012,106 @@ void Downloader::downloadFileWithId(const std::string& fileid_string)
 
     return;
 }
+
+void Downloader::showWishlist()
+{
+    Json::Value root;
+    Json::Reader *jsonparser = new Json::Reader;
+    int i = 1;
+    bool bAllPagesParsed = false;
+
+    do
+    {
+        std::string response = this->getResponse("https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i));
+
+        // Parse JSON
+        if (!jsonparser->parse(response, root))
+        {
+            #ifdef DEBUG
+                std::cerr << "DEBUG INFO (Downloader::showWishlist)" << std::endl << response << std::endl;
+            #endif
+            std::cout << jsonparser->getFormatedErrorMessages();
+            delete jsonparser;
+            exit(1);
+        }
+        #ifdef DEBUG
+            std::cerr << "DEBUG INFO (Downloader::showWishlist)" << std::endl << root << std::endl;
+        #endif
+        if (root["page"].asInt() >= root["totalPages"].asInt())
+            bAllPagesParsed = true;
+        if (root["products"].isArray())
+        {
+            for (unsigned int i = 0; i < root["products"].size(); ++i)
+            {
+                Json::Value product = root["products"][i];
+
+                unsigned int platform = 0;
+                if (product["worksOn"]["Windows"].asBool())
+                    platform |= GlobalConstants::PLATFORM_WINDOWS;
+                if (product["worksOn"]["Mac"].asBool())
+                    platform |= GlobalConstants::PLATFORM_MAC;
+                if (product["worksOn"]["Linux"].asBool())
+                    platform |= GlobalConstants::PLATFORM_LINUX;
+
+                // Skip if platform doesn't match
+                if (config.bPlatformDetection && !(platform & config.iInstallerType))
+                    continue;
+
+                std::string platforms_text;
+                for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
+                {
+                    if (GlobalConstants::PLATFORMS[j].platformId & platform)
+                    {
+                        platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].platformString;
+                    }
+                }
+
+                std::vector<std::string> tags;
+                if (product["isComingSoon"].asBool())
+                    tags.push_back("Coming soon");
+                if (product["isDiscounted"].asBool())
+                    tags.push_back("Discount");
+
+                std::string tags_text;
+                for (unsigned int j = 0; j < tags.size(); ++j)
+                {
+                    tags_text += (tags_text.empty() ? "" : ", ")+tags[j];
+                }
+                if (!tags_text.empty())
+                    tags_text = "[" + tags_text + "]";
+
+                time_t release_date_time = product["releaseDate"].isUInt() ? product["releaseDate"].asUInt() : std::stoul(product["releaseDate"].asString());
+                std::string release_date = bptime::to_simple_string(bptime::from_time_t(release_date_time));
+
+                std::string price_text;
+                std::string currency = product["price"]["symbol"].asString();
+                std::string price = product["price"]["finalAmount"].isDouble() ? std::to_string(product["price"]["finalAmount"].asDouble()) + currency : product["price"]["finalAmount"].asString() + currency;
+                std::string discount_percent = product["price"]["discountPercentage"].isInt() ? std::to_string(product["price"]["discountPercentage"].asInt()) + "%" : product["price"]["discountPercentage"].asString() + "%";
+                std::string discount = product["price"]["discountDifference"].isDouble() ? std::to_string(product["price"]["discountDifference"].asDouble()) + currency : product["price"]["discountDifference"].asString() + currency;
+                std::string store_credit = product["price"]["bonusStoreCreditAmount"].isDouble() ? std::to_string(product["price"]["bonusStoreCreditAmount"].asDouble()) + currency : product["price"]["bonusStoreCreditAmount"].asString() + currency;
+                price_text = price;
+                if (product["isDiscounted"].asBool())
+                    price_text += " (-" + discount_percent + " | -" + discount + ")";
+
+                std::cout << product["title"].asString();
+                if (!tags_text.empty())
+                    std::cout << " " << tags_text;
+                std::cout << std::endl;
+                std::cout << "\t" << product["url"].asString() << std::endl;
+                std::cout << "\tPlatforms: " << platforms_text << std::endl;
+                if (product["isComingSoon"].asBool())
+                    std::cout << "\tRelease date: " << release_date << std::endl;
+                std::cout << "\tPrice: " << price_text << std::endl;
+                if (product["price"]["isBonusStoreCreditIncluded"].asBool())
+                    std::cout << "\tStore credit: " << store_credit << std::endl;
+
+                std::cout << std::endl;
+            }
+        }
+        i++;
+    } while (!bAllPagesParsed);
+
+    delete jsonparser;
+
+    return;
+}
