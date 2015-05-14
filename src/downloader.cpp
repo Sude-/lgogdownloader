@@ -90,7 +90,7 @@ int Downloader::init()
 
     // updateCheck() calls getGameList() if needed
     // getGameList() is not needed when using cache unless we want to list games from account
-    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) && config.sFileIdString.empty() )
+    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) && config.sFileIdString.empty() && !config.bShowWishlist )
         this->getGameList();
 
     if (config.bReport && (config.bDownload || config.bRepair))
@@ -3046,23 +3046,27 @@ void Downloader::showWishlist()
                 Json::Value product = root["products"][i];
 
                 unsigned int platform = 0;
-                if (product["worksOn"]["Windows"].asBool())
-                    platform |= GlobalConstants::PLATFORM_WINDOWS;
-                if (product["worksOn"]["Mac"].asBool())
-                    platform |= GlobalConstants::PLATFORM_MAC;
-                if (product["worksOn"]["Linux"].asBool())
-                    platform |= GlobalConstants::PLATFORM_LINUX;
-
-                // Skip if platform doesn't match
-                if (config.bPlatformDetection && !(platform & config.iInstallerType))
-                    continue;
-
                 std::string platforms_text;
-                for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
+                bool bIsMovie = product["isMovie"].asBool();
+                if (!bIsMovie)
                 {
-                    if (GlobalConstants::PLATFORMS[j].platformId & platform)
+                    if (product["worksOn"]["Windows"].asBool())
+                        platform |= GlobalConstants::PLATFORM_WINDOWS;
+                    if (product["worksOn"]["Mac"].asBool())
+                        platform |= GlobalConstants::PLATFORM_MAC;
+                    if (product["worksOn"]["Linux"].asBool())
+                        platform |= GlobalConstants::PLATFORM_LINUX;
+
+                    // Skip if platform doesn't match
+                    if (config.bPlatformDetection && !(platform & config.iInstallerType))
+                        continue;
+
+                    for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
                     {
-                        platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].platformString;
+                        if (GlobalConstants::PLATFORMS[j].platformId & platform)
+                        {
+                            platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].platformString;
+                        }
                     }
                 }
 
@@ -3071,6 +3075,8 @@ void Downloader::showWishlist()
                     tags.push_back("Coming soon");
                 if (product["isDiscounted"].asBool())
                     tags.push_back("Discount");
+                if (bIsMovie)
+                    tags.push_back("Movie");
 
                 std::string tags_text;
                 for (unsigned int j = 0; j < tags.size(); ++j)
@@ -3080,8 +3086,39 @@ void Downloader::showWishlist()
                 if (!tags_text.empty())
                     tags_text = "[" + tags_text + "]";
 
-                time_t release_date_time = product["releaseDate"].isUInt() ? product["releaseDate"].asUInt() : std::stoul(product["releaseDate"].asString());
-                std::string release_date = bptime::to_simple_string(bptime::from_time_t(release_date_time));
+                time_t release_date_time;
+                std::string release_date;
+                bool bShowReleaseDate = false;
+                if (product.isMember("releaseDate") && product["isComingSoon"].asBool())
+                {
+                    if (!product["releaseDate"].empty())
+                    {
+                        if (product["releaseDate"].isInt())
+                        {
+                            release_date_time = product["releaseDate"].asInt();
+                            bShowReleaseDate = true;
+                        }
+                        else
+                        {
+                            std::string release_date_time_string = product["releaseDate"].asString();
+                            if (!release_date_time_string.empty())
+                            {
+                                try
+                                {
+                                    release_date_time = std::stoi(release_date_time_string);
+                                    bShowReleaseDate = true;
+                                }
+                                catch (std::invalid_argument& e)
+                                {
+                                    bShowReleaseDate = false;
+                                }
+                            }
+                        }
+                    }
+
+                    if (bShowReleaseDate)
+                        release_date = bptime::to_simple_string(bptime::from_time_t(release_date_time));
+                }
 
                 std::string price_text;
                 std::string currency = product["price"]["symbol"].asString();
@@ -3093,13 +3130,20 @@ void Downloader::showWishlist()
                 if (product["isDiscounted"].asBool())
                     price_text += " (-" + discount_percent + " | -" + discount + ")";
 
+                std::string url = product["url"].asString();
+                if (url.find("/game/") == 0)
+                    url = "https://www.gog.com" + url;
+                else if (url.find("/movie/") == 0)
+                    url = "https://www.gog.com" + url;
+
                 std::cout << product["title"].asString();
                 if (!tags_text.empty())
                     std::cout << " " << tags_text;
                 std::cout << std::endl;
-                std::cout << "\t" << product["url"].asString() << std::endl;
-                std::cout << "\tPlatforms: " << platforms_text << std::endl;
-                if (product["isComingSoon"].asBool())
+                std::cout << "\t" << url << std::endl;
+                if (!bIsMovie)
+                    std::cout << "\tPlatforms: " << platforms_text << std::endl;
+                if (bShowReleaseDate)
                     std::cout << "\tRelease date: " << release_date << std::endl;
                 std::cout << "\tPrice: " << price_text << std::endl;
                 if (product["price"]["isBonusStoreCreditIncluded"].asBool())
