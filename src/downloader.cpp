@@ -2036,6 +2036,24 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
             break;
     }
 
+    // Simple login check if complex check failed. Check login by trying to get account page. If response code isn't 200 then login failed.
+    if (res == 0)
+    {
+        std::string url = "https://www.gog.com/account";
+        curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+        curl_easy_perform(curlhandle);
+        memory.str(std::string());
+        long int response_code = 0;
+        curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+        if (response_code == 200)
+            res = 1; // Login successful
+    }
+
     return res;
 }
 
