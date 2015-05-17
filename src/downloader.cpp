@@ -82,7 +82,7 @@ int Downloader::init()
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
     bool bInitOK = gogAPI->init(); // Initialize the API
-    if (!bInitOK)
+    if (!bInitOK || config.bLogin)
         return 1;
 
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
