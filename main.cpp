@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
             ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
+            ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -190,7 +191,6 @@ int main(int argc, char *argv[])
             ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" for French first, then English if no French version").c_str())
             ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" for Linux first, then Windows if no Linux version").c_str())
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
-            ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
         ;
         // Options read from config file
         options_cfg_only.add_options()
