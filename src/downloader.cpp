@@ -1519,12 +1519,32 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             }
             else
             {
+                if (bLocalXMLExists)
+                {
+                    std::cout << "Deleting old XML data" << std::endl;
+                    boost::filesystem::remove(xml_file, ec); // Delete old XML data
+                    if (ec)
+                    {
+                        std::cout << "Failed to delete " << xml_file << std::endl;
+                    }
+                }
+
                 CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
                 std::cout << std::endl;
                 if (result == CURLE_OK)
+                {
+                    bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
+                    if (!bLocalXMLExists)
+                    {
+                        std::cout << "Starting automatic XML creation" << std::endl;
+                        Util::createXML(filepath, config.iChunkSize, xml_directory);
+                    }
                     res = 1;
+                }
                 else
+                {
                     res = 0;
+                }
             }
         }
         return res;
