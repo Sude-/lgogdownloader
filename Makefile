@@ -75,28 +75,28 @@ debug: before_debug out_debug after_debug
 out_debug: $(OBJ_DEBUG) $(DEP_DEBUG)
 	$(LD) $(LDFLAGS_DEBUG) $(LIBDIR_DEBUG) $(OBJ_DEBUG) $(LIB_DEBUG) -o $(OUT_DEBUG)
 
-$(OBJDIR_DEBUG)/main.o: main.cpp before_debug
+$(OBJDIR_DEBUG)/main.o: main.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(VERSION) $(INC_DEBUG) -c main.cpp -o $(OBJDIR_DEBUG)/main.o
 
-$(OBJDIR_DEBUG)/src/api.o: src/api.cpp before_debug
+$(OBJDIR_DEBUG)/src/api.o: src/api.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/api.cpp -o $(OBJDIR_DEBUG)/src/api.o
 
-$(OBJDIR_DEBUG)/src/downloader.o: src/downloader.cpp before_debug
+$(OBJDIR_DEBUG)/src/downloader.o: src/downloader.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/downloader.cpp -o $(OBJDIR_DEBUG)/src/downloader.o
 
-$(OBJDIR_DEBUG)/src/progressbar.o: src/progressbar.cpp before_debug
+$(OBJDIR_DEBUG)/src/progressbar.o: src/progressbar.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/progressbar.cpp -o $(OBJDIR_DEBUG)/src/progressbar.o
 
-$(OBJDIR_DEBUG)/src/util.o: src/util.cpp before_debug
+$(OBJDIR_DEBUG)/src/util.o: src/util.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/util.cpp -o $(OBJDIR_DEBUG)/src/util.o
 
-$(OBJDIR_DEBUG)/src/blacklist.o: src/blacklist.cpp before_debug
+$(OBJDIR_DEBUG)/src/blacklist.o: src/blacklist.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/blacklist.cpp -o $(OBJDIR_DEBUG)/src/blacklist.o
 
-$(OBJDIR_DEBUG)/src/gamefile.o: src/gamefile.cpp before_debug
+$(OBJDIR_DEBUG)/src/gamefile.o: src/gamefile.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/gamefile.cpp -o $(OBJDIR_DEBUG)/src/gamefile.o
 
-$(OBJDIR_DEBUG)/src/gamedetails.o: src/gamedetails.cpp before_debug
+$(OBJDIR_DEBUG)/src/gamedetails.o: src/gamedetails.cpp
 	$(CXX) $(CFLAGS_DEBUG) $(INC_DEBUG) -c src/gamedetails.cpp -o $(OBJDIR_DEBUG)/src/gamedetails.o
 
 clean_debug: 
@@ -123,28 +123,28 @@ release: before_release out_release after_release
 out_release: $(OBJ_RELEASE) $(DEP_RELEASE)
 	$(LD) $(LDFLAGS_RELEASE) $(LIBDIR_RELEASE) $(OBJ_RELEASE) $(LIB_RELEASE) -o $(OUT_RELEASE)
 
-$(OBJDIR_RELEASE)/main.o: main.cpp before_release
+$(OBJDIR_RELEASE)/main.o: main.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(VERSION) $(INC_RELEASE) -c main.cpp -o $(OBJDIR_RELEASE)/main.o
 
-$(OBJDIR_RELEASE)/src/api.o: src/api.cpp before_release
+$(OBJDIR_RELEASE)/src/api.o: src/api.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/api.cpp -o $(OBJDIR_RELEASE)/src/api.o
 
-$(OBJDIR_RELEASE)/src/downloader.o: src/downloader.cpp before_release
+$(OBJDIR_RELEASE)/src/downloader.o: src/downloader.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/downloader.cpp -o $(OBJDIR_RELEASE)/src/downloader.o
 
-$(OBJDIR_RELEASE)/src/progressbar.o: src/progressbar.cpp before_release
+$(OBJDIR_RELEASE)/src/progressbar.o: src/progressbar.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/progressbar.cpp -o $(OBJDIR_RELEASE)/src/progressbar.o
 
-$(OBJDIR_RELEASE)/src/util.o: src/util.cpp before_release
+$(OBJDIR_RELEASE)/src/util.o: src/util.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/util.cpp -o $(OBJDIR_RELEASE)/src/util.o
 
-$(OBJDIR_RELEASE)/src/blacklist.o: src/blacklist.cpp before_release
+$(OBJDIR_RELEASE)/src/blacklist.o: src/blacklist.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/blacklist.cpp -o $(OBJDIR_RELEASE)/src/blacklist.o
 
-$(OBJDIR_RELEASE)/src/gamefile.o: src/gamefile.cpp before_release
+$(OBJDIR_RELEASE)/src/gamefile.o: src/gamefile.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/gamefile.cpp -o $(OBJDIR_RELEASE)/src/gamefile.o
 
-$(OBJDIR_RELEASE)/src/gamedetails.o: src/gamedetails.cpp before_release
+$(OBJDIR_RELEASE)/src/gamedetails.o: src/gamedetails.cpp
 	$(CXX) $(CFLAGS_RELEASE) $(INC_RELEASE) -c src/gamedetails.cpp -o $(OBJDIR_RELEASE)/src/gamedetails.o
 
 clean_release: 
