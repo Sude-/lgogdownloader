@@ -2250,15 +2250,28 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
             path = "/" + gamename + "/extras/" + path;
         }
 
-        // Get name from path if name was not specified
+        // Get filename
+        std::string filename;
+        filename.assign(path.begin()+path.find_last_of("/")+1,path.end());
+
+        // Use filename if name was not specified
         if (name.empty())
-            name.assign(path.begin()+path.find_last_of("/")+1,path.end());
+            name = filename;
 
         if (name.empty())
         {
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (getExtrasFromJSON)" << std::endl;
                 std::cerr << "Skipped file without a name (game: " << gamename << ", fileid: " << id << ")" << std::endl;
+            #endif
+            continue;
+        }
+
+        if (filename.empty())
+        {
+            #ifdef DEBUG
+                std::cerr << "DEBUG INFO (getExtrasFromJSON)" << std::endl;
+                std::cerr << "Skipped file without a filename (game: " << gamename << ", fileid: " << id << ", name: " << name << ")" << std::endl;
             #endif
             continue;
         }
