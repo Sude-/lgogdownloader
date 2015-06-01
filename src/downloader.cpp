@@ -249,12 +249,13 @@ int Downloader::getGameDetails()
 
         gameSpecificConfig conf;
         conf.bDLC = config.bDLC;
+        conf.bIgnoreDLCCount = false;
         conf.iInstallerLanguage = config.iInstallerLanguage;
         conf.iInstallerType = config.iInstallerType;
         if (!config.bUpdateCache) // Disable game specific config files for cache update
         {
             if (Util::getGameSpecificConfig(gameItems[i].name, &conf) > 0)
-                std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+                std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerType << ", DLC: " << (conf.bDLC ? "true" : "false") << ", Ignore DLC count: " << (conf.bIgnoreDLCCount ? "true" : "false") << std::endl;
         }
 
         game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerType, conf.iInstallerLanguage, config.bDuplicateHandler);
@@ -274,6 +275,17 @@ int Downloader::getGameDetails()
                     gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
                 game.serials = this->getSerialsFromJSON(gameDetailsJSON);
             }
+
+            // Ignore DLC count and try to get DLCs from JSON
+            if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+
+                gameItems[i].dlcnames = Util::getDLCNamesFromJSON(gameDetailsJSON["dlcs"]);
+                bHasDLC = !gameItems[i].dlcnames.empty();
+            }
+
             if (game.dlcs.empty() && bHasDLC && conf.bDLC)
             {
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
@@ -2129,7 +2141,17 @@ std::vector<gameItem> Downloader::getGames()
                 if (config.bDLC)
                 {
                     int dlcCount = product["dlcCount"].asInt();
-                    if (dlcCount != 0)
+
+                    bool bIgnoreDLCCount = false;
+                    if (!config.sIgnoreDLCCountRegex.empty())
+                    {
+                        boost::regex expression(config.sIgnoreDLCCountRegex);
+                        boost::match_results<std::string::const_iterator> what;
+                        if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                            bIgnoreDLCCount = true;
+                    }
+
+                    if (dlcCount != 0 || bIgnoreDLCCount)
                     {
                         std::string gameinfo = this->getResponse("https://www.gog.com/account/gameDetails/" + game.id + ".json");
                         Json::Value info;
@@ -2288,7 +2310,6 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
 
     return extras;
 }
-
 
 std::string Downloader::getSerialsFromJSON(const Json::Value& json)
 {

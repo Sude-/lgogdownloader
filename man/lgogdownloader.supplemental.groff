@@ -7,7 +7,7 @@ An open-source GOG.com downloader for Linux users which uses the same API as the
 .PP
 LGOGDownloader can download purchased games, query GOG.com to see if game files have changed, as well as downloading extras such as artwork and manuals. It is capable of downloading language-specific installers for games where they exist.
 .PP
-These games are currently offered only for the Microsoft Windows\[rg] and Apple OS X\[rg] operating systems. To play these games under GNU/Linux will require a compatibility layer such as Wine. Usage of such a program is outside the scope of this document. 
+These games are currently offered only for the Microsoft Windows\[rg] and Apple OS X\[rg] operating systems. To play these games under GNU/Linux will require a compatibility layer such as Wine. Usage of such a program is outside the scope of this document.
 
 /--update-check/
 .nf
@@ -70,7 +70,7 @@ It doesn't have to exist, but if it does exist, it must be readable to lgogdownl
 \fI$XDG_CONFIG_HOME/lgogdownloader/gamename.conf\fP
 JSON formatted file. Sets game specific settings for \fBgamename\fP.
 .br
-Allowed settings are \fBlanguage\fP, \fBplatform\fP and \fBdlc\fP.
+Allowed settings are \fBlanguage\fP, \fBplatform\fP, \fBdlc\fP and \fBignore-dlc-count\fP.
 .br
 The \fBdlc\fP option is limited to disabling DLC for specific game. It can't enable DLC listing/downloading if \fB--no-dlc\fP option is used.
 .br
@@ -79,7 +79,8 @@ Must be in the following format:
 {
     "language" : <int>,
     "platform" : <int>,
-    "dlc" : <bool>
+    "dlc" : <bool>,
+    "ignore-dlc-count" : <bool>
 .br
 }
 
@@ -87,7 +88,7 @@ Must be in the following format:
 For both languages and platforms, the default behavior is to download all enabled ones.
 The \fBlanguage-priority\fB and \fBplatform-priority\fB switches enable a priority-based mode: only the first matching one will be downloaded.
 .PP
-For example, setting \fBlanguage\fB to 5 means both French and English will be downloaded (if available) for all games. Setting \fBlanguage-priority\fB to 4,1 means that the French version (and only that one) will be downloaded if available, and if not, the English version will be downloaded. 
+For example, setting \fBlanguage\fB to 5 means both French and English will be downloaded (if available) for all games. Setting \fBlanguage-priority\fB to 4,1 means that the French version (and only that one) will be downloaded if available, and if not, the English version will be downloaded.
 .PP
 You're allowed to "stack" codes in the priority string if needed. If you set \fBlanguage-priority\fB 132,1 it means it'll download both Spanish (128) and French (4) versions if they are available, and the English (1) one only if none of French and Spanish are available.
 .PP

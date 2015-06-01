@@ -24,6 +24,7 @@ struct gameSpecificConfig
     unsigned int iInstallerType;
     unsigned int iInstallerLanguage;
     bool bDLC;
+    bool bIgnoreDLCCount;
 };
 
 namespace Util

@@ -267,6 +267,11 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
             conf->bDLC = root["dlc"].asBool();
             res++;
         }
+        if (root.isMember("ignore-dlc-count"))
+        {
+            conf->bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
+            res++;
+        }
     }
     else
     {

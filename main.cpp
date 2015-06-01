@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
             ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" for French first, then English if no French version").c_str())
             ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" for Linux first, then Windows if no Linux version").c_str())
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
+            ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->default_value(""), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
         ;
         // Options read from config file
         options_cfg_only.add_options()

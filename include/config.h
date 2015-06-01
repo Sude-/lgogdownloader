@@ -69,6 +69,7 @@ class Config
         std::string sFileIdString;
         std::string sLanguagePriority;
         std::string sPlatformPriority;
+        std::string sIgnoreDLCCountRegex;
         std::vector<unsigned int> vLanguagePriority;
         std::vector<unsigned int> vPlatformPriority;
 
