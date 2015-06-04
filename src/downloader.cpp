@@ -2142,16 +2142,30 @@ std::vector<gameItem> Downloader::getGames()
                 {
                     int dlcCount = product["dlcCount"].asInt();
 
-                    bool bIgnoreDLCCount = false;
-                    if (!config.sIgnoreDLCCountRegex.empty())
+                    bool bDownloadDLCInfo = (dlcCount != 0);
+
+                    if (!bDownloadDLCInfo && !config.sIgnoreDLCCountRegex.empty())
                     {
                         boost::regex expression(config.sIgnoreDLCCountRegex);
                         boost::match_results<std::string::const_iterator> what;
                         if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
-                            bIgnoreDLCCount = true;
+                        {
+                            bDownloadDLCInfo = true;
+                        }
                     }
 
-                    if (dlcCount != 0 || bIgnoreDLCCount)
+                    if (bDownloadDLCInfo && !config.sGameRegex.empty())
+                    {
+                        // don't download unnecessary info if user is only interested in a subset of his account
+                        boost::regex expression(config.sGameRegex);
+                        boost::match_results<std::string::const_iterator> what;
+                        if (!boost::regex_search(game.name, what, expression))
+                        {
+                            bDownloadDLCInfo = false;
+                        }
+                    }
+
+                    if (bDownloadDLCInfo)
                     {
                         std::string gameinfo = this->getResponse("https://www.gog.com/account/gameDetails/" + game.id + ".json");
                         Json::Value info;
