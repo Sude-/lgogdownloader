@@ -13,25 +13,25 @@
 namespace GlobalConstants
 {
     // Language constants
-    const unsigned int LANGUAGE_EN = 1;
-    const unsigned int LANGUAGE_DE = 2;
-    const unsigned int LANGUAGE_FR = 4;
-    const unsigned int LANGUAGE_PL = 8;
-    const unsigned int LANGUAGE_RU = 16;
-    const unsigned int LANGUAGE_CN = 32;
-    const unsigned int LANGUAGE_CZ = 64;
-    const unsigned int LANGUAGE_ES = 128;
-    const unsigned int LANGUAGE_HU = 256;
-    const unsigned int LANGUAGE_IT = 512;
-    const unsigned int LANGUAGE_JP = 1024;
-    const unsigned int LANGUAGE_TR = 2048;
-    const unsigned int LANGUAGE_PT = 4096;
-    const unsigned int LANGUAGE_KO = 8192;
-    const unsigned int LANGUAGE_NL = 16384;
-    const unsigned int LANGUAGE_SV = 32768;
-    const unsigned int LANGUAGE_NO = 65536;
-    const unsigned int LANGUAGE_DA = 131072;
-    const unsigned int LANGUAGE_FI = 262144;
+    const unsigned int LANGUAGE_EN = 1 << 0;
+    const unsigned int LANGUAGE_DE = 1 << 1;
+    const unsigned int LANGUAGE_FR = 1 << 2;
+    const unsigned int LANGUAGE_PL = 1 << 3;
+    const unsigned int LANGUAGE_RU = 1 << 4;
+    const unsigned int LANGUAGE_CN = 1 << 5;
+    const unsigned int LANGUAGE_CZ = 1 << 6;
+    const unsigned int LANGUAGE_ES = 1 << 7;
+    const unsigned int LANGUAGE_HU = 1 << 8;
+    const unsigned int LANGUAGE_IT = 1 << 9;
+    const unsigned int LANGUAGE_JP = 1 << 10;
+    const unsigned int LANGUAGE_TR = 1 << 11;
+    const unsigned int LANGUAGE_PT = 1 << 12;
+    const unsigned int LANGUAGE_KO = 1 << 13;
+    const unsigned int LANGUAGE_NL = 1 << 14;
+    const unsigned int LANGUAGE_SV = 1 << 15;
+    const unsigned int LANGUAGE_NO = 1 << 16;
+    const unsigned int LANGUAGE_DA = 1 << 17;
+    const unsigned int LANGUAGE_FI = 1 << 18;
 
     struct languageStruct {const unsigned int languageId; const std::string languageCode; const std::string languageString;};
     const std::vector<languageStruct> LANGUAGES =
@@ -58,9 +58,9 @@ namespace GlobalConstants
     };
 
     // Platform constants
-    const unsigned int PLATFORM_WINDOWS = 1;
-    const unsigned int PLATFORM_MAC     = 2;
-    const unsigned int PLATFORM_LINUX   = 4;
+    const unsigned int PLATFORM_WINDOWS = 1 << 0;
+    const unsigned int PLATFORM_MAC     = 1 << 1;
+    const unsigned int PLATFORM_LINUX   = 1 << 2;
 
     struct platformStruct {const unsigned int platformId; const std::string platformCode; const std::string platformString;};
     const std::vector<platformStruct> PLATFORMS =
