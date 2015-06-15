@@ -32,6 +32,7 @@ namespace GlobalConstants
     const unsigned int LANGUAGE_NO = 1 << 16;
     const unsigned int LANGUAGE_DA = 1 << 17;
     const unsigned int LANGUAGE_FI = 1 << 18;
+    const unsigned int LANGUAGE_PT_BR = 1 << 19;
 
     struct languageStruct {const unsigned int languageId; const std::string languageCode; const std::string languageString;};
     const std::vector<languageStruct> LANGUAGES =
@@ -54,7 +55,8 @@ namespace GlobalConstants
         { LANGUAGE_SV, "sv", "Swedish"   },
         { LANGUAGE_NO, "no", "Norwegian" },
         { LANGUAGE_DA, "da", "Danish"    },
-        { LANGUAGE_FI, "fi", "Finnish"   }
+        { LANGUAGE_FI, "fi", "Finnish"   },
+        { LANGUAGE_PT_BR, "pt_br", "Brazilian Portuguese" }
     };
 
     // Platform constants
