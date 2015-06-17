@@ -56,7 +56,7 @@ namespace GlobalConstants
         { LANGUAGE_NO, "no", "Norwegian" },
         { LANGUAGE_DA, "da", "Danish"    },
         { LANGUAGE_FI, "fi", "Finnish"   },
-        { LANGUAGE_PT_BR, "pt_br", "Brazilian Portuguese" }
+        { LANGUAGE_PT_BR, "br", "Brazilian Portuguese" }
     };
 
     // Platform constants
