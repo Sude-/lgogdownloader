@@ -175,31 +175,13 @@ void Downloader::updateCheck()
 
 void Downloader::getGameList()
 {
-    gameItems = this->getGames();
-
-    // Filter the game list
-    if (!config.sGameRegex.empty())
+    if (config.sGameRegex == "free")
     {
-        // GameRegex filter aliases
-        if (config.sGameRegex == "all")
-            config.sGameRegex = ".*";
-
-        if (config.sGameRegex == "free")
-        {
-            gameItems = this->getFreeGames();
-        }
-        else
-        {   // Filter the names
-            std::vector<gameItem> gameItemsFiltered;
-            boost::regex expression(config.sGameRegex);
-            boost::match_results<std::string::const_iterator> what;
-            for (unsigned int i = 0; i < gameItems.size(); ++i)
-            {
-                if (boost::regex_search(gameItems[i].name, what, expression)) // Check if name matches the specified regex
-                    gameItemsFiltered.push_back(gameItems[i]);
-            }
-            gameItems = gameItemsFiltered;
-        }
+        gameItems = this->getFreeGames();
+    }
+    else
+    {
+        gameItems = this->getGames();
     }
 }
 
@@ -2137,6 +2119,19 @@ std::vector<gameItem> Downloader::getGames()
                 // Skip if platform doesn't match
                 if (config.bPlatformDetection && !(platform & config.iInstallerType))
                     continue;
+
+                // Filter the game list
+                if (!config.sGameRegex.empty())
+                {
+                    // GameRegex filter aliases
+                    if (config.sGameRegex == "all")
+                        config.sGameRegex = ".*";
+
+                    boost::regex expression(config.sGameRegex);
+                    boost::match_results<std::string::const_iterator> what;
+                    if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                        continue;
+                }
 
                 if (config.bDLC)
                 {
