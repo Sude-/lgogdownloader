@@ -73,6 +73,10 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
 
+    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
+
     // Create new API handle and set curl options for the API
     gogAPI = new API(config.sToken, config.sSecret);
     gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
@@ -1335,9 +1339,18 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     }
 
     // Retry partially downloaded file
-    if (res == CURLE_PARTIAL_FILE && (this->retries < config.iRetries) )
+    // Retry if we aborted the transfer due to low speed limit
+    if ((res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT) && (this->retries < config.iRetries) )
     {
         this->retries++;
+
+        std::cerr << std::endl << "Retry " << this->retries << "/" << config.iRetries;
+        if (res == CURLE_PARTIAL_FILE)
+            std::cerr << " (partial download)";
+        else if (res == CURLE_OPERATION_TIMEDOUT)
+            std::cerr << " (timeout)";
+        std::cerr << std::endl;
+
         res = this->downloadFile(url, filepath, xml_data, gamename);
     }
     else
