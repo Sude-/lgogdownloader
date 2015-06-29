@@ -2596,6 +2596,38 @@ void Downloader::checkStatus()
 
                     if (remoteHash != localHash)
                         bHashOK = false;
+                    else
+                    {
+                        // Check for incomplete file by comparing the filesizes
+                        // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
+                        size_t filesize_xml = 0;
+                        boost::filesystem::path path = filepath;
+                        boost::filesystem::path local_xml_file;
+                        if (!games[i].gamename.empty())
+                            local_xml_file = config.sXMLDirectory + "/" + games[i].gamename + "/" + path.filename().string() + ".xml";
+                        else
+                            local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+
+                        if (boost::filesystem::exists(local_xml_file))
+                        {
+                            TiXmlDocument local_xml;
+                            local_xml.LoadFile(local_xml_file.string());
+                            TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
+                            if (fileNodeLocal)
+                            {
+                                TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
+                                std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
+                                filesize_xml = std::stoi(filesize_xml_str);
+                            }
+                        }
+
+                        if (filesize_xml > 0 && filesize_xml != filesize)
+                        {
+                            bHashOK = false;
+                            localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                            filesize = filesize_xml;
+                        }
+                    }
 
                     std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                 }
@@ -2693,6 +2725,38 @@ void Downloader::checkStatus()
 
                             if (remoteHash != localHash)
                                 bHashOK = false;
+                            else
+                            {
+                                // Check for incomplete file by comparing the filesizes
+                                // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
+                                size_t filesize_xml = 0;
+                                boost::filesystem::path path = filepath;
+                                boost::filesystem::path local_xml_file;
+                                if (!games[i].dlcs[j].gamename.empty())
+                                    local_xml_file = config.sXMLDirectory + "/" + games[i].dlcs[j].gamename + "/" + path.filename().string() + ".xml";
+                                else
+                                    local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+
+                                if (boost::filesystem::exists(local_xml_file))
+                                {
+                                    TiXmlDocument local_xml;
+                                    local_xml.LoadFile(local_xml_file.string());
+                                    TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
+                                    if (fileNodeLocal)
+                                    {
+                                        TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
+                                        std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
+                                        filesize_xml = std::stoi(filesize_xml_str);
+                                    }
+                                }
+
+                                if (filesize_xml > 0 && filesize_xml != filesize)
+                                {
+                                    bHashOK = false;
+                                    localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                                    filesize = filesize_xml;
+                                }
+                            }
 
                             std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                         }
