@@ -2617,7 +2617,7 @@ void Downloader::checkStatus()
                             {
                                 TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
                                 std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
-                                filesize_xml = std::stoi(filesize_xml_str);
+                                filesize_xml = std::stoull(filesize_xml_str);
                             }
                         }
 
@@ -2746,7 +2746,7 @@ void Downloader::checkStatus()
                                     {
                                         TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
                                         std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
-                                        filesize_xml = std::stoi(filesize_xml_str);
+                                        filesize_xml = std::stoull(filesize_xml_str);
                                     }
                                 }
 
