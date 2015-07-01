@@ -2105,6 +2105,14 @@ std::vector<gameItem> Downloader::getGames()
             #endif
             std::cout << jsonparser->getFormatedErrorMessages();
             delete jsonparser;
+            if (!response.empty())
+            {
+                if(response[0] != '{')
+                {
+                    // Response was not JSON. Assume that cookies have expired.
+                    std::cerr << "Response was not JSON. Cookies have most likely expired. Try --login first." << std::endl;
+                }
+            }
             exit(1);
         }
         #ifdef DEBUG
