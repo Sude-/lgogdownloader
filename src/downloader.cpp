@@ -2625,7 +2625,6 @@ void Downloader::checkStatus()
                         {
                             bHashOK = false;
                             localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                            filesize = filesize_xml;
                         }
                     }
 
@@ -2754,7 +2753,6 @@ void Downloader::checkStatus()
                                 {
                                     bHashOK = false;
                                     localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                                    filesize = filesize_xml;
                                 }
                             }
 
