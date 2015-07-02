@@ -2631,8 +2631,9 @@ void Downloader::checkStatus()
 
                         if (filesize_xml > 0 && filesize_xml != filesize)
                         {
-                            bHashOK = false;
                             localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                            std::cout << "FS " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                            continue;
                         }
                     }
 
@@ -2759,8 +2760,9 @@ void Downloader::checkStatus()
 
                                 if (filesize_xml > 0 && filesize_xml != filesize)
                                 {
-                                    bHashOK = false;
                                     localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                                    std::cout << "FS " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                                    continue;
                                 }
                             }
 
