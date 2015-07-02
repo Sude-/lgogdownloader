@@ -2761,16 +2761,16 @@ void Downloader::checkStatus()
                                 if (filesize_xml > 0 && filesize_xml != filesize)
                                 {
                                     localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                                    std::cout << "FS " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                                    std::cout << "FS " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                                     continue;
                                 }
                             }
 
-                            std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                            std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                         }
                         else
                         {
-                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
                         }
                     }
                 }
@@ -2787,11 +2787,11 @@ void Downloader::checkStatus()
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
                             filesize = boost::filesystem::file_size(filepath);
-                            std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                         }
                         else
                         {
-                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
                         }
                     }
                 }
@@ -2808,11 +2808,11 @@ void Downloader::checkStatus()
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
                             filesize = boost::filesystem::file_size(filepath);
-                            std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
                         }
                         else
                         {
-                            std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
                         }
                     }
                 }
