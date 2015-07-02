@@ -2593,7 +2593,7 @@ void Downloader::checkStatus()
                 std::string remoteHash;
                 std::string localHash;
                 bool bHashOK = true; // assume hash OK
-                size_t filesize;
+                uintmax_t filesize;
 
                 localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
@@ -2608,7 +2608,7 @@ void Downloader::checkStatus()
                     {
                         // Check for incomplete file by comparing the filesizes
                         // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                        size_t filesize_xml = 0;
+                        uintmax_t filesize_xml = 0;
                         boost::filesystem::path path = filepath;
                         boost::filesystem::path local_xml_file;
                         if (!games[i].gamename.empty())
@@ -2653,7 +2653,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].extras[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2674,7 +2674,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].patches[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2695,7 +2695,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2722,7 +2722,7 @@ void Downloader::checkStatus()
                         std::string remoteHash;
                         std::string localHash;
                         bool bHashOK = true; // assume hash OK
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         remoteHash = this->getRemoteFileHash(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
@@ -2737,7 +2737,7 @@ void Downloader::checkStatus()
                             {
                                 // Check for incomplete file by comparing the filesizes
                                 // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                                size_t filesize_xml = 0;
+                                uintmax_t filesize_xml = 0;
                                 boost::filesystem::path path = filepath;
                                 boost::filesystem::path local_xml_file;
                                 if (!games[i].dlcs[j].gamename.empty())
@@ -2782,7 +2782,7 @@ void Downloader::checkStatus()
                         boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
@@ -2803,7 +2803,7 @@ void Downloader::checkStatus()
                         boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
