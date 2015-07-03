@@ -74,7 +74,7 @@ class Downloader
         Timer timer;
         Config config;
         ProgressBar* progressbar;
-        std::deque< std::pair<time_t, size_t> > TimeAndSize;
+        std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
     protected:
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
@@ -82,7 +82,7 @@ class Downloader
         int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
         int getGameDetails();
         void getGameList();
-        size_t getResumePosition();
+        uintmax_t getResumePosition();
         CURLcode beginDownload();
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
@@ -99,9 +99,9 @@ class Downloader
         void saveSerials(const std::string& serials, const std::string& filepath);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
-        static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
-        static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
-        static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
+        static uintmax_t writeMemoryCallback(char *ptr, uintmax_t size, uintmax_t nmemb, void *userp);
+        static uintmax_t writeData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream);
+        static uintmax_t readData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream);
 
 
         API *gogAPI;
@@ -109,7 +109,7 @@ class Downloader
         std::vector<gameDetails> games;
         std::string coverXML;
 
-        size_t resume_position;
+        uintmax_t resume_position;
         int retries;
         std::ofstream report_ofs;
 };

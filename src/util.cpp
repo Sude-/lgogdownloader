@@ -71,7 +71,7 @@ std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
     return result;
 }
 
-std::string Util::getChunkHash(unsigned char *chunk, size_t chunk_size, unsigned hash_id)
+std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
     char result[rhash_get_hash_length(hash_id)];
@@ -87,12 +87,12 @@ std::string Util::getChunkHash(unsigned char *chunk, size_t chunk_size, unsigned
 }
 
 // Create GOG XML
-int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir)
+int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_dir)
 {
     int res = 0;
     FILE *infile;
     FILE *xmlfile;
-    size_t filesize, size;
+    uintmax_t filesize, size;
     int chunks, i;
 
     if (xml_dir.empty())
@@ -158,11 +158,11 @@ int Util::createXML(std::string filepath, size_t chunk_size, std::string xml_dir
     char rhash_result[rhash_get_hash_length(RHASH_MD5)];
 
     for (i = 0; i < chunks; i++) {
-        size_t range_begin = i*chunk_size;
+        uintmax_t range_begin = i*chunk_size;
         fseek(infile, range_begin, SEEK_SET);
         if ((i == chunks-1) && (remaining != 0))
             chunk_size = remaining;
-        size_t range_end = range_begin + chunk_size - 1;
+        uintmax_t range_end = range_begin + chunk_size - 1;
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
         {

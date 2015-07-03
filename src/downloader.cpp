@@ -1158,7 +1158,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
     FILE *outfile;
-    size_t offset=0;
+    uintmax_t offset=0;
 
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
@@ -1226,7 +1226,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                 bResume = true;
                 fseek(outfile, 0, SEEK_END);
                 offset = ftell(outfile);
-                curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
+                curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM_LARGE, offset);
                 this->resume_position = offset;
             }
             else
@@ -1366,10 +1366,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 {
     int res = 0;
     FILE *outfile;
-    size_t offset=0, from_offset, to_offset, filesize;
+    uintmax_t offset=0, from_offset, to_offset, filesize;
     std::string filehash;
     int chunks;
-    std::vector<size_t> chunk_from, chunk_to;
+    std::vector<uintmax_t> chunk_from, chunk_to;
     std::vector<std::string> chunk_hash;
     bool bParsingFailed = false;
 
@@ -1561,9 +1561,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     int iChunksRepaired = 0;
     for (int i=0; i<chunks; i++)
     {
-        size_t chunk_begin = chunk_from.at(i);
-        size_t chunk_end = chunk_to.at(i);
-        size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
+        uintmax_t chunk_begin = chunk_from.at(i);
+        uintmax_t chunk_end = chunk_to.at(i);
+        uintmax_t size=0, chunk_size = chunk_end - chunk_begin + 1;
         std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end); // Download range string for curl
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
@@ -1799,7 +1799,7 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
 
         // 10 second average download speed
         // Don't use static value of 10 seconds because update interval depends on when and how often progress callback is called
-        downloader->TimeAndSize.push_back(std::make_pair(time(NULL), static_cast<size_t>(dlnow)));
+        downloader->TimeAndSize.push_back(std::make_pair(time(NULL), static_cast<uintmax_t>(dlnow)));
         if (downloader->TimeAndSize.size() > 100) // 100 * 100ms = 10s
         {
             downloader->TimeAndSize.pop_front();
@@ -1870,24 +1870,24 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     return 0;
 }
 
-size_t Downloader::writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
+uintmax_t Downloader::writeMemoryCallback(char *ptr, uintmax_t size, uintmax_t nmemb, void *userp) {
     std::ostringstream *stream = (std::ostringstream*)userp;
-    size_t count = size * nmemb;
+    uintmax_t count = size * nmemb;
     stream->write(ptr, count);
     return count;
 }
 
-size_t Downloader::writeData(void *ptr, size_t size, size_t nmemb, FILE *stream)
+uintmax_t Downloader::writeData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream)
 {
     return fwrite(ptr, size, nmemb, stream);
 }
 
-size_t Downloader::readData(void *ptr, size_t size, size_t nmemb, FILE *stream)
+uintmax_t Downloader::readData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream)
 {
     return fread(ptr, size, nmemb, stream);
 }
 
-size_t Downloader::getResumePosition()
+uintmax_t Downloader::getResumePosition()
 {
     return this->resume_position;
 }
