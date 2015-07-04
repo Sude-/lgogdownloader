@@ -22,7 +22,7 @@
 
 size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     std::ostringstream *stream = (std::ostringstream*)userp;
-    size_t count = size * nmemb;
+    std::streamsize count = (std::streamsize) size * nmemb;
     stream->write(ptr, count);
     return count;
 }

@@ -1804,9 +1804,9 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
         {
             downloader->TimeAndSize.pop_front();
             time_t time_first = downloader->TimeAndSize.front().first;
-            size_t size_first = downloader->TimeAndSize.front().second;
+            uintmax_t size_first = downloader->TimeAndSize.front().second;
             time_t time_last = downloader->TimeAndSize.back().first;
-            size_t size_last = downloader->TimeAndSize.back().second;
+            uintmax_t size_last = downloader->TimeAndSize.back().second;
             rate = (size_last - size_first) / static_cast<double>((time_last - time_first));
         }
 
