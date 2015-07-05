@@ -1225,6 +1225,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             {
                 bResume = true;
                 fseek(outfile, 0, SEEK_END);
+                // use ftello to support large files on 32 bit platforms
                 offset = ftello(outfile);
                 curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM_LARGE, offset);
                 this->resume_position = offset;
@@ -1366,10 +1367,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 {
     int res = 0;
     FILE *outfile;
-    uintmax_t offset=0, from_offset, to_offset, filesize;
+    off_t offset=0, from_offset, to_offset, filesize;
     std::string filehash;
     int chunks;
-    std::vector<uintmax_t> chunk_from, chunk_to;
+    std::vector<off_t> chunk_from, chunk_to;
     std::vector<std::string> chunk_hash;
     bool bParsingFailed = false;
 
@@ -1475,7 +1476,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if ((outfile = fopen(filepath.c_str(), "r+"))!=NULL )
         {
             fseek(outfile, 0, SEEK_END);
-            offset = ftell(outfile);
+            // use ftello to support large files on 32 bit platforms
+            offset = ftello(outfile);
         }
         else
         {
@@ -1503,7 +1505,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         }
         return res;
     }
-
+    
+    // check if file sizes match
     if (offset != filesize)
     {
         std::cout   << "Filesizes don't match" << std::endl
@@ -1561,13 +1564,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     int iChunksRepaired = 0;
     for (int i=0; i<chunks; i++)
     {
-        uintmax_t chunk_begin = chunk_from.at(i);
-        uintmax_t chunk_end = chunk_to.at(i);
-        uintmax_t size=0, chunk_size = chunk_end - chunk_begin + 1;
+        off_t chunk_begin = chunk_from.at(i);
+        off_t chunk_end = chunk_to.at(i);
+        off_t size=0, chunk_size = chunk_end - chunk_begin + 1;
         std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end); // Download range string for curl
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
-        fseek(outfile, chunk_begin, SEEK_SET);
+        // use fseeko to support large files on 32 bit platforms
+        fseeko(outfile, chunk_begin, SEEK_SET);
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
         {
@@ -1587,7 +1591,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (hash != chunk_hash.at(i))
         {
             std::cout << "Failed - downloading chunk" << std::endl;
-            fseek(outfile, chunk_begin, SEEK_SET);
+            // use fseeko to support large files on 32 bit platforms
+            fseeko(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
