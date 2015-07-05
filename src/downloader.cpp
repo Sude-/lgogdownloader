@@ -1158,7 +1158,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
     FILE *outfile;
-    uintmax_t offset=0;
+    off_t offset=0;
 
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
@@ -1225,7 +1225,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             {
                 bResume = true;
                 fseek(outfile, 0, SEEK_END);
-                offset = ftell(outfile);
+                offset = ftello(outfile);
                 curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM_LARGE, offset);
                 this->resume_position = offset;
             }
@@ -1870,19 +1870,19 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     return 0;
 }
 
-uintmax_t Downloader::writeMemoryCallback(char *ptr, uintmax_t size, uintmax_t nmemb, void *userp) {
+size_t Downloader::writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
     std::ostringstream *stream = (std::ostringstream*)userp;
-    uintmax_t count = size * nmemb;
+    size_t count = size * nmemb;
     stream->write(ptr, count);
     return count;
 }
 
-uintmax_t Downloader::writeData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream)
+size_t Downloader::writeData(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
     return fwrite(ptr, size, nmemb, stream);
 }
 
-uintmax_t Downloader::readData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream)
+size_t Downloader::readData(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
     return fread(ptr, size, nmemb, stream);
 }

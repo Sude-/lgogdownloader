@@ -99,9 +99,9 @@ class Downloader
         void saveSerials(const std::string& serials, const std::string& filepath);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
-        static uintmax_t writeMemoryCallback(char *ptr, uintmax_t size, uintmax_t nmemb, void *userp);
-        static uintmax_t writeData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream);
-        static uintmax_t readData(void *ptr, uintmax_t size, uintmax_t nmemb, FILE *stream);
+        static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
+        static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
+        static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 
         API *gogAPI;
@@ -109,7 +109,7 @@ class Downloader
         std::vector<gameDetails> games;
         std::string coverXML;
 
-        uintmax_t resume_position;
+        off_t resume_position;
         int retries;
         std::ofstream report_ofs;
 };
