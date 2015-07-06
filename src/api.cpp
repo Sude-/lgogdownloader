@@ -90,7 +90,7 @@ int API::getAPIConfig()
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getAPIConfig)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
             res = 0;
         }
         delete jsonparser;
@@ -195,7 +195,7 @@ int API::getUserDetails()
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getUserDetails)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
             res = 0;
         }
         delete jsonparser;
@@ -554,7 +554,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getGameDetails)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
         }
         delete jsonparser;
     }
@@ -591,7 +591,7 @@ std::string API::getInstallerLink(const std::string& game_name, const std::strin
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getInstallerLink)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
         }
         delete jsonparser;
     }
@@ -627,7 +627,7 @@ std::string API::getExtraLink(const std::string& game_name, const std::string& i
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getExtraLink)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
         }
         delete jsonparser;
     }
@@ -676,7 +676,7 @@ std::string API::getXML(const std::string& game_name, const std::string& id)
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (API::getXML)" << std::endl << json << std::endl;
             #endif
-            this->setError(jsonparser->getFormatedErrorMessages());
+            this->setError(jsonparser->getFormattedErrorMessages());
         }
         delete jsonparser;
     }

@@ -276,7 +276,7 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
     else
     {
         std::cout << "Failed to parse game specific config" << std::endl;
-        std::cout << jsonparser->getFormatedErrorMessages() << std::endl;
+        std::cout << jsonparser->getFormattedErrorMessages() << std::endl;
     }
     delete jsonparser;
     if (json)

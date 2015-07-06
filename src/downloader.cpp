@@ -2111,7 +2111,7 @@ std::vector<gameItem> Downloader::getGames()
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << response << std::endl;
             #endif
-            std::cout << jsonparser->getFormatedErrorMessages();
+            std::cout << jsonparser->getFormattedErrorMessages();
             delete jsonparser;
             if (!response.empty())
             {
@@ -2198,7 +2198,7 @@ std::vector<gameItem> Downloader::getGames()
                             #ifdef DEBUG
                                 std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << gameinfo << std::endl;
                             #endif
-                            std::cout << jsonparser->getFormatedErrorMessages();
+                            std::cout << jsonparser->getFormattedErrorMessages();
                             delete jsonparser;
                             exit(1);
                         }
@@ -2236,7 +2236,7 @@ std::vector<gameItem> Downloader::getFreeGames()
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << json << std::endl;
         #endif
-        std::cout << jsonparser->getFormatedErrorMessages();
+        std::cout << jsonparser->getFormattedErrorMessages();
         delete jsonparser;
         exit(1);
     }
@@ -2270,7 +2270,7 @@ Json::Value Downloader::getGameDetailsJSON(const std::string& gameid)
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Downloader::getGameDetailsJSON)" << std::endl << json << std::endl;
         #endif
-        std::cout << jsonparser->getFormatedErrorMessages();
+        std::cout << jsonparser->getFormattedErrorMessages();
         delete jsonparser;
         exit(1);
     }
@@ -2937,7 +2937,7 @@ int Downloader::loadGameDetailsCache()
     {
         res = 2;
         std::cout << "Failed to parse cache" << std::endl;
-        std::cout << jsonparser->getFormatedErrorMessages() << std::endl;
+        std::cout << jsonparser->getFormattedErrorMessages() << std::endl;
     }
     delete jsonparser;
     if (json)
@@ -3204,7 +3204,7 @@ void Downloader::showWishlist()
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (Downloader::showWishlist)" << std::endl << response << std::endl;
             #endif
-            std::cout << jsonparser->getFormatedErrorMessages();
+            std::cout << jsonparser->getFormattedErrorMessages();
             delete jsonparser;
             exit(1);
         }
