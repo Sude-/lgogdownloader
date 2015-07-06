@@ -32,8 +32,8 @@ namespace Util
     std::string makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory = "", const unsigned int& platformId = 0, const std::string& dlcname = "");
     std::string makeRelativeFilepath(const std::string& path, const std::string& gamename, std::string subdirectory = "");
     std::string getFileHash(const std::string& filename, unsigned hash_id);
-    std::string getChunkHash(unsigned char* chunk, size_t chunk_size, unsigned hash_id);
-    int createXML(std::string filepath, size_t chunk_size, std::string xml_dir = std::string());
+    std::string getChunkHash(unsigned char* chunk, uintmax_t chunk_size, unsigned hash_id);
+    int createXML(std::string filepath, uintmax_t chunk_size, std::string xml_dir = std::string());
     int getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, std::string directory = std::string());
     int replaceString(std::string& str, const std::string& to_replace, const std::string& replace_with);
     void filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId = 0, const std::string& dlcname = "");

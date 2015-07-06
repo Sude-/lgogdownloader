@@ -74,7 +74,7 @@ class Downloader
         Timer timer;
         Config config;
         ProgressBar* progressbar;
-        std::deque< std::pair<time_t, size_t> > TimeAndSize;
+        std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
     protected:
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
@@ -82,7 +82,7 @@ class Downloader
         int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
         int getGameDetails();
         void getGameList();
-        size_t getResumePosition();
+        uintmax_t getResumePosition();
         CURLcode beginDownload();
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
@@ -109,7 +109,7 @@ class Downloader
         std::vector<gameDetails> games;
         std::string coverXML;
 
-        size_t resume_position;
+        off_t resume_position;
         int retries;
         std::ofstream report_ofs;
 };

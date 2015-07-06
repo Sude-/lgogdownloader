@@ -1158,7 +1158,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     CURLcode res = CURLE_RECV_ERROR; // assume network error
     bool bResume = false;
     FILE *outfile;
-    size_t offset=0;
+    off_t offset=0;
 
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
@@ -1225,8 +1225,9 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             {
                 bResume = true;
                 fseek(outfile, 0, SEEK_END);
-                offset = ftell(outfile);
-                curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM, offset);
+                // use ftello to support large files on 32 bit platforms
+                offset = ftello(outfile);
+                curl_easy_setopt(curlhandle, CURLOPT_RESUME_FROM_LARGE, offset);
                 this->resume_position = offset;
             }
             else
@@ -1366,10 +1367,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 {
     int res = 0;
     FILE *outfile;
-    size_t offset=0, from_offset, to_offset, filesize;
+    off_t offset=0, from_offset, to_offset, filesize;
     std::string filehash;
     int chunks;
-    std::vector<size_t> chunk_from, chunk_to;
+    std::vector<off_t> chunk_from, chunk_to;
     std::vector<std::string> chunk_hash;
     bool bParsingFailed = false;
 
@@ -1475,7 +1476,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if ((outfile = fopen(filepath.c_str(), "r+"))!=NULL )
         {
             fseek(outfile, 0, SEEK_END);
-            offset = ftell(outfile);
+            // use ftello to support large files on 32 bit platforms
+            offset = ftello(outfile);
         }
         else
         {
@@ -1503,7 +1505,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         }
         return res;
     }
-
+    
+    // check if file sizes match
     if (offset != filesize)
     {
         std::cout   << "Filesizes don't match" << std::endl
@@ -1561,13 +1564,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     int iChunksRepaired = 0;
     for (int i=0; i<chunks; i++)
     {
-        size_t chunk_begin = chunk_from.at(i);
-        size_t chunk_end = chunk_to.at(i);
-        size_t size=0, chunk_size = chunk_end - chunk_begin + 1;
+        off_t chunk_begin = chunk_from.at(i);
+        off_t chunk_end = chunk_to.at(i);
+        off_t size=0, chunk_size = chunk_end - chunk_begin + 1;
         std::string range = std::to_string(chunk_begin) + "-" + std::to_string(chunk_end); // Download range string for curl
 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
-        fseek(outfile, chunk_begin, SEEK_SET);
+        // use fseeko to support large files on 32 bit platforms
+        fseeko(outfile, chunk_begin, SEEK_SET);
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
         {
@@ -1587,7 +1591,8 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (hash != chunk_hash.at(i))
         {
             std::cout << "Failed - downloading chunk" << std::endl;
-            fseek(outfile, chunk_begin, SEEK_SET);
+            // use fseeko to support large files on 32 bit platforms
+            fseeko(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
@@ -1799,14 +1804,14 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
 
         // 10 second average download speed
         // Don't use static value of 10 seconds because update interval depends on when and how often progress callback is called
-        downloader->TimeAndSize.push_back(std::make_pair(time(NULL), static_cast<size_t>(dlnow)));
+        downloader->TimeAndSize.push_back(std::make_pair(time(NULL), static_cast<uintmax_t>(dlnow)));
         if (downloader->TimeAndSize.size() > 100) // 100 * 100ms = 10s
         {
             downloader->TimeAndSize.pop_front();
             time_t time_first = downloader->TimeAndSize.front().first;
-            size_t size_first = downloader->TimeAndSize.front().second;
+            uintmax_t size_first = downloader->TimeAndSize.front().second;
             time_t time_last = downloader->TimeAndSize.back().first;
-            size_t size_last = downloader->TimeAndSize.back().second;
+            uintmax_t size_last = downloader->TimeAndSize.back().second;
             rate = (size_last - size_first) / static_cast<double>((time_last - time_first));
         }
 
@@ -1887,7 +1892,7 @@ size_t Downloader::readData(void *ptr, size_t size, size_t nmemb, FILE *stream)
     return fread(ptr, size, nmemb, stream);
 }
 
-size_t Downloader::getResumePosition()
+uintmax_t Downloader::getResumePosition()
 {
     return this->resume_position;
 }
@@ -2593,7 +2598,7 @@ void Downloader::checkStatus()
                 std::string remoteHash;
                 std::string localHash;
                 bool bHashOK = true; // assume hash OK
-                size_t filesize;
+                uintmax_t filesize;
 
                 localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
@@ -2608,7 +2613,7 @@ void Downloader::checkStatus()
                     {
                         // Check for incomplete file by comparing the filesizes
                         // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                        size_t filesize_xml = 0;
+                        uintmax_t filesize_xml = 0;
                         boost::filesystem::path path = filepath;
                         boost::filesystem::path local_xml_file;
                         if (!games[i].gamename.empty())
@@ -2653,7 +2658,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].extras[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2674,7 +2679,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].patches[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2695,7 +2700,7 @@ void Downloader::checkStatus()
                 boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
 
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                size_t filesize;
+                uintmax_t filesize;
 
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                 {
@@ -2722,7 +2727,7 @@ void Downloader::checkStatus()
                         std::string remoteHash;
                         std::string localHash;
                         bool bHashOK = true; // assume hash OK
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         remoteHash = this->getRemoteFileHash(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
@@ -2737,7 +2742,7 @@ void Downloader::checkStatus()
                             {
                                 // Check for incomplete file by comparing the filesizes
                                 // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                                size_t filesize_xml = 0;
+                                uintmax_t filesize_xml = 0;
                                 boost::filesystem::path path = filepath;
                                 boost::filesystem::path local_xml_file;
                                 if (!games[i].dlcs[j].gamename.empty())
@@ -2782,7 +2787,7 @@ void Downloader::checkStatus()
                         boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
@@ -2803,7 +2808,7 @@ void Downloader::checkStatus()
                         boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
 
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        size_t filesize;
+                        uintmax_t filesize;
 
                         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                         {
