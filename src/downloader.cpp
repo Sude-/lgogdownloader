@@ -30,6 +30,9 @@ namespace bptime = boost::posix_time;
 Downloader::Downloader(Config &conf)
 {
     this->config = conf;
+    if (config.bLogin && boost::filesystem::exists(config.sCookiePath))
+        if (!boost::filesystem::remove(config.sCookiePath))
+            std::cout << "Failed to delete " << config.sCookiePath << std::endl;
 }
 
 Downloader::~Downloader()
