@@ -2194,6 +2194,16 @@ std::vector<gameItem> Downloader::getGames()
                         }
                     }
 
+                    // Check game specific config
+                    if (!config.bUpdateCache) // Disable game specific config files for cache update
+                    {
+                        gameSpecificConfig conf;
+                        conf.bIgnoreDLCCount = false; // Assume false
+                        Util::getGameSpecificConfig(game.name, &conf);
+                        if (conf.bIgnoreDLCCount)
+                            bDownloadDLCInfo = true;
+                    }
+
                     if (bDownloadDLCInfo && !config.sGameRegex.empty())
                     {
                         // don't download unnecessary info if user is only interested in a subset of his account
