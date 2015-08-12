@@ -129,12 +129,13 @@ int main(int argc, char *argv[])
         bool bNoTarGz = false;
         bool bNoCover = false;
         bool bNoPlatformDetection = false;
+        bool bLogin = false;
         config.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
             ("version", "Print version information")
-            ("login", bpo::value<bool>(&config.bLogin)->zero_tokens()->default_value(false), "Login")
+            ("login", bpo::value<bool>(&bLogin)->zero_tokens()->default_value(false), "Login")
             ("list", bpo::value<bool>(&config.bList)->zero_tokens()->default_value(false), "List games")
             ("list-details", bpo::value<bool>(&config.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
             ("download", bpo::value<bool>(&config.bDownload)->zero_tokens()->default_value(false), "Download")
@@ -152,6 +153,8 @@ int main(int argc, char *argv[])
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
             ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
             ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
+            ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
+            ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -346,11 +349,17 @@ int main(int argc, char *argv[])
         if (bNoCover)
             config.bCover = false;
 
-	// Handle priority business
-	if (!config.sLanguagePriority.empty())
-	    handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage);
-	if (!config.sPlatformPriority.empty())
-	    handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerType);
+        if (bLogin)
+        {
+            config.bLoginAPI = true;
+            config.bLoginHTTP = true;
+        }
+
+        // Handle priority business
+        if (!config.sLanguagePriority.empty())
+            handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage);
+        if (!config.sPlatformPriority.empty())
+            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerType);
 
     }
     catch (std::exception& e)
@@ -415,7 +424,7 @@ int main(int argc, char *argv[])
     int initResult = downloader.init();
 
     int iLoginResult = 0;
-    if (config.bLogin || initResult == 1)
+    if (config.bLoginAPI || config.bLoginHTTP || initResult == 1)
     {
         iLoginResult = downloader.login();
         if (iLoginResult == 0)

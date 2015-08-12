@@ -30,7 +30,7 @@ namespace bptime = boost::posix_time;
 Downloader::Downloader(Config &conf)
 {
     this->config = conf;
-    if (config.bLogin && boost::filesystem::exists(config.sCookiePath))
+    if (config.bLoginHTTP && boost::filesystem::exists(config.sCookiePath))
         if (!boost::filesystem::remove(config.sCookiePath))
             std::cout << "Failed to delete " << config.sCookiePath << std::endl;
 }
@@ -89,7 +89,7 @@ int Downloader::init()
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
     bool bInitOK = gogAPI->init(); // Initialize the API
-    if (!bInitOK || config.bLogin)
+    if (!bInitOK || config.bLoginHTTP || config.bLoginAPI)
         return 1;
 
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
@@ -133,29 +133,38 @@ int Downloader::login()
     else
     {
         // Login to website
-        if (!HTTP_Login(email, password))
+        if (config.bLoginHTTP)
         {
-            std::cout << "HTTP: Login failed" << std::endl;
-            return 0;
-        }
-        else
-        {
-            std::cout << "HTTP: Login successful" << std::endl;
+            if (!HTTP_Login(email, password))
+            {
+                std::cout << "HTTP: Login failed" << std::endl;
+                return 0;
+            }
+            else
+            {
+                std::cout << "HTTP: Login successful" << std::endl;
+                if (!config.bLoginAPI)
+                    return 1;
+            }
         }
         // Login to API
-        if (!gogAPI->login(email, password))
+        if (config.bLoginAPI)
         {
-            std::cout << "API: Login failed" << std::endl;
-            return 0;
-        }
-        else
-        {
-            std::cout << "API: Login successful" << std::endl;
-            config.sToken = gogAPI->getToken();
-            config.sSecret = gogAPI->getSecret();
-            return 1;
+            if (!gogAPI->login(email, password))
+            {
+                std::cout << "API: Login failed" << std::endl;
+                return 0;
+            }
+            else
+            {
+                std::cout << "API: Login successful" << std::endl;
+                config.sToken = gogAPI->getToken();
+                config.sSecret = gogAPI->getSecret();
+                return 1;
+            }
         }
     }
+    return 0;
 }
 
 void Downloader::updateCheck()
@@ -1508,7 +1517,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         }
         return res;
     }
-    
+
     // check if file sizes match
     if (offset != filesize)
     {

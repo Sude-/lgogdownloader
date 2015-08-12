@@ -24,7 +24,8 @@ class Config
         bool bDownload;
         bool bList;
         bool bListDetails;
-        bool bLogin;
+        bool bLoginHTTP;
+        bool bLoginAPI;
         bool bRepair;
         bool bInstallers;
         bool bExtras;
