@@ -125,8 +125,6 @@ int main(int argc, char *argv[])
         bool bNoDLC = false;
         bool bNoRemoteXML = false;
         bool bNoSubDirectories = false;
-        bool bNoDeb = false;
-        bool bNoTarGz = false;
         bool bNoCover = false;
         bool bNoPlatformDetection = false;
         bool bLogin = false;
@@ -169,8 +167,6 @@ int main(int argc, char *argv[])
             ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
             ("no-language-packs", bpo::value<bool>(&bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
             ("no-dlc", bpo::value<bool>(&bNoDLC)->zero_tokens()->default_value(false), "Don't download/list/repair DLCs")
-            ("no-deb", bpo::value<bool>(&bNoDeb)->zero_tokens()->default_value(false), "Don't download/list/repair deb packages")
-            ("no-targz", bpo::value<bool>(&bNoTarGz)->zero_tokens()->default_value(false), "Don't download/list/repair tarballs")
             ("cover", bpo::value<bool>(&config.bCover)->zero_tokens()->default_value(false), "Download cover images")
             ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
@@ -299,21 +295,8 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                if (bNoDeb)
-                    lines.push_back("Rp .*\\.deb$");
-                if (bNoTarGz)
-                    lines.push_back("Rp .*\\.tar\\.gz$");
                 config.blacklist.initialize(lines);
             }
-        }
-        else if (bNoDeb || bNoTarGz)
-        {
-            std::vector<std::string> lines;
-            if (bNoDeb)
-                lines.push_back("Rp .*\\.deb$");
-            if (bNoTarGz)
-                lines.push_back("Rp .*\\.tar\\.gz$");
-            config.blacklist.initialize(lines);
         }
 
         if (vm.count("chunk-size"))
