@@ -231,11 +231,11 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
     {
         char *xdghome = getenv("XDG_CONFIG_HOME");
         if (xdghome)
-            directory = (std::string)xdghome + "/lgogdownloader";
+            directory = (std::string)xdghome + "/lgogdownloader/gamespecific";
         else
         {
             std::string home = (std::string)getenv("HOME");
-            directory = home + "/.config/lgogdownloader";
+            directory = home + "/.config/lgogdownloader/gamespecific";
         }
     }
 

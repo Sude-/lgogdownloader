@@ -67,7 +67,7 @@ Allows user to specify individual files that should not be downloaded or mention
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 
 .TP
-\fI$XDG_CONFIG_HOME/lgogdownloader/gamename.conf\fP
+\fI$XDG_CONFIG_HOME/lgogdownloader/gamespecific/gamename.conf\fP
 JSON formatted file. Sets game specific settings for \fBgamename\fP.
 .br
 Allowed settings are \fBlanguage\fP, \fBplatform\fP, \fBdlc\fP and \fBignore-dlc-count\fP.
