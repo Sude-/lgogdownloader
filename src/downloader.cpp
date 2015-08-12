@@ -1958,6 +1958,13 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
                     std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
                     std::cerr << login_form_html << std::endl;
                 #endif
+                if (login_form_html.find("google.com/recaptcha") != std::string::npos)
+                {
+                    std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
+                                << "Login with browser and export cookies to \"" << config.sCookiePath << "\"" << std::endl;
+                    return res = 0;
+                }
+
                 tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
                 tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
                 tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
