@@ -519,7 +519,16 @@ int main(int argc, char *argv[])
     else if (!config.sFileIdString.empty())
     {
         if (config.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
-            downloader.downloadFileWithId(config.sFileIdString.substr(GlobalConstants::PROTOCOL_PREFIX.length(), config.sFileIdString.length()));
+        {
+            size_t front = GlobalConstants::PROTOCOL_PREFIX.length();
+            do {
+                size_t back = config.sFileIdString.find(',', front);
+                if (back == (size_t) -1)
+                    back = config.sFileIdString.length();
+                downloader.downloadFileWithId(config.sFileIdString.substr(front, back-front));
+                front = back + 1;
+            } while(front < config.sFileIdString.length());
+        }
         else
             downloader.downloadFileWithId(config.sFileIdString);
     }
