@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
             ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
+            ("output-file,o", bpo::value<std::string>(&config.sOutputFilename)->default_value(""), "Set filename of file downloaded with --download-file.")
             ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
             ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
             ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
@@ -525,12 +526,12 @@ int main(int argc, char *argv[])
                 size_t back = config.sFileIdString.find(',', front);
                 if (back == (size_t) -1)
                     back = config.sFileIdString.length();
-                downloader.downloadFileWithId(config.sFileIdString.substr(front, back-front));
+                downloader.downloadFileWithId(config.sFileIdString.substr(front, back-front), config.sOutputFilename);
                 front = back + 1;
             } while(front < config.sFileIdString.length());
         }
         else
-            downloader.downloadFileWithId(config.sFileIdString);
+            downloader.downloadFileWithId(config.sFileIdString, config.sOutputFilename);
     }
     else if (config.bRepair) // Repair file
         downloader.repair();

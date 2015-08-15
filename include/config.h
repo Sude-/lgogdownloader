@@ -68,6 +68,7 @@ class Config
         std::string sDLCSubdir;
         std::string sGameSubdir;
         std::string sFileIdString;
+        std::string sOutputFilename;
         std::string sLanguagePriority;
         std::string sPlatformPriority;
         std::string sIgnoreDLCCountRegex;
