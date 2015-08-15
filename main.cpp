@@ -336,6 +336,12 @@ int main(int argc, char *argv[])
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
                 config.sFileIdString = *i;
 
+        if (!config.sOutputFilename.empty() && config.sFileIdString.find(',') != std::string::npos)
+        {
+            std::cerr << "Cannot specify an output file name when downloading multiple files." << std::endl;
+            return 1;
+        }
+
         // Override cover option
         if (bNoCover)
             config.bCover = false;
