@@ -68,7 +68,7 @@ class Downloader
         void checkOrphans();
         void checkStatus();
         void updateCache();
-        void downloadFileWithId(const std::string& fileid_string);
+        void downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath);
         void showWishlist();
         CURL* curlhandle;
         Timer timer;

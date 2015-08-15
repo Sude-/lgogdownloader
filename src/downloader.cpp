@@ -1174,6 +1174,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
+    pathname = boost::filesystem::absolute(pathname, boost::filesystem::current_path());
     std::string directory = pathname.parent_path().string();
     std::string filenameXML = pathname.filename().string() + ".xml";
     std::string xml_directory;
@@ -3174,12 +3175,16 @@ void Downloader::saveSerials(const std::string& serials, const std::string& file
     return;
 }
 
-void Downloader::downloadFileWithId(const std::string& fileid_string)
+void Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
 {
     size_t pos = fileid_string.find("/");
     if (pos == std::string::npos)
     {
         std::cout << "Invalid file id " << fileid_string << ": could not find separator \"/\"" << std::endl;
+    }
+    else if (!output_filepath.empty() && boost::filesystem::is_directory(output_filepath))
+    {
+        std::cout << "Failed to create the file " << output_filepath << ": Is a directory" << std::endl;
     }
     else
     {
@@ -3198,7 +3203,10 @@ void Downloader::downloadFileWithId(const std::string& fileid_string)
         {
             std::string filename, filepath;
             filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
-            filepath = Util::makeFilepath(config.sDirectory, filename, gamename);
+            if (output_filepath.empty())
+                filepath = Util::makeFilepath(config.sDirectory, filename, gamename);
+            else
+                filepath = output_filepath;
             std::cout << "Downloading: " << filepath << std::endl;
             this->downloadFile(url, filepath, std::string(), gamename);
             std::cout << std::endl;
