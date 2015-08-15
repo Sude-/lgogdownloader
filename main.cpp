@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     std::string priority_help_text = "\nIf set, only the first matching one will be downloaded. If unset, all matching combinations will be downloaded.\nSyntax: use a string separated by \",\"";
 
     std::vector<std::string> unrecognized_options_cfg;
+    std::vector<std::string> unrecognized_options_cli;
     bpo::variables_map vm;
     bpo::options_description options_cli_all("Options");
     bpo::options_description options_cli_no_cfg;
@@ -201,7 +202,9 @@ int main(int argc, char *argv[])
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
         options_cfg_all.add(options_cfg_only).add(options_cli_cfg);
 
-        bpo::store(bpo::parse_command_line(argc, argv, options_cli_all), vm);
+        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, options_cli_all);
+        bpo::store(parsed, vm);
+        unrecognized_options_cli = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
         bpo::notify(vm);
 
         if (vm.count("help"))
@@ -327,6 +330,10 @@ int main(int argc, char *argv[])
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
         config.bPlatformDetection = !bNoPlatformDetection;
+
+        for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
+            if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+                config.sFileIdString = *i;
 
         // Override cover option
         if (bNoCover)
