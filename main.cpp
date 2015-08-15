@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     std::string priority_help_text = "\nIf set, only the first matching one will be downloaded. If unset, all matching combinations will be downloaded.\nSyntax: use a string separated by \",\"";
 
     std::vector<std::string> unrecognized_options_cfg;
+    std::vector<std::string> unrecognized_options_cli;
     bpo::variables_map vm;
     bpo::options_description options_cli_all("Options");
     bpo::options_description options_cli_no_cfg;
@@ -149,7 +150,7 @@ int main(int argc, char *argv[])
             ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
-            ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
+            ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download a single file using fileid\nFormat: \"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\nThis option ignores all subdir options. The file is downloaded to directory specified with --directory option.")
             ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
             ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
             ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
@@ -201,7 +202,9 @@ int main(int argc, char *argv[])
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
         options_cfg_all.add(options_cfg_only).add(options_cli_cfg);
 
-        bpo::store(bpo::parse_command_line(argc, argv, options_cli_all), vm);
+        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, options_cli_all);
+        bpo::store(parsed, vm);
+        unrecognized_options_cli = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
         bpo::notify(vm);
 
         if (vm.count("help"))
@@ -327,6 +330,10 @@ int main(int argc, char *argv[])
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
         config.bPlatformDetection = !bNoPlatformDetection;
+
+        for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
+            if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+                config.sFileIdString = *i;
 
         // Override cover option
         if (bNoCover)
@@ -510,7 +517,21 @@ int main(int argc, char *argv[])
     else if (config.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
     else if (!config.sFileIdString.empty())
-        downloader.downloadFileWithId(config.sFileIdString);
+    {
+        if (config.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+        {
+            size_t front = GlobalConstants::PROTOCOL_PREFIX.length();
+            do {
+                size_t back = config.sFileIdString.find(',', front);
+                if (back == (size_t) -1)
+                    back = config.sFileIdString.length();
+                downloader.downloadFileWithId(config.sFileIdString.substr(front, back-front));
+                front = back + 1;
+            } while(front < config.sFileIdString.length());
+        }
+        else
+            downloader.downloadFileWithId(config.sFileIdString);
+    }
     else if (config.bRepair) // Repair file
         downloader.repair();
     else if (config.bDownload) // Download games
