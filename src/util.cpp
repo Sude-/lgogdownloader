@@ -374,11 +374,10 @@ std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
     for (unsigned int i = 0; i < urls.size(); ++i)
     {
         std::string gamename;
-        std::string match_string = "gogdownloader://";
-        if (urls[i].find(match_string) == std::string::npos)
+        if (urls[i].find(GlobalConstants::PROTOCOL_PREFIX) == std::string::npos)
             continue;
 
-        gamename.assign(urls[i].begin()+urls[i].find(match_string)+match_string.length(), urls[i].begin()+urls[i].find_last_of("/"));
+        gamename.assign(urls[i].begin()+urls[i].find(GlobalConstants::PROTOCOL_PREFIX)+GlobalConstants::PROTOCOL_PREFIX.length(), urls[i].begin()+urls[i].find_last_of("/"));
         bool bDuplicate = false;
         for (unsigned int j = 0; j < dlcnames.size(); ++j)
         {

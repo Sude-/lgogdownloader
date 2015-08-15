@@ -12,6 +12,8 @@
 
 namespace GlobalConstants
 {
+    const std::string PROTOCOL_PREFIX = "gogdownloader://";
+
     // Language constants
     const unsigned int LANGUAGE_EN = 1 << 0;
     const unsigned int LANGUAGE_DE = 1 << 1;
