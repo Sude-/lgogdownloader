@@ -423,6 +423,8 @@ int main(int argc, char *argv[])
     int iLoginResult = 0;
     if (config.bLoginAPI || config.bLoginHTTP || initResult == 1)
     {
+        if (!config.bLoginAPI && !config.bLoginHTTP)
+            downloader.config.bLoginAPI = true;
         iLoginResult = downloader.login();
         if (iLoginResult == 0)
             return 1;
