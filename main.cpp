@@ -491,7 +491,8 @@ int main(int argc, char *argv[])
             }
             ofs.close();
             Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
-            return 0;
+            if (config.bSaveConfig)
+                return 0;
         }
         else
         {
@@ -519,7 +520,7 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-    else if (config.bShowWishlist)
+    if (config.bShowWishlist)
         downloader.showWishlist();
     else if (config.bUpdateCache)
         downloader.updateCache();
