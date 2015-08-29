@@ -435,33 +435,16 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                             continue;
                                     }
 
-                                    // Treat tarball archives as installers
-                                    if (patch["link"].asString().find("/linux/") != std::string::npos && patch["name"].asString() == "Tarball archive")
-                                    {
-                                        game.installers.push_back(
-                                                                    gameFile(   patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString()),
-                                                                                patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
-                                                                                patch["name"].asString(),
-                                                                                patch["link"].asString(),
-                                                                                patch["size"].asString(),
-                                                                                GlobalConstants::LANGUAGES[i].languageId,
-                                                                                patches[j].platform
-                                                                            )
-                                                                );
-                                    }
-                                    else
-                                    {
-                                        game.patches.push_back(
-                                                                gameFile(   patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString()),
-                                                                            patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
-                                                                            patch["name"].asString(),
-                                                                            patch["link"].asString(),
-                                                                            patch["size"].asString(),
-                                                                            GlobalConstants::LANGUAGES[i].languageId,
-                                                                            patches[j].platform
-                                                                        )
-                                                            );
-                                    }
+                                    game.patches.push_back(
+                                                            gameFile(   patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString()),
+                                                                        patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
+                                                                        patch["name"].asString(),
+                                                                        patch["link"].asString(),
+                                                                        patch["size"].asString(),
+                                                                        GlobalConstants::LANGUAGES[i].languageId,
+                                                                        patches[j].platform
+                                                                    )
+                                                        );
                                 }
                             }
                             else // Patch is a single file
@@ -483,33 +466,16 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                         continue;
                                 }
 
-                                // Treat tarball archives as installers
-                                if (patchnode["link"].asString().find("/linux/") != std::string::npos && patchnode["name"].asString() == "Tarball archive")
-                                {
-                                    game.installers.push_back(
-                                                                gameFile(   patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString()),
-                                                                            patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
-                                                                            patchnode["name"].asString(),
-                                                                            patchnode["link"].asString(),
-                                                                            patchnode["size"].asString(),
-                                                                            GlobalConstants::LANGUAGES[i].languageId,
-                                                                            patches[j].platform
-                                                                        )
-                                                            );
-                                }
-                                else
-                                {
-                                    game.patches.push_back(
-                                                            gameFile(   patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString()),
-                                                                        patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
-                                                                        patchnode["name"].asString(),
-                                                                        patchnode["link"].asString(),
-                                                                        patchnode["size"].asString(),
-                                                                        GlobalConstants::LANGUAGES[i].languageId,
-                                                                        patches[j].platform
-                                                                     )
-                                                            );
-                                }
+                                game.patches.push_back(
+                                                        gameFile(   patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString()),
+                                                                    patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
+                                                                    patchnode["name"].asString(),
+                                                                    patchnode["link"].asString(),
+                                                                    patchnode["size"].asString(),
+                                                                    GlobalConstants::LANGUAGES[i].languageId,
+                                                                    patches[j].platform
+                                                                 )
+                                                        );
                             }
                         }
                     }
