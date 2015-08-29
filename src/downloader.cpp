@@ -408,8 +408,8 @@ void Downloader::listGames()
                         std::string languages;
                         for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
                         {
-                            if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].languageId)
-                                languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
+                            if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].id)
+                                languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].str;
                         }
 
                         std::cout   << "\tid: " << games[i].installers[j].id << std::endl
@@ -460,8 +460,8 @@ void Downloader::listGames()
                     std::string languages;
                     for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the patch supports
                     {
-                        if (games[i].patches[j].language & GlobalConstants::LANGUAGES[k].languageId)
-                            languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].languageString;
+                        if (games[i].patches[j].language & GlobalConstants::LANGUAGES[k].id)
+                            languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].str;
                     }
 
                     std::cout   << "\tid: " << games[i].patches[j].id << std::endl
@@ -2448,7 +2448,7 @@ void Downloader::checkOrphans()
             platformIds.push_back(0);
             for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
             {
-                platformIds.push_back(GlobalConstants::PLATFORMS[j].platformId);
+                platformIds.push_back(GlobalConstants::PLATFORMS[j].id);
             }
             for (unsigned int j = 0; j < platformIds.size(); ++j)
             {
@@ -3106,9 +3106,9 @@ void Downloader::updateCache()
     unsigned int all_platforms = GlobalConstants::PLATFORM_WINDOWS;
     unsigned int all_languages = GlobalConstants::LANGUAGE_EN;
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
-        all_platforms |= GlobalConstants::PLATFORMS[i].platformId;
+        all_platforms |= GlobalConstants::PLATFORMS[i].id;
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
-        all_languages |= GlobalConstants::LANGUAGES[i].languageId;
+        all_languages |= GlobalConstants::LANGUAGES[i].id;
 
     config.bExtras = true;
     config.bInstallers = true;
@@ -3271,9 +3271,9 @@ void Downloader::showWishlist()
 
                     for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
                     {
-                        if (GlobalConstants::PLATFORMS[j].platformId & platform)
+                        if (GlobalConstants::PLATFORMS[j].id & platform)
                         {
-                            platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].platformString;
+                            platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].str;
                         }
                     }
                 }

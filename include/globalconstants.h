@@ -12,6 +12,7 @@
 
 namespace GlobalConstants
 {
+    struct optionsStruct {const unsigned int id; const std::string code; const std::string str;};
     const std::string PROTOCOL_PREFIX = "gogdownloader://";
 
     // Language constants
@@ -36,8 +37,7 @@ namespace GlobalConstants
     const unsigned int LANGUAGE_FI = 1 << 18;
     const unsigned int LANGUAGE_PT_BR = 1 << 19;
 
-    struct languageStruct {const unsigned int languageId; const std::string languageCode; const std::string languageString;};
-    const std::vector<languageStruct> LANGUAGES =
+    const std::vector<optionsStruct> LANGUAGES =
     {
         { LANGUAGE_EN, "en", "English"   },
         { LANGUAGE_DE, "de", "German"    },
@@ -66,8 +66,7 @@ namespace GlobalConstants
     const unsigned int PLATFORM_MAC     = 1 << 1;
     const unsigned int PLATFORM_LINUX   = 1 << 2;
 
-    struct platformStruct {const unsigned int platformId; const std::string platformCode; const std::string platformString;};
-    const std::vector<platformStruct> PLATFORMS =
+    const std::vector<optionsStruct> PLATFORMS =
     {
         { PLATFORM_WINDOWS, "win",   "Windows" },
         { PLATFORM_MAC,     "mac",   "Mac"     },

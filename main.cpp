@@ -78,8 +78,8 @@ int main(int argc, char *argv[])
     unsigned int platform_sum = 0;
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        platform_text += std::to_string(GlobalConstants::PLATFORMS[i].platformId) + " = " + GlobalConstants::PLATFORMS[i].platformString + "\n";
-        platform_sum += GlobalConstants::LANGUAGES[i].languageId;
+        platform_text += std::to_string(GlobalConstants::PLATFORMS[i].id) + " = " + GlobalConstants::PLATFORMS[i].str + "\n";
+        platform_sum += GlobalConstants::LANGUAGES[i].id;
     }
     platform_text += std::to_string(platform_sum) + " = All";
 
@@ -88,8 +88,8 @@ int main(int argc, char *argv[])
     unsigned int language_sum = 0;
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        language_text += std::to_string(GlobalConstants::LANGUAGES[i].languageId) + " = " + GlobalConstants::LANGUAGES[i].languageString + "\n";
-        language_sum += GlobalConstants::LANGUAGES[i].languageId;
+        language_text += std::to_string(GlobalConstants::LANGUAGES[i].id) + " = " + GlobalConstants::LANGUAGES[i].str + "\n";
+        language_sum += GlobalConstants::LANGUAGES[i].id;
     }
     language_text += "Add the values to download multiple languages\nAll = " + std::to_string(language_sum) + "\n"
                     + "French + Polish = " + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + " = " + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL);
@@ -355,13 +355,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::PLATFORMS[0].platformId || config.iInstallerType > platform_sum)
+    if (config.iInstallerType < GlobalConstants::PLATFORMS[0].id || config.iInstallerType > platform_sum)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].languageId || config.iInstallerLanguage > language_sum)
+    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || config.iInstallerLanguage > language_sum)
     {
         std::cout << "Invalid value for --language" << std::endl;
         return 1;

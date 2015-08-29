@@ -287,9 +287,9 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
     std::string platform;
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        if ((platformId & GlobalConstants::PLATFORMS[i].platformId) == GlobalConstants::PLATFORMS[i].platformId)
+        if ((platformId & GlobalConstants::PLATFORMS[i].id) == GlobalConstants::PLATFORMS[i].id)
         {
-            platform = boost::algorithm::to_lower_copy(GlobalConstants::PLATFORMS[i].platformString);
+            platform = boost::algorithm::to_lower_copy(GlobalConstants::PLATFORMS[i].str);
             break;
         }
     }
