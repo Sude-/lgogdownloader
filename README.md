@@ -4,6 +4,15 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
 ## Dependencies
 
+* libcurl
+* liboauth
+* librhash
+* jsoncpp
+* htmlcxx
+* tinyxml
+* boost (regex, date-time, system, filesystem, program-options)
+* help2man
+
 ### Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
@@ -13,9 +22,15 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
 ## Build and install
 
-    $ make
+    $ make release
     # sudo make install
 
 ## Use
 
     man lgogdownloader
+
+## Links
+- [LGOGDownloader website](https://sites.google.com/site/gogdownloader/)
+- [GOG forum thread](https://www.gog.com/forum/general/lgogdownloader_gogdownloader_for_linux)
+- [LGOGDownloader @ AUR](https://aur.archlinux.org/packages/lgogdownloader/)
+- [LGOGDownloader @ AUR (git version)](https://aur.archlinux.org/packages/lgogdownloader-git/)
