@@ -64,16 +64,14 @@ int main(int argc, char *argv[])
 {
     Config config;
     config.sVersionString = VERSION_STRING;
-    char *xdgconfig = getenv("XDG_CONFIG_HOME");
-    char *xdgcache = getenv("XDG_CACHE_HOME");
-    std::string home = (std::string)getenv("HOME");
 
-    if (xdgcache)
-        config.sCacheDirectory = (std::string)xdgcache + "/lgogdownloader";
-    else
-        config.sCacheDirectory = home + "/.cache/lgogdownloader";
-
+    config.sCacheDirectory = Util::getCacheHome() + "/lgogdownloader";
     config.sXMLDirectory = config.sCacheDirectory + "/xml";
+
+    config.sConfigDirectory = Util::getConfigHome() + "/lgogdownloader";
+    config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
+    config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
+    config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
 
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
@@ -220,19 +218,6 @@ int main(int argc, char *argv[])
             std::cout << VERSION_STRING << std::endl;
             return 0;
         }
-
-        if (xdgconfig)
-        {
-            config.sConfigDirectory = (std::string)xdgconfig + "/lgogdownloader";
-        }
-        else
-        {
-            config.sConfigDirectory = home + "/.config/lgogdownloader";
-        }
-
-        config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
-        config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
-        config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
 
         // Create lgogdownloader directories
         boost::filesystem::path path = config.sXMLDirectory;

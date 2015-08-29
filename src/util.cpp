@@ -97,14 +97,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
 
     if (xml_dir.empty())
     {
-        char *xdgcache = getenv("XDG_CACHE_HOME");
-        if (xdgcache)
-            xml_dir = (std::string)xdgcache + "/lgogdownloader/xml";
-        else
-        {
-            std::string home = (std::string)getenv("HOME");
-            xml_dir = home + "/.cache/lgogdownloader/xml";
-        }
+        xml_dir = Util::getCacheHome() + "/lgogdownloader/xml";
     }
 
     // Make sure directory exists
@@ -229,14 +222,7 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
 
     if (directory.empty())
     {
-        char *xdghome = getenv("XDG_CONFIG_HOME");
-        if (xdghome)
-            directory = (std::string)xdghome + "/lgogdownloader/gamespecific";
-        else
-        {
-            std::string home = (std::string)getenv("HOME");
-            directory = home + "/.config/lgogdownloader/gamespecific";
-        }
+        directory = Util::getConfigHome() + "/lgogdownloader/gamespecific";
     }
 
     std::string filepath = directory + "/" + gamename + ".conf";
@@ -391,4 +377,31 @@ std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
             dlcnames.push_back(gamename);
     }
     return dlcnames;
+}
+
+std::string Util::getHomeDir()
+{
+    return (std::string)getenv("HOME");
+}
+
+std::string Util::getConfigHome()
+{
+    std::string configHome;
+    char *xdgconfig = getenv("XDG_CONFIG_HOME");
+    if (xdgconfig)
+        configHome = (std::string)xdgconfig;
+    else
+        configHome = Util::getHomeDir() + "/.config";
+    return configHome;
+}
+
+std::string Util::getCacheHome()
+{
+    std::string cacheHome;
+    char *xdgcache = getenv("XDG_CACHE_HOME");
+    if (xdgcache)
+        cacheHome = (std::string)xdgcache;
+    else
+        cacheHome = Util::getHomeDir() + "/.cache";
+    return cacheHome;
 }

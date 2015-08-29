@@ -41,6 +41,9 @@ namespace Util
     int getTerminalWidth();
     void getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls);
     std::vector<std::string> getDLCNamesFromJSON(const Json::Value &root);
+    std::string getHomeDir();
+    std::string getConfigHome();
+    std::string getCacheHome();
 }
 
 #endif // UTIL_H
