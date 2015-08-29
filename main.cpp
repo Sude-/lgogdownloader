@@ -44,7 +44,7 @@ void handle_priority(const std::string &what, const std::string &priority_string
     #endif
     for (std::vector<unsigned int>::iterator it = priority.begin(); it != priority.end(); it++)
 	{
-	    wanted += *it;
+	    wanted |= *it;
             #ifdef DEBUG
   	      std::cerr << *it << " ";
             #endif
