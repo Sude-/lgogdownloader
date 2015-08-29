@@ -44,6 +44,7 @@ namespace Util
     std::string getHomeDir();
     std::string getConfigHome();
     std::string getCacheHome();
+    std::vector<std::string> tokenize(const std::string& str, const std::string& separator = ",");
 }
 
 #endif // UTIL_H

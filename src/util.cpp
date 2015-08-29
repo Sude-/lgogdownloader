@@ -405,3 +405,22 @@ std::string Util::getCacheHome()
         cacheHome = Util::getHomeDir() + "/.cache";
     return cacheHome;
 }
+
+std::vector<std::string> Util::tokenize(const std::string& str, const std::string& separator)
+{
+    std::vector<std::string> tokens;
+    std::string token;
+    size_t idx = 0, found;
+    while ((found = str.find(separator, idx)) != std::string::npos)
+    {
+        token = str.substr(idx, found - idx);
+        if (!token.empty())
+            tokens.push_back(token);
+        idx = found + separator.length();
+    }
+    token = str.substr(idx);
+    if (!token.empty())
+        tokens.push_back(token);
+
+    return tokens;
+}

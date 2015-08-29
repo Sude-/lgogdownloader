@@ -29,14 +29,11 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
 // Parse the priority string, making it an array of numeric codes, and override the ORed type if required
 void handle_priority(const std::string &what, const std::string &priority_string, std::vector<unsigned int> &priority, unsigned int &type)
 {
-    size_t idx = 0, found;
-
-    while ((found = priority_string.find(',', idx)) != std::string::npos)
-	{
-	    priority.push_back(std::stoi(priority_string.substr(idx, found - idx)));
-	    idx = found + 1;
-	}
-    priority.push_back(std::stoi(priority_string.substr(idx)));
+    std::vector<std::string> tokens = Util::tokenize(priority_string, ",");
+    for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    {
+        priority.push_back(std::stoi(*it));
+    }
 
     unsigned int wanted = 0;
     #ifdef DEBUG
