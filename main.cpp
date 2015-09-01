@@ -27,12 +27,12 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
 }
 
 // Parse the priority string, making it an array of numeric codes, and override the ORed type if required
-void handle_priority(const std::string &what, const std::string &priority_string, std::vector<unsigned int> &priority, unsigned int &type)
+void handle_priority(const std::string &what, const std::string &priority_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options)
 {
     std::vector<std::string> tokens = Util::tokenize(priority_string, ",");
     for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
     {
-        priority.push_back(std::stoi(*it));
+        priority.push_back(Util::getOptionValue(*it, options));
     }
 
     unsigned int wanted = 0;
@@ -57,6 +57,17 @@ void handle_priority(const std::string &what, const std::string &priority_string
 	}
 }
 
+unsigned int parseOptionString(const std::string &option_string, const std::vector<GlobalConstants::optionsStruct>& options)
+{
+    unsigned int value = 0;
+    std::vector<std::string> tokens = Util::tokenize(option_string, ",");
+    for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    {
+        value |= Util::getOptionValue(*it, options);
+    }
+    return value;
+}
+
 int main(int argc, char *argv[])
 {
     Config config;
@@ -72,23 +83,21 @@ int main(int argc, char *argv[])
 
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
-    unsigned int platform_sum = 0;
+    unsigned int platform_all = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
         platform_text += std::to_string(GlobalConstants::PLATFORMS[i].id) + " = " + GlobalConstants::PLATFORMS[i].str + "\n";
-        platform_sum += GlobalConstants::LANGUAGES[i].id;
     }
-    platform_text += std::to_string(platform_sum) + " = All";
+    platform_text += std::to_string(platform_all) + " = All";
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
-    unsigned int language_sum = 0;
+    unsigned int language_all = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
         language_text += std::to_string(GlobalConstants::LANGUAGES[i].id) + " = " + GlobalConstants::LANGUAGES[i].str + "\n";
-        language_sum += GlobalConstants::LANGUAGES[i].id;
     }
-    language_text += "Add the values to download multiple languages\nAll = " + std::to_string(language_sum) + "\n"
+    language_text += "Add the values to download multiple languages\nAll = " + std::to_string(language_all) + "\n"
                     + "French + Polish = " + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + " = " + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL);
 
     // Create help text for --check-orphans
@@ -124,6 +133,8 @@ int main(int argc, char *argv[])
         bool bNoCover = false;
         bool bNoPlatformDetection = false;
         bool bLogin = false;
+        std::string sInstallerPlatform;
+        std::string sInstallerLanguage;
         config.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -157,8 +168,8 @@ int main(int argc, char *argv[])
             ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
-            ("platform", bpo::value<unsigned int>(&config.iInstallerPlatform)->default_value(GlobalConstants::PLATFORM_WINDOWS|GlobalConstants::PLATFORM_LINUX), platform_text.c_str())
-            ("language", bpo::value<unsigned int>(&config.iInstallerLanguage)->default_value(GlobalConstants::LANGUAGE_EN), language_text.c_str())
+            ("platform", bpo::value<std::string>(&sInstallerPlatform)->default_value(std::to_string(GlobalConstants::PLATFORM_WINDOWS|GlobalConstants::PLATFORM_LINUX)), platform_text.c_str())
+            ("language", bpo::value<std::string>(&sInstallerLanguage)->default_value(std::to_string(GlobalConstants::LANGUAGE_EN)), language_text.c_str())
             ("no-installers", bpo::value<bool>(&bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
             ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
             ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
@@ -313,6 +324,8 @@ int main(int argc, char *argv[])
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
         config.bPlatformDetection = !bNoPlatformDetection;
+        config.iInstallerLanguage = parseOptionString(sInstallerLanguage, GlobalConstants::LANGUAGES);
+        config.iInstallerPlatform = parseOptionString(sInstallerPlatform, GlobalConstants::PLATFORMS);
 
         for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
@@ -336,9 +349,9 @@ int main(int argc, char *argv[])
 
         // Handle priority business
         if (!config.sLanguagePriority.empty())
-            handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage);
+            handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
         if (!config.sPlatformPriority.empty())
-            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerPlatform);
+            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
 
     }
     catch (std::exception& e)
@@ -352,13 +365,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || config.iInstallerPlatform > platform_sum)
+    if (config.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || config.iInstallerPlatform > platform_all)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || config.iInstallerLanguage > language_sum)
+    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || config.iInstallerLanguage > language_all)
     {
         std::cout << "Invalid value for --language" << std::endl;
         return 1;

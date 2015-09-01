@@ -17,6 +17,7 @@
 #include <sstream>
 #include <rhash.h>
 #include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
 #include <json/json.h>
 
 struct gameSpecificConfig
@@ -45,6 +46,7 @@ namespace Util
     std::string getConfigHome();
     std::string getCacheHome();
     std::vector<std::string> tokenize(const std::string& str, const std::string& separator = ",");
+    unsigned int getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options);
 }
 
 #endif // UTIL_H

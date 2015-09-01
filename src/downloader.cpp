@@ -3103,17 +3103,14 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
 void Downloader::updateCache()
 {
     // Make sure that all details get cached
-    unsigned int all_platforms = (2 << (GlobalConstants::PLATFORMS.size() - 1)) - 1;
-    unsigned int all_languages = (2 << (GlobalConstants::LANGUAGES.size() - 1)) - 1;
-
     config.bExtras = true;
     config.bInstallers = true;
     config.bPatches = true;
     config.bLanguagePacks = true;
     config.bDLC = true;
     config.sGameRegex = ".*";
-    config.iInstallerLanguage = all_languages;
-    config.iInstallerPlatform = all_platforms;
+    config.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
+    config.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     config.vLanguagePriority.clear();
     config.vPlatformPriority.clear();
 

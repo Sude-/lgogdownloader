@@ -424,3 +424,30 @@ std::vector<std::string> Util::tokenize(const std::string& str, const std::strin
 
     return tokens;
 }
+
+unsigned int Util::getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options)
+{
+    unsigned int value = 0;
+    boost::regex expression("^[+-]?\\d+$", boost::regex::perl);
+    boost::match_results<std::string::const_iterator> what;
+    if (str == "all")
+    {
+        value = (2 << (options.size() - 1)) - 1;
+    }
+    else if (boost::regex_search(str, what, expression))
+    {
+        value = std::stoi(str);
+    }
+    else
+    {
+        for (unsigned int i = 0; i < options.size(); ++i)
+        {
+            if (str == options[i].code)
+            {
+                value = options[i].id;
+                break;
+            }
+        }
+    }
+    return value;
+}
