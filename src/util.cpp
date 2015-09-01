@@ -245,7 +245,7 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
         }
         if (root.isMember("platform"))
         {
-            conf->iInstallerType = root["platform"].asUInt();
+            conf->iInstallerPlatform = root["platform"].asUInt();
             res++;
         }
         if (root.isMember("dlc"))

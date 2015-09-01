@@ -275,7 +275,6 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 {
     std::string url;
     gameDetails game;
-    unsigned int type = platform;
     struct gameFileInfo
     {
         Json::Value jsonNode;
@@ -305,7 +304,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             std::vector<gameFileInfo> installers;
             for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
             {   // Check against the specified platforms
-                if (type & GlobalConstants::PLATFORMS[i].id)
+                if (platform & GlobalConstants::PLATFORMS[i].id)
                 {
                     std::string installer = "installer_" + GlobalConstants::PLATFORMS[i].code + "_";
                     for (unsigned int j = 0; j < GlobalConstants::LANGUAGES.size(); ++j)
@@ -402,7 +401,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             else
                                 patchInfo.platform = GlobalConstants::PLATFORM_WINDOWS;
 
-                            if (type & patchInfo.platform)
+                            if (platform & patchInfo.platform)
                                 patches.push_back(patchInfo);
                         }
                     }

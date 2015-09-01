@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
             ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
-            ("platform", bpo::value<unsigned int>(&config.iInstallerType)->default_value(GlobalConstants::PLATFORM_WINDOWS|GlobalConstants::PLATFORM_LINUX), platform_text.c_str())
+            ("platform", bpo::value<unsigned int>(&config.iInstallerPlatform)->default_value(GlobalConstants::PLATFORM_WINDOWS|GlobalConstants::PLATFORM_LINUX), platform_text.c_str())
             ("language", bpo::value<unsigned int>(&config.iInstallerLanguage)->default_value(GlobalConstants::LANGUAGE_EN), language_text.c_str())
             ("no-installers", bpo::value<bool>(&bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
             ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
         if (!config.sLanguagePriority.empty())
             handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage);
         if (!config.sPlatformPriority.empty())
-            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerType);
+            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerPlatform);
 
     }
     catch (std::exception& e)
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerType < GlobalConstants::PLATFORMS[0].id || config.iInstallerType > platform_sum)
+    if (config.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || config.iInstallerPlatform > platform_sum)
     {
         std::cout << "Invalid value for --platform" << std::endl;
         return 1;

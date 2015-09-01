@@ -21,7 +21,7 @@
 
 struct gameSpecificConfig
 {
-    unsigned int iInstallerType;
+    unsigned int iInstallerPlatform;
     unsigned int iInstallerLanguage;
     bool bDLC;
     bool bIgnoreDLCCount;
