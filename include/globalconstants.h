@@ -12,7 +12,7 @@
 
 namespace GlobalConstants
 {
-    struct optionsStruct {const unsigned int id; const std::string code; const std::string str;};
+    struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};
     const std::string PROTOCOL_PREFIX = "gogdownloader://";
 
     // Language constants
@@ -39,26 +39,26 @@ namespace GlobalConstants
 
     const std::vector<optionsStruct> LANGUAGES =
     {
-        { LANGUAGE_EN, "en", "English"   },
-        { LANGUAGE_DE, "de", "German"    },
-        { LANGUAGE_FR, "fr", "French"    },
-        { LANGUAGE_PL, "pl", "Polish"    },
-        { LANGUAGE_RU, "ru", "Russian"   },
-        { LANGUAGE_CN, "cn", "Chinese"   },
-        { LANGUAGE_CZ, "cz", "Czech"     },
-        { LANGUAGE_ES, "es", "Spanish"   },
-        { LANGUAGE_HU, "hu", "Hungarian" },
-        { LANGUAGE_IT, "it", "Italian"   },
-        { LANGUAGE_JP, "jp", "Japanese"  },
-        { LANGUAGE_TR, "tr", "Turkish"   },
-        { LANGUAGE_PT, "pt", "Portuguese"},
-        { LANGUAGE_KO, "ko", "Korean"    },
-        { LANGUAGE_NL, "nl", "Dutch"     },
-        { LANGUAGE_SV, "sv", "Swedish"   },
-        { LANGUAGE_NO, "no", "Norwegian" },
-        { LANGUAGE_DA, "da", "Danish"    },
-        { LANGUAGE_FI, "fi", "Finnish"   },
-        { LANGUAGE_PT_BR, "br", "Brazilian Portuguese" }
+        { LANGUAGE_EN, "en", "English"   , "en|eng|english"        },
+        { LANGUAGE_DE, "de", "German"    , "de|deu|ger|german"     },
+        { LANGUAGE_FR, "fr", "French"    , "fr|fra|fre|french"     },
+        { LANGUAGE_PL, "pl", "Polish"    , "pl|pol|polish"         },
+        { LANGUAGE_RU, "ru", "Russian"   , "ru|rus|russian"        },
+        { LANGUAGE_CN, "cn", "Chinese"   , "cn|zh|zho|chi|chinese" },
+        { LANGUAGE_CZ, "cz", "Czech"     , "cz|cs|ces|cze|czech"   },
+        { LANGUAGE_ES, "es", "Spanish"   , "es|spa|spanish"        },
+        { LANGUAGE_HU, "hu", "Hungarian" , "hu|hun|hungarian"      },
+        { LANGUAGE_IT, "it", "Italian"   , "it|ita|italian"        },
+        { LANGUAGE_JP, "jp", "Japanese"  , "jp|ja|jpn|japanese"    },
+        { LANGUAGE_TR, "tr", "Turkish"   , "tr|tur|turkish"        },
+        { LANGUAGE_PT, "pt", "Portuguese", "pt|por|portuguese"     },
+        { LANGUAGE_KO, "ko", "Korean"    , "ko|kor|korean"         },
+        { LANGUAGE_NL, "nl", "Dutch"     , "nl|nld|dut|dutch"      },
+        { LANGUAGE_SV, "sv", "Swedish"   , "sv|swe|swedish"        },
+        { LANGUAGE_NO, "no", "Norwegian" , "no|nor|norwegian"      },
+        { LANGUAGE_DA, "da", "Danish"    , "da|dan|danish"         },
+        { LANGUAGE_FI, "fi", "Finnish"   , "fi|fin|finnish"        },
+        { LANGUAGE_PT_BR, "br", "Brazilian Portuguese", "br|pt_br|pt-br|ptbr|brazilian_portuguese" }
     };
 
     // Platform constants
@@ -68,9 +68,9 @@ namespace GlobalConstants
 
     const std::vector<optionsStruct> PLATFORMS =
     {
-        { PLATFORM_WINDOWS, "win",   "Windows" },
-        { PLATFORM_MAC,     "mac",   "Mac"     },
-        { PLATFORM_LINUX,   "linux", "Linux"   }
+        { PLATFORM_WINDOWS, "win",   "Windows" , "w|win|windows" },
+        { PLATFORM_MAC,     "mac",   "Mac"     , "m|mac|osx"     },
+        { PLATFORM_LINUX,   "linux", "Linux"   , "l|lin|linux"   }
     };
 };
 

@@ -86,19 +86,19 @@ int main(int argc, char *argv[])
     unsigned int platform_all = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        platform_text += std::to_string(GlobalConstants::PLATFORMS[i].id) + " = " + GlobalConstants::PLATFORMS[i].str + "\n";
+        platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "|" + std::to_string(GlobalConstants::PLATFORMS[i].id) + "\n";
     }
-    platform_text += std::to_string(platform_all) + " = All";
+    platform_text += "All = all|" + std::to_string(platform_all);
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
     unsigned int language_all = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        language_text += std::to_string(GlobalConstants::LANGUAGES[i].id) + " = " + GlobalConstants::LANGUAGES[i].str + "\n";
+        language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "|" + std::to_string(GlobalConstants::LANGUAGES[i].id) + "\n";
     }
-    language_text += "Add the values to download multiple languages\nAll = " + std::to_string(language_all) + "\n"
-                    + "French + Polish = " + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + " = " + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL);
+    language_text += "Add the values to download multiple languages\nAll = all|" + std::to_string(language_all) + "\n"
+                    + "French + Polish = \"fr,pl\"|" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + " (" + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + "=" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + ")";
 
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh)$"; // Limit to files with these extensions (".old" is for renamed older version files)
@@ -195,8 +195,8 @@ int main(int argc, char *argv[])
             ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
             ("use-cache", bpo::value<bool>(&config.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
             ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
-            ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" for French first, then English if no French version").c_str())
-            ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" for Linux first, then Windows if no Linux version").c_str())
+            ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" or \"fr,en\" for French first, then English if no French version").c_str())
+            ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" or \"linux,windows\" for Linux first, then Windows if no Linux version").c_str())
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
             ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
         ;

@@ -442,7 +442,16 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
     {
         for (unsigned int i = 0; i < options.size(); ++i)
         {
-            if (str == options[i].code)
+            if (!options[i].regexp.empty())
+            {
+                boost::regex expr("^(" + options[i].regexp + ")$", boost::regex::perl | boost::regex::icase);
+                if (boost::regex_search(str, what, expr))
+                {
+                    value = options[i].id;
+                    break;
+                }
+            }
+            else if (str == options[i].code)
             {
                 value = options[i].id;
                 break;
