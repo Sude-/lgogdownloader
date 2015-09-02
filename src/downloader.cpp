@@ -1335,7 +1335,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     fclose(outfile);
 
     // Download failed and was not a resume attempt so delete the file
-    if (res != CURLE_OK && res != CURLE_PARTIAL_FILE && !bResume)
+    if (res != CURLE_OK && res != CURLE_PARTIAL_FILE && !bResume && res != CURLE_OPERATION_TIMEDOUT)
     {
         boost::filesystem::path path = filepath;
         if (boost::filesystem::exists(path))
