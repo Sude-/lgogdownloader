@@ -432,7 +432,7 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
     boost::match_results<std::string::const_iterator> what;
     if (str == "all")
     {
-        value = (2 << (options.size() - 1)) - 1;
+        value = (1 << options.size()) - 1;
     }
     else if (boost::regex_search(str, what, expression))
     {
