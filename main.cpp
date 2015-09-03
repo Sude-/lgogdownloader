@@ -109,6 +109,7 @@ int main(int argc, char *argv[])
     // Help text for priority options
     std::string priority_help_text = "\nIf set, only the first matching one will be downloaded. If unset, all matching combinations will be downloaded.\nSyntax: use a string separated by \",\"";
 
+    std::vector<std::string> vFileIdStrings;
     std::vector<std::string> unrecognized_options_cfg;
     std::vector<std::string> unrecognized_options_cli;
     bpo::variables_map vm;
@@ -331,7 +332,16 @@ int main(int argc, char *argv[])
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
                 config.sFileIdString = *i;
 
-        if (!config.sOutputFilename.empty() && config.sFileIdString.find(',') != std::string::npos)
+        if (!config.sFileIdString.empty())
+        {
+            if (config.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+            {
+                config.sFileIdString.replace(0, GlobalConstants::PROTOCOL_PREFIX.length(), "");
+            }
+            vFileIdStrings = Util::tokenize(config.sFileIdString, ",");
+        }
+
+        if (!config.sOutputFilename.empty() && vFileIdStrings.size() > 1)
         {
             std::cerr << "Cannot specify an output file name when downloading multiple files." << std::endl;
             return 1;
@@ -521,21 +531,12 @@ int main(int argc, char *argv[])
         downloader.updateCache();
     else if (config.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
-    else if (!config.sFileIdString.empty())
+    else if (!vFileIdStrings.empty())
     {
-        if (config.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+        for (std::vector<std::string>::iterator it = vFileIdStrings.begin(); it != vFileIdStrings.end(); it++)
         {
-            size_t front = GlobalConstants::PROTOCOL_PREFIX.length();
-            do {
-                size_t back = config.sFileIdString.find(',', front);
-                if (back == (size_t) -1)
-                    back = config.sFileIdString.length();
-                downloader.downloadFileWithId(config.sFileIdString.substr(front, back-front), config.sOutputFilename);
-                front = back + 1;
-            } while(front < config.sFileIdString.length());
+            downloader.downloadFileWithId(*it, config.sOutputFilename);
         }
-        else
-            downloader.downloadFileWithId(config.sFileIdString, config.sOutputFilename);
     }
     else if (config.bRepair) // Repair file
         downloader.repair();
