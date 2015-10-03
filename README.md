@@ -34,3 +34,5 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 - [GOG forum thread](https://www.gog.com/forum/general/lgogdownloader_gogdownloader_for_linux)
 - [LGOGDownloader @ AUR](https://aur.archlinux.org/packages/lgogdownloader/)
 - [LGOGDownloader @ AUR (git version)](https://aur.archlinux.org/packages/lgogdownloader-git/)
+- [LGOGDownloader @ Debian](https://tracker.debian.org/lgogdownloader)
+- [LGOGDownloader @ Ubuntu](https://launchpad.net/ubuntu/+source/lgogdownloader)
