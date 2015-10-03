@@ -294,6 +294,7 @@ int Downloader::getGameDetails()
                 {
                     gameDetails dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
+                    dlc.filterWithPriorities(config);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         if (gameDetailsJSON.empty())
