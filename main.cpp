@@ -26,46 +26,22 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
     vm[option].value() = boost::any(value);
 }
 
-// Parse the priority string, making it an array of numeric codes, and override the ORed type if required
-void handle_priority(const std::string &what, const std::string &priority_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options)
+// Parse the options string
+void parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options)
 {
-    std::vector<std::string> tokens = Util::tokenize(priority_string, ",");
-    for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
+    type = 0;
+    std::vector<std::string> tokens_priority = Util::tokenize(option_string, ",");
+    for (std::vector<std::string>::iterator it_priority = tokens_priority.begin(); it_priority != tokens_priority.end(); it_priority++)
     {
-        priority.push_back(Util::getOptionValue(*it, options));
+        unsigned int value = 0;
+        std::vector<std::string> tokens_value = Util::tokenize(*it_priority, "+");
+        for (std::vector<std::string>::iterator it_value = tokens_value.begin(); it_value != tokens_value.end(); it_value++)
+        {
+            value |= Util::getOptionValue(*it_value, options);
+        }
+        priority.push_back(value);
+        type |= value;
     }
-
-    unsigned int wanted = 0;
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (handle_priority): for " << what << " found ";
-    #endif
-    for (std::vector<unsigned int>::iterator it = priority.begin(); it != priority.end(); it++)
-	{
-	    wanted |= *it;
-            #ifdef DEBUG
-  	      std::cerr << *it << " ";
-            #endif
-	}
-    #ifdef DEBUG
-        std::cerr << std::endl;
-    #endif
-
-    if (wanted != type)
-	{
-            type = wanted;
-	    std::cout << "Warning: for " << what << " the priority string doesn't match the enabled installers, forcing enabled installers to " << type << std::endl;
-	}
-}
-
-unsigned int parseOptionString(const std::string &option_string, const std::vector<GlobalConstants::optionsStruct>& options)
-{
-    unsigned int value = 0;
-    std::vector<std::string> tokens = Util::tokenize(option_string, ",");
-    for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
-    {
-        value |= Util::getOptionValue(*it, options);
-    }
-    return value;
 }
 
 int main(int argc, char *argv[])
@@ -82,6 +58,7 @@ int main(int argc, char *argv[])
     config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
 
+    std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
     unsigned int platform_all = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
@@ -90,6 +67,8 @@ int main(int argc, char *argv[])
         platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "|" + std::to_string(GlobalConstants::PLATFORMS[i].id) + "\n";
     }
     platform_text += "All = all|" + std::to_string(platform_all);
+    platform_text += "\n\n" + priority_help_text;
+    platform_text += "\nExample: Linux if available otherwise Windows and Mac: l,w+m";
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
@@ -99,7 +78,9 @@ int main(int argc, char *argv[])
         language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "|" + std::to_string(GlobalConstants::LANGUAGES[i].id) + "\n";
     }
     language_text += "Add the values to download multiple languages\nAll = all|" + std::to_string(language_all) + "\n"
-                    + "French + Polish = \"fr,pl\"|" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + " (" + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + "=" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + ")";
+                    + "French + Polish = \"fr+pl\"|" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + " (" + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + "=" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + ")";
+    language_text += "\n\n" + priority_help_text;
+    language_text += "\nExample: German if available otherwise English and French: de,en+fr";
 
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh)$"; // Limit to files with these extensions (".old" is for renamed older version files)
@@ -107,8 +88,6 @@ int main(int argc, char *argv[])
 
     // Help text for subdir options
     std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %dlcname%";
-    // Help text for priority options
-    std::string priority_help_text = "\nIf set, only the first matching one will be downloaded. If unset, all matching combinations will be downloaded.\nSyntax: use a string separated by \",\"";
 
     std::vector<std::string> vFileIdStrings;
     std::vector<std::string> unrecognized_options_cfg;
@@ -170,8 +149,8 @@ int main(int argc, char *argv[])
             ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
-            ("platform", bpo::value<std::string>(&sInstallerPlatform)->default_value(std::to_string(GlobalConstants::PLATFORM_WINDOWS|GlobalConstants::PLATFORM_LINUX)), platform_text.c_str())
-            ("language", bpo::value<std::string>(&sInstallerLanguage)->default_value(std::to_string(GlobalConstants::LANGUAGE_EN)), language_text.c_str())
+            ("platform", bpo::value<std::string>(&sInstallerPlatform)->default_value("w+l"), platform_text.c_str())
+            ("language", bpo::value<std::string>(&sInstallerLanguage)->default_value("en"), language_text.c_str())
             ("no-installers", bpo::value<bool>(&bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
             ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
             ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
@@ -197,8 +176,6 @@ int main(int argc, char *argv[])
             ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
             ("use-cache", bpo::value<bool>(&config.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
             ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
-            ("language-priority", bpo::value<std::string>(&config.sLanguagePriority)->default_value(""), ("Set priority of systems" + priority_help_text + ", like \"4,1\" or \"fr,en\" for French first, then English if no French version").c_str())
-            ("platform-priority", bpo::value<std::string>(&config.sPlatformPriority)->default_value(""), ("Set priority of platforms" + priority_help_text + ", like \"4,1\" or \"linux,windows\" for Linux first, then Windows if no Linux version").c_str())
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
             ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
         ;
@@ -326,8 +303,6 @@ int main(int argc, char *argv[])
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
         config.bPlatformDetection = !bNoPlatformDetection;
-        config.iInstallerLanguage = parseOptionString(sInstallerLanguage, GlobalConstants::LANGUAGES);
-        config.iInstallerPlatform = parseOptionString(sInstallerPlatform, GlobalConstants::PLATFORMS);
 
         for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
@@ -358,12 +333,8 @@ int main(int argc, char *argv[])
             config.bLoginHTTP = true;
         }
 
-        // Handle priority business
-        if (!config.sLanguagePriority.empty())
-            handle_priority("languages", config.sLanguagePriority, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
-        if (!config.sPlatformPriority.empty())
-            handle_priority("platforms", config.sPlatformPriority, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
-
+        parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
+        parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
     }
     catch (std::exception& e)
     {
