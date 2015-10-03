@@ -54,6 +54,7 @@ class Config
         std::string sToken;
         std::string sSecret;
         std::string sVersionString;
+        std::string sVersionNumber;
         std::string sConfigDirectory;
         std::string sCookiePath;
         std::string sConfigFilePath;

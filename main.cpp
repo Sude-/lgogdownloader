@@ -72,6 +72,7 @@ int main(int argc, char *argv[])
 {
     Config config;
     config.sVersionString = VERSION_STRING;
+    config.sVersionNumber = VERSION_NUMBER;
 
     config.sCacheDirectory = Util::getCacheHome() + "/lgogdownloader";
     config.sXMLDirectory = config.sCacheDirectory + "/xml";

@@ -2994,6 +2994,8 @@ int Downloader::saveGameDetailsCache()
 
     Json::Value json;
 
+    json["version-string"] = config.sVersionString;
+    json["version-number"] = config.sVersionNumber;
     json["date"] = bptime::to_iso_string(bptime::second_clock::local_time());
 
     for (unsigned int i = 0; i < this->games.size(); ++i)
