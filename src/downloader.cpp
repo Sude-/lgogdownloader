@@ -121,6 +121,10 @@ int Downloader::login()
 {
     char *pwd;
     std::string email;
+    if (!isatty(STDIN_FILENO)) {
+        std::cout << "Unable to read email and password" << std::endl;
+        return 0;
+    }
     std::cout << "Email: ";
     std::getline(std::cin,email);
     pwd = getpass("Password: ");
