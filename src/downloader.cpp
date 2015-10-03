@@ -409,12 +409,7 @@ void Downloader::listGames()
                             continue;
                         }
 
-                        std::string languages;
-                        for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the installer supports
-                        {
-                            if (games[i].installers[j].language & GlobalConstants::LANGUAGES[k].id)
-                                languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].str;
-                        }
+                        std::string languages = Util::getOptionNameString(games[i].installers[j].language, GlobalConstants::LANGUAGES);
 
                         std::cout   << "\tid: " << games[i].installers[j].id << std::endl
                                     << "\tname: " << games[i].installers[j].name << std::endl
@@ -461,12 +456,7 @@ void Downloader::listGames()
                         continue;
                     }
 
-                    std::string languages;
-                    for (unsigned int k = 0; k < GlobalConstants::LANGUAGES.size(); k++) // Check which languages the patch supports
-                    {
-                        if (games[i].patches[j].language & GlobalConstants::LANGUAGES[k].id)
-                            languages += (languages.empty() ? "" : ", ")+GlobalConstants::LANGUAGES[k].str;
-                    }
+                    std::string languages = Util::getOptionNameString(games[i].patches[j].language, GlobalConstants::LANGUAGES);
 
                     std::cout   << "\tid: " << games[i].patches[j].id << std::endl
                                 << "\tname: " << games[i].patches[j].name << std::endl
@@ -3268,13 +3258,7 @@ void Downloader::showWishlist()
                     if (config.bPlatformDetection && !(platform & config.iInstallerPlatform))
                         continue;
 
-                    for (unsigned int j = 0; j < GlobalConstants::PLATFORMS.size(); ++j)
-                    {
-                        if (GlobalConstants::PLATFORMS[j].id & platform)
-                        {
-                            platforms_text += (platforms_text.empty() ? "" : ", ")+GlobalConstants::PLATFORMS[j].str;
-                        }
-                    }
+                    platforms_text = Util::getOptionNameString(platform, GlobalConstants::PLATFORMS);
                 }
 
                 std::vector<std::string> tags;

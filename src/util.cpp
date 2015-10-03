@@ -460,3 +460,14 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
     }
     return value;
 }
+
+std::string Util::getOptionNameString(const unsigned int& value, const std::vector<GlobalConstants::optionsStruct>& options)
+{
+    std::string str;
+    for (unsigned int i = 0; i < options.size(); ++i)
+    {
+        if (value & options[i].id)
+            str += (str.empty() ? "" : ", ")+options[i].str;
+    }
+    return str;
+}

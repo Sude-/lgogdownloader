@@ -47,6 +47,7 @@ namespace Util
     std::string getCacheHome();
     std::vector<std::string> tokenize(const std::string& str, const std::string& separator = ",");
     unsigned int getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options);
+    std::string getOptionNameString(const unsigned int& value, const std::vector<GlobalConstants::optionsStruct>& options);
 }
 
 #endif // UTIL_H
