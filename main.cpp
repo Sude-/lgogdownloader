@@ -46,6 +46,27 @@ void parseOptionString(const std::string &option_string, std::vector<unsigned in
 
 int main(int argc, char *argv[])
 {
+    // Constants for option selection with include/exclude
+    /* TODO: Add options to give better control for user
+             For example: option to select base game and DLC installers separately,
+             this requires some changes to Downloader class to implement */
+    const unsigned int OPTION_INSTALLERS = 1 << 0;
+    const unsigned int OPTION_EXTRAS     = 1 << 1;
+    const unsigned int OPTION_PATCHES    = 1 << 2;
+    const unsigned int OPTION_LANGPACKS  = 1 << 3;
+    const unsigned int OPTION_COVERS     = 1 << 4;
+    const unsigned int OPTION_DLCS       = 1 << 5;
+
+    const std::vector<GlobalConstants::optionsStruct> INCLUDE_OPTIONS =
+    {
+        { OPTION_INSTALLERS, "i", "Installers",     "i|installers"              },
+        { OPTION_EXTRAS,     "e", "Extras",         "e|extras"                  },
+        { OPTION_PATCHES,    "p", "Patches",        "p|patches"                 },
+        { OPTION_LANGPACKS,  "l", "Language packs", "l|languagepacks|langpacks" },
+        { OPTION_COVERS,     "c", "Covers",         "c|cover|covers"            },
+        { OPTION_DLCS,       "d", "DLCs",           "d|dlc|dlcs"                }
+    };
+
     Config config;
     config.sVersionString = VERSION_STRING;
     config.sVersionNumber = VERSION_NUMBER;
@@ -89,6 +110,14 @@ int main(int argc, char *argv[])
     // Help text for subdir options
     std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %dlcname%";
 
+    // Help text for include and exclude options
+    std::string include_options_text;
+    for (unsigned int i = 0; i < INCLUDE_OPTIONS.size(); ++i)
+    {
+        include_options_text +=  INCLUDE_OPTIONS[i].str + " = " + INCLUDE_OPTIONS[i].regexp + "|" + std::to_string(INCLUDE_OPTIONS[i].id) + "\n";
+    }
+    include_options_text += "Separate with \",\" to use multiple values";
+
     std::vector<std::string> vFileIdStrings;
     std::vector<std::string> unrecognized_options_cfg;
     std::vector<std::string> unrecognized_options_cli;
@@ -104,18 +133,14 @@ int main(int argc, char *argv[])
         bool bNoColor = false;
         bool bNoUnicode = false;
         bool bNoDuplicateHandler = false;
-        bool bNoInstallers = false;
-        bool bNoExtras = false;
-        bool bNoPatches = false;
-        bool bNoLanguagePacks = false;
-        bool bNoDLC = false;
         bool bNoRemoteXML = false;
         bool bNoSubDirectories = false;
-        bool bNoCover = false;
         bool bNoPlatformDetection = false;
         bool bLogin = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
+        std::string sIncludeOptions;
+        std::string sExcludeOptions;
         config.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -134,7 +159,6 @@ int main(int argc, char *argv[])
             ("save-config", bpo::value<bool>(&config.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
             ("report", bpo::value<std::string>(&config.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
-            ("no-cover", bpo::value<bool>(&bNoCover)->zero_tokens()->default_value(false), "Don't download cover images. Overrides --cover option.\nUseful for making exceptions when \"cover\" is set to true in config file.")
             ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
             ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download files using fileid\n\nFormat:\n\"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\n\nMultiple files:\n\"gamename1/fileid1,gamename2/fileid2\"\nor: \"gogdownloader://gamename1/fileid1,gamename2/fileid2\"\n\nThis option ignores all subdir options. The files are downloaded to directory specified with --directory option.")
@@ -151,12 +175,6 @@ int main(int argc, char *argv[])
             ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
             ("platform", bpo::value<std::string>(&sInstallerPlatform)->default_value("w+l"), platform_text.c_str())
             ("language", bpo::value<std::string>(&sInstallerLanguage)->default_value("en"), language_text.c_str())
-            ("no-installers", bpo::value<bool>(&bNoInstallers)->zero_tokens()->default_value(false), "Don't download/list/repair installers")
-            ("no-extras", bpo::value<bool>(&bNoExtras)->zero_tokens()->default_value(false), "Don't download/list/repair extras")
-            ("no-patches", bpo::value<bool>(&bNoPatches)->zero_tokens()->default_value(false), "Don't download/list/repair patches")
-            ("no-language-packs", bpo::value<bool>(&bNoLanguagePacks)->zero_tokens()->default_value(false), "Don't download/list/repair language packs")
-            ("no-dlc", bpo::value<bool>(&bNoDLC)->zero_tokens()->default_value(false), "Don't download/list/repair DLCs")
-            ("cover", bpo::value<bool>(&config.bCover)->zero_tokens()->default_value(false), "Download cover images")
             ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
             ("no-unicode", bpo::value<bool>(&bNoUnicode)->zero_tokens()->default_value(false), "Don't use Unicode in the progress bar")
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar")
@@ -178,6 +196,8 @@ int main(int argc, char *argv[])
             ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
             ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
             ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
+            ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
+            ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -295,11 +315,6 @@ int main(int argc, char *argv[])
         config.bColor = !bNoColor;
         config.bUnicode = !bNoUnicode;
         config.bDuplicateHandler = !bNoDuplicateHandler;
-        config.bInstallers = !bNoInstallers;
-        config.bExtras = !bNoExtras;
-        config.bPatches = !bNoPatches;
-        config.bLanguagePacks = !bNoLanguagePacks;
-        config.bDLC = !bNoDLC;
         config.bRemoteXML = !bNoRemoteXML;
         config.bSubDirectories = !bNoSubDirectories;
         config.bPlatformDetection = !bNoPlatformDetection;
@@ -323,10 +338,6 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        // Override cover option
-        if (bNoCover)
-            config.bCover = false;
-
         if (bLogin)
         {
             config.bLoginAPI = true;
@@ -335,6 +346,29 @@ int main(int argc, char *argv[])
 
         parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
         parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
+
+        unsigned int include_value = 0;
+        unsigned int exclude_value = 0;
+        std::vector<std::string> vInclude = Util::tokenize(sIncludeOptions, ",");
+        std::vector<std::string> vExclude = Util::tokenize(sExcludeOptions, ",");
+        for (std::vector<std::string>::iterator it = vInclude.begin(); it != vInclude.end(); it++)
+        {
+            include_value |= Util::getOptionValue(*it, INCLUDE_OPTIONS);
+        }
+        for (std::vector<std::string>::iterator it = vExclude.begin(); it != vExclude.end(); it++)
+        {
+            exclude_value |= Util::getOptionValue(*it, INCLUDE_OPTIONS);
+        }
+        config.iInclude = include_value & ~exclude_value;
+
+        // Assign values
+        // TODO: Use config.iInclude in Downloader class directly and get rid of this value assignment
+        config.bCover = (config.iInclude & OPTION_COVERS);
+        config.bInstallers = (config.iInclude & OPTION_INSTALLERS);
+        config.bExtras = (config.iInclude & OPTION_EXTRAS);
+        config.bPatches = (config.iInclude & OPTION_PATCHES);
+        config.bLanguagePacks = (config.iInclude & OPTION_LANGPACKS);
+        config.bDLC = (config.iInclude & OPTION_DLCS);
     }
     catch (std::exception& e)
     {
