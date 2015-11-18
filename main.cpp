@@ -451,7 +451,6 @@ int main(int argc, char *argv[])
         {
             set_vm_value(vm, "token", downloader.config.sToken);
             set_vm_value(vm, "secret", downloader.config.sSecret);
-            bpo::notify(vm);
         }
         std::ofstream ofs(config.sConfigFilePath.c_str());
         if (ofs)
