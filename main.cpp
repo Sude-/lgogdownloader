@@ -13,12 +13,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#define VERSION_NUMBER "2.26"
-
-#ifndef VERSION_STRING
-#   define VERSION_STRING "LGOGDownloader " VERSION_NUMBER
-#endif
-
 namespace bpo = boost::program_options;
 
 template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value>& vm, const std::string& option, const T& value)
