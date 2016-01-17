@@ -18,11 +18,14 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
     libjsoncpp-dev liboauth-dev librhash-dev libtinyxml-dev libhtmlcxx-dev\
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev\
-    libboost-date-time-dev help2man
+    libboost-date-time-dev help2man cmake
 
 ## Build and install
 
-    $ make release
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+    $ make
     # sudo make install
 
 ## Use
