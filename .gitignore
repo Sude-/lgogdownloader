@@ -5,3 +5,7 @@ bin/*
 obj/*
 *.1
 *.gz
+Makefile
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
