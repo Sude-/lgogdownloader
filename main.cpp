@@ -192,6 +192,7 @@ int main(int argc, char *argv[])
             ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
             ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
             ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
+            ("automatic-xml-creation", bpo::value<bool>(&config.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -337,6 +338,9 @@ int main(int argc, char *argv[])
             config.bLoginAPI = true;
             config.bLoginHTTP = true;
         }
+
+        if (config.sXMLFile == "automatic")
+            config.bAutomaticXMLCreation = true;
 
         parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
         parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);

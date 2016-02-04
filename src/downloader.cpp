@@ -922,7 +922,7 @@ void Downloader::download()
                     std::cout << filepath << std::endl;
                     CURLcode result = this->downloadFile(url, filepath);
                     std::cout << std::endl;
-                    if (result==CURLE_OK && config.sXMLFile == "automatic")
+                    if (result==CURLE_OK && config.bAutomaticXMLCreation)
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
                         std::string xml_dir = config.sXMLDirectory + "/" + games[i].gamename;
@@ -1144,7 +1144,7 @@ void Downloader::download()
                                 std::cout << "Dowloading: " << games[i].dlcs[j].extras[k].name << std::endl;
                             CURLcode result = this->downloadFile(url, filepath);
                             std::cout << std::endl;
-                            if (result==CURLE_OK && config.sXMLFile == "automatic")
+                            if (result==CURLE_OK && config.bAutomaticXMLCreation)
                             {
                                 std::cout << "Starting automatic XML creation" << std::endl;
                                 std::string xml_dir = config.sXMLDirectory + "/" + games[i].dlcs[j].gamename;
@@ -1462,7 +1462,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             {
                 bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
 
-                if (config.sXMLFile == "automatic" && !bLocalXMLExists)
+                if (config.bAutomaticXMLCreation && !bLocalXMLExists)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
                     Util::createXML(filepath, config.iChunkSize, xml_directory);
@@ -1503,7 +1503,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << std::endl;
             if (result == CURLE_OK)
             {
-                if (config.sXMLFile == "automatic" && bParsingFailed)
+                if (config.bAutomaticXMLCreation && bParsingFailed)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
                     Util::createXML(filepath, config.iChunkSize, xml_directory);
