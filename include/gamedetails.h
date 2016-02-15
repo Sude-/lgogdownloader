@@ -4,6 +4,7 @@
 #include "globalconstants.h"
 #include "gamefile.h"
 #include "config.h"
+#include "util.h"
 
 #include <iostream>
 #include <vector>
@@ -23,7 +24,7 @@ class gameDetails
         std::string icon;
         std::string serials;
         void filterWithPriorities(const Config& config);
-        void makeFilepaths(const Config& config);
+        void makeFilepaths(const gameSpecificDirectoryConfig& config);
         std::string getSerialsFilepath();
         Json::Value getDetailsAsJson();
         virtual ~gameDetails();

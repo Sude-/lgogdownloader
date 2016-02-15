@@ -1,5 +1,4 @@
 #include "gamedetails.h"
-#include "util.h"
 
 gameDetails::gameDetails()
 {
@@ -66,7 +65,7 @@ void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const Co
         }
 }
 
-void gameDetails::makeFilepaths(const Config& config)
+void gameDetails::makeFilepaths(const gameSpecificDirectoryConfig& config)
 {
     std::string filepath;
     std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";

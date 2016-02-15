@@ -240,12 +240,36 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
     {
         if (root.isMember("language"))
         {
-            conf->iInstallerLanguage = root["language"].asUInt();
+            unsigned int language = 0;
+            if (root["language"].isInt())
+                language = root["language"].asUInt();
+            else
+            {
+                std::vector<std::string> tokens = Util::tokenize(root["language"].asString(), "+");
+                for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
+                {
+                    language |= Util::getOptionValue(*it, GlobalConstants::LANGUAGES);
+                }
+            }
+
+            conf->iInstallerLanguage = language;
             res++;
         }
         if (root.isMember("platform"))
         {
-            conf->iInstallerPlatform = root["platform"].asUInt();
+            unsigned int platform = 0;
+            if (root["platform"].isInt())
+                platform = root["platform"].asUInt();
+            else
+            {
+                std::vector<std::string> tokens = Util::tokenize(root["platform"].asString(), "+");
+                for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
+                {
+                    platform |= Util::getOptionValue(*it, GlobalConstants::PLATFORMS);
+                }
+            }
+
+            conf->iInstallerPlatform = platform;
             res++;
         }
         if (root.isMember("dlc"))
@@ -258,10 +282,50 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
             conf->bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
             res++;
         }
+        if (root.isMember("subdirectories"))
+        {
+            conf->dirConf.bSubDirectories = root["subdirectories"].asBool();
+            res++;
+        }
+        if (root.isMember("directory"))
+        {
+            conf->dirConf.sDirectory = root["directory"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-game"))
+        {
+            conf->dirConf.sGameSubdir = root["subdir-game"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-installers"))
+        {
+            conf->dirConf.sInstallersSubdir = root["subdir-installers"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-extras"))
+        {
+            conf->dirConf.sExtrasSubdir = root["subdir-extras"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-patches"))
+        {
+            conf->dirConf.sPatchesSubdir = root["subdir-patches"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-language-packs"))
+        {
+            conf->dirConf.sLanguagePackSubdir = root["subdir-language-packs"].asString();
+            res++;
+        }
+        if (root.isMember("subdir-dlc"))
+        {
+            conf->dirConf.sDLCSubdir = root["subdir-dlc"].asString();
+            res++;
+        }
     }
     else
     {
-        std::cout << "Failed to parse game specific config" << std::endl;
+        std::cout << "Failed to parse game specific config " << filepath << std::endl;
         std::cout << jsonparser->getFormattedErrorMessages() << std::endl;
     }
     delete jsonparser;

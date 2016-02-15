@@ -211,6 +211,16 @@ void Downloader::getGameList()
 */
 int Downloader::getGameDetails()
 {
+    // Set default game specific directory options to values from config
+    gameSpecificDirectoryConfig dirConfDefault;
+    dirConfDefault.sDirectory = config.sDirectory;
+    dirConfDefault.bSubDirectories = config.bSubDirectories;
+    dirConfDefault.sGameSubdir = config.sGameSubdir;
+    dirConfDefault.sInstallersSubdir = config.sInstallersSubdir;
+    dirConfDefault.sExtrasSubdir = config.sExtrasSubdir;
+    dirConfDefault.sLanguagePackSubdir = config.sLanguagePackSubdir;
+    dirConfDefault.sDLCSubdir = config.sDLCSubdir;
+
     if (config.bUseCache && !config.bUpdateCache)
     {
         // GameRegex filter alias for all games
@@ -223,7 +233,12 @@ int Downloader::getGameDetails()
         if (result == 0)
         {
             for (unsigned int i = 0; i < this->games.size(); ++i)
-                this->games[i].makeFilepaths(config);
+            {
+                gameSpecificConfig conf;
+                conf.dirConf = dirConfDefault;
+                Util::getGameSpecificConfig(games[i].gamename, &conf);
+                this->games[i].makeFilepaths(conf.dirConf);
+            }
             return 0;
         }
         else
@@ -254,10 +269,12 @@ int Downloader::getGameDetails()
         conf.bIgnoreDLCCount = false;
         conf.iInstallerLanguage = config.iInstallerLanguage;
         conf.iInstallerPlatform = config.iInstallerPlatform;
+        conf.dirConf = dirConfDefault;
         if (!config.bUpdateCache) // Disable game specific config files for cache update
         {
-            if (Util::getGameSpecificConfig(gameItems[i].name, &conf) > 0)
-                std::cout << std::endl << gameItems[i].name << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerPlatform << ", DLC: " << (conf.bDLC ? "true" : "false") << ", Ignore DLC count: " << (conf.bIgnoreDLCCount ? "true" : "false") << std::endl;
+            int iOptionsOverridden = Util::getGameSpecificConfig(gameItems[i].name, &conf);
+            if (iOptionsOverridden > 0)
+                std::cout << std::endl << gameItems[i].name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
         }
 
         game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
@@ -346,7 +363,7 @@ int Downloader::getGameDetails()
                 }
             }
 
-            game.makeFilepaths(config);
+            game.makeFilepaths(conf.dirConf);
 
             if (!config.bUpdateCheck)
                 games.push_back(game);
