@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project (lgogdownloader LANGUAGES CXX VERSION 2.26)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -73,7 +73,6 @@ set(VERSION_STRING "LGOGDownloader ${VERSION_NUMBER}")
 add_definitions(-D_FILE_OFFSET_BITS=64 -DVERSION_NUMBER="${VERSION_NUMBER}" -DVERSION_STRING="${VERSION_STRING}")
 
 add_executable (${PROJECT_NAME} ${SRC_FILES})
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
 
 
 target_include_directories(${PROJECT_NAME}
@@ -106,7 +105,7 @@ if(MSVC)
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic -fexceptions")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-long-long -fexceptions")
 endif()
 
 set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
