@@ -2668,6 +2668,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].installers[j].getFilepath();
 
+		if (config.blacklist.isBlacklisted(filepath.native()))
+		    continue;
                 std::string remoteHash;
                 std::string localHash;
                 bool bHashOK = true; // assume hash OK
@@ -2730,6 +2732,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].extras[j].getFilepath();
 
+		if (config.blacklist.isBlacklisted(filepath.native()))
+		    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2751,6 +2755,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].patches[j].getFilepath();
 
+		if (config.blacklist.isBlacklisted(filepath.native()))
+		    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2772,6 +2778,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
 
+		if (config.blacklist.isBlacklisted(filepath.native()))
+		    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2797,6 +2805,8 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].installers[k].getFilepath();
 
+			if (config.blacklist.isBlacklisted(filepath.native()))
+			    continue;
                         std::string remoteHash;
                         std::string localHash;
                         bool bHashOK = true; // assume hash OK
@@ -2859,6 +2869,8 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
 
+			if (config.blacklist.isBlacklisted(filepath.native()))
+			    continue;
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         uintmax_t filesize;
 
@@ -2880,6 +2892,8 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
 
+			if (config.blacklist.isBlacklisted(filepath.native()))
+			    continue;
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         uintmax_t filesize;
 
