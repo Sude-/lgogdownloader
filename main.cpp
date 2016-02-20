@@ -20,24 +20,6 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
     vm[option].value() = boost::any(value);
 }
 
-// Parse the options string
-void parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options)
-{
-    type = 0;
-    std::vector<std::string> tokens_priority = Util::tokenize(option_string, ",");
-    for (std::vector<std::string>::iterator it_priority = tokens_priority.begin(); it_priority != tokens_priority.end(); it_priority++)
-    {
-        unsigned int value = 0;
-        std::vector<std::string> tokens_value = Util::tokenize(*it_priority, "+");
-        for (std::vector<std::string>::iterator it_value = tokens_value.begin(); it_value != tokens_value.end(); it_value++)
-        {
-            value |= Util::getOptionValue(*it_value, options);
-        }
-        priority.push_back(value);
-        type |= value;
-    }
-}
-
 int main(int argc, char *argv[])
 {
     // Constants for option selection with include/exclude
@@ -342,8 +324,8 @@ int main(int argc, char *argv[])
         if (config.sXMLFile == "automatic")
             config.bAutomaticXMLCreation = true;
 
-        parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
-        parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
+        Util::parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
+        Util::parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;

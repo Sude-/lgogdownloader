@@ -240,36 +240,22 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
     {
         if (root.isMember("language"))
         {
-            unsigned int language = 0;
             if (root["language"].isInt())
-                language = root["language"].asUInt();
+                conf->iInstallerLanguage = root["language"].asUInt();
             else
             {
-                std::vector<std::string> tokens = Util::tokenize(root["language"].asString(), "+");
-                for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
-                {
-                    language |= Util::getOptionValue(*it, GlobalConstants::LANGUAGES);
-                }
+                Util::parseOptionString(root["language"].asString(), conf->vLanguagePriority, conf->iInstallerLanguage, GlobalConstants::LANGUAGES);
             }
-
-            conf->iInstallerLanguage = language;
             res++;
         }
         if (root.isMember("platform"))
         {
-            unsigned int platform = 0;
             if (root["platform"].isInt())
-                platform = root["platform"].asUInt();
+                conf->iInstallerPlatform = root["platform"].asUInt();
             else
             {
-                std::vector<std::string> tokens = Util::tokenize(root["platform"].asString(), "+");
-                for (std::vector<std::string>::iterator it = tokens.begin(); it != tokens.end(); it++)
-                {
-                    platform |= Util::getOptionValue(*it, GlobalConstants::PLATFORMS);
-                }
+                Util::parseOptionString(root["platform"].asString(), conf->vPlatformPriority, conf->iInstallerPlatform, GlobalConstants::PLATFORMS);
             }
-
-            conf->iInstallerPlatform = platform;
             res++;
         }
         if (root.isMember("dlc"))
@@ -534,4 +520,23 @@ std::string Util::getOptionNameString(const unsigned int& value, const std::vect
             str += (str.empty() ? "" : ", ")+options[i].str;
     }
     return str;
+}
+
+// Parse the options string
+void Util::parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options)
+{
+    type = 0;
+    priority.clear();
+    std::vector<std::string> tokens_priority = Util::tokenize(option_string, ",");
+    for (std::vector<std::string>::iterator it_priority = tokens_priority.begin(); it_priority != tokens_priority.end(); it_priority++)
+    {
+        unsigned int value = 0;
+        std::vector<std::string> tokens_value = Util::tokenize(*it_priority, "+");
+        for (std::vector<std::string>::iterator it_value = tokens_value.begin(); it_value != tokens_value.end(); it_value++)
+        {
+            value |= Util::getOptionValue(*it_value, options);
+        }
+        priority.push_back(value);
+        type |= value;
+    }
 }

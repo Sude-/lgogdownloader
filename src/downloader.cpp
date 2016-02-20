@@ -270,17 +270,48 @@ int Downloader::getGameDetails()
         conf.iInstallerLanguage = config.iInstallerLanguage;
         conf.iInstallerPlatform = config.iInstallerPlatform;
         conf.dirConf = dirConfDefault;
+        conf.vLanguagePriority = config.vLanguagePriority;
+        conf.vPlatformPriority = config.vPlatformPriority;
         if (!config.bUpdateCache) // Disable game specific config files for cache update
         {
             int iOptionsOverridden = Util::getGameSpecificConfig(gameItems[i].name, &conf);
             if (iOptionsOverridden > 0)
+            {
                 std::cout << std::endl << gameItems[i].name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
+                if (config.bVerbose)
+                {
+                    if (conf.bIgnoreDLCCount)
+                        std::cout << "\tIgnore DLC count" << std::endl;
+                    if (conf.bDLC != config.bDLC)
+                        std::cout << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+                    if (conf.iInstallerLanguage != config.iInstallerLanguage)
+                        std::cout << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
+                    if (conf.vLanguagePriority != config.vLanguagePriority)
+                    {
+                        std::cout << "\tLanguage priority:" << std::endl;
+                        for (unsigned int j = 0; j < conf.vLanguagePriority.size(); ++j)
+                        {
+                            std::cout << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
+                        }
+                    }
+                    if (conf.iInstallerPlatform != config.iInstallerPlatform)
+                        std::cout << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
+                    if (conf.vPlatformPriority != config.vPlatformPriority)
+                    {
+                        std::cout << "\tPlatform priority:" << std::endl;
+                        for (unsigned int j = 0; j < conf.vPlatformPriority.size(); ++j)
+                        {
+                            std::cout << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
+                        }
+                    }
+                }
+            }
         }
 
         game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
         if (!gogAPI->getError())
         {
-            game.filterWithPriorities(config);
+            game.filterWithPriorities(conf);
             Json::Value gameDetailsJSON;
 
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
@@ -311,7 +342,7 @@ int Downloader::getGameDetails()
                 {
                     gameDetails dlc;
                     dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
-                    dlc.filterWithPriorities(config);
+                    dlc.filterWithPriorities(conf);
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         if (gameDetailsJSON.empty())
@@ -3058,6 +3089,8 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         conf.bDLC = config.bDLC;
         conf.iInstallerLanguage = config.iInstallerLanguage;
         conf.iInstallerPlatform = config.iInstallerPlatform;
+        conf.vLanguagePriority = config.vLanguagePriority;
+        conf.vPlatformPriority = config.vPlatformPriority;
         if (Util::getGameSpecificConfig(game.gamename, &conf) > 0)
             std::cout << game.gamename << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerPlatform << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
 
@@ -3107,7 +3140,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         }
         if (!game.extras.empty() || !game.installers.empty() || !game.patches.empty() || !game.languagepacks.empty() || !game.dlcs.empty())
             {
-                game.filterWithPriorities(config);
+                game.filterWithPriorities(conf);
                 details.push_back(game);
             }
     }

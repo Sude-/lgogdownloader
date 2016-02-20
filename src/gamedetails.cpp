@@ -10,7 +10,7 @@ gameDetails::~gameDetails()
     //dtor
 }
 
-void gameDetails::filterWithPriorities(const Config& config)
+void gameDetails::filterWithPriorities(const gameSpecificConfig& config)
 {
     if (config.vPlatformPriority.empty() && config.vLanguagePriority.empty())
         return;
@@ -20,7 +20,7 @@ void gameDetails::filterWithPriorities(const Config& config)
     filterListWithPriorities(languagepacks, config);
 }
 
-void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const Config& config)
+void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config)
 {
     /*
       Compute the score of each item - we use a scoring mechanism and we keep all ties

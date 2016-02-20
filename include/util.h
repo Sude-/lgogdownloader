@@ -39,6 +39,8 @@ struct gameSpecificConfig
     bool bDLC;
     bool bIgnoreDLCCount;
     gameSpecificDirectoryConfig dirConf;
+    std::vector<unsigned int> vLanguagePriority;
+    std::vector<unsigned int> vPlatformPriority;
 };
 
 namespace Util
@@ -61,6 +63,7 @@ namespace Util
     std::vector<std::string> tokenize(const std::string& str, const std::string& separator = ",");
     unsigned int getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options);
     std::string getOptionNameString(const unsigned int& value, const std::vector<GlobalConstants::optionsStruct>& options);
+    void parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options);
 }
 
 #endif // UTIL_H
