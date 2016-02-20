@@ -74,6 +74,6 @@ namespace GlobalConstants
         { PLATFORM_MAC,     "mac",   "Mac"     , "m|mac|osx"     },
         { PLATFORM_LINUX,   "linux", "Linux"   , "l|lin|linux"   }
     };
-};
+}
 
 #endif // GLOBALCONSTANTS_H_INCLUDED
