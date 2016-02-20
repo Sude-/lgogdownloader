@@ -32,7 +32,7 @@ Downloader::Downloader(Config &conf)
     this->config = conf;
     if (config.bLoginHTTP && boost::filesystem::exists(config.sCookiePath))
         if (!boost::filesystem::remove(config.sCookiePath))
-            std::cout << "Failed to delete " << config.sCookiePath << std::endl;
+            std::cerr << "Failed to delete " << config.sCookiePath << std::endl;
 }
 
 Downloader::~Downloader()
@@ -105,7 +105,7 @@ int Downloader::init()
         this->report_ofs.open(config.sReportFilePath);
         if (!this->report_ofs)
         {
-            std::cout << "Failed to create " << config.sReportFilePath << std::endl;
+            std::cerr << "Failed to create " << config.sReportFilePath << std::endl;
             return 1;
         }
     }
@@ -122,16 +122,16 @@ int Downloader::login()
     char *pwd;
     std::string email;
     if (!isatty(STDIN_FILENO)) {
-        std::cout << "Unable to read email and password" << std::endl;
+        std::cerr << "Unable to read email and password" << std::endl;
         return 0;
     }
-    std::cout << "Email: ";
+    std::cerr << "Email: ";
     std::getline(std::cin,email);
     pwd = getpass("Password: ");
     std::string password = (std::string)pwd;
     if (email.empty() || password.empty())
     {
-        std::cout << "Email and/or password empty" << std::endl;
+        std::cerr << "Email and/or password empty" << std::endl;
         return 0;
     }
     else
@@ -141,12 +141,12 @@ int Downloader::login()
         {
             if (!HTTP_Login(email, password))
             {
-                std::cout << "HTTP: Login failed" << std::endl;
+                std::cerr << "HTTP: Login failed" << std::endl;
                 return 0;
             }
             else
             {
-                std::cout << "HTTP: Login successful" << std::endl;
+                std::cerr << "HTTP: Login successful" << std::endl;
                 if (!config.bLoginAPI)
                     return 1;
             }
@@ -156,12 +156,12 @@ int Downloader::login()
         {
             if (!gogAPI->login(email, password))
             {
-                std::cout << "API: Login failed" << std::endl;
+                std::cerr << "API: Login failed" << std::endl;
                 return 0;
             }
             else
             {
-                std::cout << "API: Login successful" << std::endl;
+                std::cerr << "API: Login successful" << std::endl;
                 config.sToken = gogAPI->getToken();
                 config.sSecret = gogAPI->getSecret();
                 return 1;
@@ -227,7 +227,7 @@ int Downloader::getGameDetails()
         if (config.sGameRegex == "all")
             config.sGameRegex = ".*";
         else if (config.sGameRegex == "free")
-            std::cout << "Warning: regex alias \"free\" doesn't work with cached details" << std::endl;
+            std::cerr << "Warning: regex alias \"free\" doesn't work with cached details" << std::endl;
 
         int result = this->loadGameDetailsCache();
         if (result == 0)
@@ -245,13 +245,13 @@ int Downloader::getGameDetails()
         {
             if (result == 1)
             {
-                std::cout << "Cache doesn't exist." << std::endl;
-                std::cout << "Create cache with --update-cache" << std::endl;
+                std::cerr << "Cache doesn't exist." << std::endl;
+                std::cerr << "Create cache with --update-cache" << std::endl;
             }
             else if (result == 3)
             {
-                std::cout << "Cache is too old." << std::endl;
-                std::cout << "Update cache with --update-cache or use bigger --cache-valid" << std::endl;
+                std::cerr << "Cache is too old." << std::endl;
+                std::cerr << "Update cache with --update-cache or use bigger --cache-valid" << std::endl;
             }
             return 1;
         }
@@ -261,7 +261,7 @@ int Downloader::getGameDetails()
     int updated = 0;
     for (unsigned int i = 0; i < gameItems.size(); ++i)
     {
-        std::cout << "Getting game info " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
+        std::cerr << "Getting game info " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
         bool bHasDLC = !gameItems[i].dlcnames.empty();
 
         gameSpecificConfig conf;
@@ -277,31 +277,31 @@ int Downloader::getGameDetails()
             int iOptionsOverridden = Util::getGameSpecificConfig(gameItems[i].name, &conf);
             if (iOptionsOverridden > 0)
             {
-                std::cout << std::endl << gameItems[i].name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
+                std::cerr << std::endl << gameItems[i].name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
                 if (config.bVerbose)
                 {
                     if (conf.bIgnoreDLCCount)
-                        std::cout << "\tIgnore DLC count" << std::endl;
+                        std::cerr << "\tIgnore DLC count" << std::endl;
                     if (conf.bDLC != config.bDLC)
-                        std::cout << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+                        std::cerr << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
                     if (conf.iInstallerLanguage != config.iInstallerLanguage)
-                        std::cout << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
+                        std::cerr << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
                     if (conf.vLanguagePriority != config.vLanguagePriority)
                     {
-                        std::cout << "\tLanguage priority:" << std::endl;
+                        std::cerr << "\tLanguage priority:" << std::endl;
                         for (unsigned int j = 0; j < conf.vLanguagePriority.size(); ++j)
                         {
-                            std::cout << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
+                            std::cerr << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
                         }
                     }
                     if (conf.iInstallerPlatform != config.iInstallerPlatform)
-                        std::cout << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
+                        std::cerr << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
                     if (conf.vPlatformPriority != config.vPlatformPriority)
                     {
-                        std::cout << "\tPlatform priority:" << std::endl;
+                        std::cerr << "\tPlatform priority:" << std::endl;
                         for (unsigned int j = 0; j < conf.vPlatformPriority.size(); ++j)
                         {
-                            std::cout << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
+                            std::cerr << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
                         }
                     }
                 }
@@ -411,19 +411,19 @@ int Downloader::getGameDetails()
                 }
                 if (updated >= gogAPI->user.notifications_games)
                 { // Gone through all updated games. No need to go through the rest.
-                    std::cout << std::endl << "Got info for all updated games. Moving on..." << std::endl;
+                    std::cerr << std::endl << "Got info for all updated games. Moving on..." << std::endl;
                     break;
                 }
             }
         }
         else
         {
-            std::cout << gogAPI->getErrorMessage() << std::endl;
+            std::cerr << gogAPI->getErrorMessage() << std::endl;
             gogAPI->clearError();
             continue;
         }
     }
-    std::cout << std::endl;
+    std::cerr << std::endl;
     return 0;
 }
 
@@ -454,7 +454,7 @@ void Downloader::listGames()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -480,7 +480,7 @@ void Downloader::listGames()
                     if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
-                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
 
@@ -501,7 +501,7 @@ void Downloader::listGames()
                     if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
-                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
 
@@ -526,7 +526,7 @@ void Downloader::listGames()
                     if (config.blacklist.isBlacklisted(filepath))
                     {
                         if (config.bVerbose)
-                            std::cout << "skipped blacklisted file " << filepath << std::endl;
+                            std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
 
@@ -554,7 +554,7 @@ void Downloader::listGames()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -571,7 +571,7 @@ void Downloader::listGames()
                         std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
                         if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -587,7 +587,7 @@ void Downloader::listGames()
                         std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
                         if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -630,7 +630,7 @@ void Downloader::repair()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -641,7 +641,7 @@ void Downloader::repair()
                     XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
                     {
-                        std::cout << gogAPI->getErrorMessage() << std::endl;
+                        std::cerr << gogAPI->getErrorMessage() << std::endl;
                         gogAPI->clearError();
                         continue;
                     }
@@ -654,7 +654,7 @@ void Downloader::repair()
                     std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
                     {
-                        std::cout << gogAPI->getErrorMessage() << std::endl;
+                        std::cerr << gogAPI->getErrorMessage() << std::endl;
                         gogAPI->clearError();
                         continue;
                     }
@@ -674,14 +674,14 @@ void Downloader::repair()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
                 std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -700,7 +700,7 @@ void Downloader::repair()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -711,7 +711,7 @@ void Downloader::repair()
                     XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                     if (gogAPI->getError())
                     {
-                        std::cout << gogAPI->getErrorMessage() << std::endl;
+                        std::cerr << gogAPI->getErrorMessage() << std::endl;
                         gogAPI->clearError();
                     }
                 }
@@ -719,7 +719,7 @@ void Downloader::repair()
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -738,14 +738,14 @@ void Downloader::repair()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
                 std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -766,7 +766,7 @@ void Downloader::repair()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -777,7 +777,7 @@ void Downloader::repair()
                             XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                             if (gogAPI->getError())
                             {
-                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                std::cerr << gogAPI->getErrorMessage() << std::endl;
                                 gogAPI->clearError();
                                 continue;
                             }
@@ -790,7 +790,7 @@ void Downloader::repair()
                             std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                             if (gogAPI->getError())
                             {
-                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                std::cerr << gogAPI->getErrorMessage() << std::endl;
                                 gogAPI->clearError();
                                 continue;
                             }
@@ -807,7 +807,7 @@ void Downloader::repair()
                         std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
                         if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -818,7 +818,7 @@ void Downloader::repair()
                             XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                             if (gogAPI->getError())
                             {
-                                std::cout << gogAPI->getErrorMessage() << std::endl;
+                                std::cerr << gogAPI->getErrorMessage() << std::endl;
                                 gogAPI->clearError();
                             }
                         }
@@ -826,7 +826,7 @@ void Downloader::repair()
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                             continue;
                         }
@@ -842,14 +842,14 @@ void Downloader::repair()
                         std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
                         if (config.blacklist.isBlacklisted(filepath)) {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                             continue;
                         }
@@ -906,7 +906,7 @@ void Downloader::download()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -914,7 +914,7 @@ void Downloader::download()
                 std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -928,7 +928,7 @@ void Downloader::download()
                         XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                         }
                     }
@@ -949,7 +949,7 @@ void Downloader::download()
                 std::string url = gogAPI->getExtraLink(games[i].gamename, games[i].extras[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -958,7 +958,7 @@ void Downloader::download()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -993,7 +993,7 @@ void Downloader::download()
                 std::string url = gogAPI->getPatchLink(games[i].gamename, games[i].patches[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -1002,7 +1002,7 @@ void Downloader::download()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -1015,7 +1015,7 @@ void Downloader::download()
                         XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                         }
                     }
@@ -1036,7 +1036,7 @@ void Downloader::download()
                 std::string url = gogAPI->getLanguagePackLink(games[i].gamename, games[i].languagepacks[j].id);
                 if (gogAPI->getError())
                 {
-                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                     gogAPI->clearError();
                     continue;
                 }
@@ -1045,7 +1045,7 @@ void Downloader::download()
                 if (config.blacklist.isBlacklisted(filepath))
                 {
                     if (config.bVerbose)
-                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
@@ -1058,7 +1058,7 @@ void Downloader::download()
                         XML = gogAPI->getXML(games[i].gamename, games[i].languagepacks[j].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                         }
                     }
@@ -1088,7 +1088,7 @@ void Downloader::download()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -1096,7 +1096,7 @@ void Downloader::download()
                         std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                             continue;
                         }
@@ -1110,7 +1110,7 @@ void Downloader::download()
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                                 if (gogAPI->getError())
                                 {
-                                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                                     gogAPI->clearError();
                                 }
                             }
@@ -1130,7 +1130,7 @@ void Downloader::download()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -1138,7 +1138,7 @@ void Downloader::download()
                         std::string url = gogAPI->getPatchLink(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                             continue;
                         }
@@ -1152,7 +1152,7 @@ void Downloader::download()
                                 XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                                 if (gogAPI->getError())
                                 {
-                                    std::cout << gogAPI->getErrorMessage() << std::endl;
+                                    std::cerr << gogAPI->getErrorMessage() << std::endl;
                                     gogAPI->clearError();
                                 }
                             }
@@ -1172,7 +1172,7 @@ void Downloader::download()
                         if (config.blacklist.isBlacklisted(filepath))
                         {
                             if (config.bVerbose)
-                                std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
@@ -1180,7 +1180,7 @@ void Downloader::download()
                         std::string url = gogAPI->getExtraLink(games[i].dlcs[j].gamename, games[i].dlcs[j].extras[k].id);
                         if (gogAPI->getError())
                         {
-                            std::cout << gogAPI->getErrorMessage() << std::endl;
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
                             gogAPI->clearError();
                             continue;
                         }
@@ -1258,7 +1258,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     {
         if (!boost::filesystem::is_directory(path))
         {
-            std::cout << path << " is not directory" << std::endl;
+            std::cerr << path << " is not directory" << std::endl;
             return res;
         }
     }
@@ -1266,7 +1266,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     {
         if (!boost::filesystem::create_directories(path))
         {
-            std::cout << "Failed to create directory: " << path << std::endl;
+            std::cerr << "Failed to create directory: " << path << std::endl;
             return res;
         }
     }
@@ -1288,22 +1288,22 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             }
             else
             {
-                std::cout << "Failed to reopen " << filepath << std::endl;
+                std::cerr << "Failed to reopen " << filepath << std::endl;
                 return res;
             }
         }
         else
         {   // File exists but is not the same version
             fclose(outfile);
-            std::cout << "Remote file is different, renaming local file" << std::endl;
+            std::cerr << "Remote file is different, renaming local file" << std::endl;
             std::string date_old = "." + bptime::to_iso_string(bptime::second_clock::local_time()) + ".old";
             boost::filesystem::path new_name = filepath + date_old; // Rename old file by appending date and ".old" to filename
             boost::system::error_code ec;
             boost::filesystem::rename(pathname, new_name, ec); // Rename the file
             if (ec)
             {
-                std::cout << "Failed to rename " << filepath << " to " << new_name.string() << std::endl;
-                std::cout << "Skipping file" << std::endl;
+                std::cerr << "Failed to rename " << filepath << " to " << new_name.string() << std::endl;
+                std::cerr << "Skipping file" << std::endl;
                 return res;
             }
             else
@@ -1316,7 +1316,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                 }
                 else
                 {
-                    std::cout << "Failed to create " << filepath << std::endl;
+                    std::cerr << "Failed to create " << filepath << std::endl;
                     return res;
                 }
             }
@@ -1332,7 +1332,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         }
         else
         {
-            std::cout << "Failed to create " << filepath << std::endl;
+            std::cerr << "Failed to create " << filepath << std::endl;
             return res;
         }
     }
@@ -1348,14 +1348,14 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             {
                 if (!boost::filesystem::is_directory(path))
                 {
-                    std::cout << path << " is not directory" << std::endl;
+                    std::cerr << path << " is not directory" << std::endl;
                 }
             }
             else
             {
                 if (!boost::filesystem::create_directories(path))
                 {
-                    std::cout << "Failed to create directory: " << path << std::endl;
+                    std::cerr << "Failed to create directory: " << path << std::endl;
                 }
             }
             std::ofstream ofs(local_xml_file.string().c_str());
@@ -1366,7 +1366,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             }
             else
             {
-                std::cout << "Can't create " << local_xml_file.string() << std::endl;
+                std::cerr << "Can't create " << local_xml_file.string() << std::endl;
             }
         }
     }
@@ -1383,7 +1383,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         boost::filesystem::path path = filepath;
         if (boost::filesystem::exists(path))
             if (!boost::filesystem::remove(path))
-                std::cout << "Failed to delete " << path << std::endl;
+                std::cerr << "Failed to delete " << path << std::endl;
     }
 
     if (config.bReport)
@@ -2481,7 +2481,7 @@ void Downloader::checkOrphans()
     std::vector<std::string> orphans;
     for (unsigned int i = 0; i < games.size(); ++i)
     {
-        std::cout << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
+        std::cerr << "Checking for orphaned files " << i+1 << " / " << games.size() << "\r" << std::flush;
         std::vector<boost::filesystem::path> filepath_vector;
 
         try
@@ -2531,7 +2531,7 @@ void Downloader::checkOrphans()
                                 std::string filepath = dir_iter->path().string();
                                 if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
                                     if (config.bVerbose)
-                                        std::cout << "skipped blacklisted file " << filepath << std::endl;
+                                        std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                                 } else {
                                     boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
                                     boost::match_results<std::string::const_iterator> what;
@@ -2544,7 +2544,7 @@ void Downloader::checkOrphans()
                     }
                 }
                 else
-                    std::cout << paths[j] << " does not exist" << std::endl;
+                    std::cerr << paths[j] << " does not exist" << std::endl;
             }
         }
         catch (const boost::filesystem::filesystem_error& ex)
@@ -3092,7 +3092,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         conf.vLanguagePriority = config.vLanguagePriority;
         conf.vPlatformPriority = config.vPlatformPriority;
         if (Util::getGameSpecificConfig(game.gamename, &conf) > 0)
-            std::cout << game.gamename << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerPlatform << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+            std::cerr << game.gamename << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerPlatform << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
 
         for (unsigned int j = 0; j < nodes.size(); ++j)
         {

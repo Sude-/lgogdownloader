@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
         {
             if (!boost::filesystem::create_directories(path))
             {
-                std::cout << "Failed to create directory: " << path << std::endl;
+                std::cerr << "Failed to create directory: " << path << std::endl;
                 return 1;
             }
         }
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
         {
             if (!boost::filesystem::create_directories(path))
             {
-                std::cout << "Failed to create directory: " << path << std::endl;
+                std::cerr << "Failed to create directory: " << path << std::endl;
                 return 1;
             }
         }
@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
         {
             if (!boost::filesystem::create_directories(path))
             {
-                std::cout << "Failed to create directory: " << path << std::endl;
+                std::cerr << "Failed to create directory: " << path << std::endl;
                 return 1;
             }
         }
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
             std::ifstream ifs(config.sConfigFilePath.c_str());
             if (!ifs)
             {
-                std::cout << "Could not open config file: " << config.sConfigFilePath << std::endl;
+                std::cerr << "Could not open config file: " << config.sConfigFilePath << std::endl;
                 return 1;
             }
             else
@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
             std::ifstream ifs(config.sBlacklistFilePath.c_str());
             if (!ifs)
             {
-                std::cout << "Could not open blacklist file: " << config.sBlacklistFilePath << std::endl;
+                std::cerr << "Could not open blacklist file: " << config.sBlacklistFilePath << std::endl;
                 return 1;
             }
             else
@@ -363,13 +363,13 @@ int main(int argc, char *argv[])
 
     if (config.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || config.iInstallerPlatform > platform_all)
     {
-        std::cout << "Invalid value for --platform" << std::endl;
+        std::cerr << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
     if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || config.iInstallerLanguage > language_all)
     {
-        std::cout << "Invalid value for --language" << std::endl;
+        std::cerr << "Invalid value for --language" << std::endl;
         return 1;
     }
 
@@ -435,7 +435,7 @@ int main(int argc, char *argv[])
         std::ofstream ofs(config.sConfigFilePath.c_str());
         if (ofs)
         {
-            std::cout << "Saving config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Saving config: " << config.sConfigFilePath << std::endl;
             for (bpo::variables_map::iterator it = vm.begin(); it != vm.end(); ++it)
             {
                 std::string option = it->first;
@@ -486,7 +486,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::cout << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
             return 1;
         }
     }
@@ -506,7 +506,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::cout << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
             return 1;
         }
     }
@@ -535,7 +535,7 @@ int main(int argc, char *argv[])
         downloader.checkStatus();
     else
     {   // Show help message
-        std::cout   << config.sVersionString << std::endl
+        std::cerr   << config.sVersionString << std::endl
                     << options_cli_all << std::endl;
     }
 

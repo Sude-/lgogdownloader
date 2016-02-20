@@ -64,7 +64,7 @@ std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
     rhash_library_init();
     int i = rhash_file(hash_id, filename.c_str(), digest);
     if (i < 0)
-        std::cout << "LibRHash error: " << strerror(errno) << std::endl;
+        std::cerr << "LibRHash error: " << strerror(errno) << std::endl;
     else
         rhash_print_bytes(result, digest, rhash_get_digest_size(hash_id), RHPR_HEX);
 
@@ -79,7 +79,7 @@ std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsig
     rhash_library_init();
     int i = rhash_msg(hash_id, chunk, chunk_size, digest);
     if (i < 0)
-        std::cout << "LibRHash error: " << strerror(errno) << std::endl;
+        std::cerr << "LibRHash error: " << strerror(errno) << std::endl;
     else
         rhash_print_bytes(result, digest, rhash_get_digest_size(hash_id), RHPR_HEX);
 
@@ -104,7 +104,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
     boost::filesystem::path path = xml_dir;
     if (!boost::filesystem::exists(path)) {
         if (!boost::filesystem::create_directories(path)) {
-            std::cout << "Failed to create directory: " << path << std::endl;
+            std::cerr << "Failed to create directory: " << path << std::endl;
             return res;
         }
     }
@@ -115,7 +115,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         filesize = ftell(infile);
         rewind(infile);
     } else {
-        std::cout << filepath << " doesn't exist" << std::endl;
+        std::cerr << filepath << " doesn't exist" << std::endl;
         return res;
     }
 
@@ -159,13 +159,13 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
         if (chunk == NULL)
         {
-            std::cout << "Memory error" << std::endl;
+            std::cerr << "Memory error" << std::endl;
             return res;
         }
         size = fread(chunk, 1, chunk_size, infile);
         if (size != chunk_size)
         {
-            std::cout << "Read error" << std::endl;
+            std::cerr << "Read error" << std::endl;
             free(chunk);
             return res;
         }
@@ -204,7 +204,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         fclose(xmlfile);
         res = 1;
     } else {
-        std::cout << "Can't create " << filenameXML << std::endl;
+        std::cerr << "Can't create " << filenameXML << std::endl;
         return res;
     }
 
@@ -311,8 +311,8 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
     }
     else
     {
-        std::cout << "Failed to parse game specific config " << filepath << std::endl;
-        std::cout << jsonparser->getFormattedErrorMessages() << std::endl;
+        std::cerr << "Failed to parse game specific config " << filepath << std::endl;
+        std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
     }
     delete jsonparser;
     if (json)
@@ -370,7 +370,7 @@ void Util::setFilePermissions(const boost::filesystem::path& path, const boost::
                 boost::filesystem::permissions(path, permissions, ec);
                 if (ec)
                 {
-                    std::cout << "Failed to set file permissions for " << path.string() << std::endl;
+                    std::cerr << "Failed to set file permissions for " << path.string() << std::endl;
                 }
             }
         }
