@@ -2876,23 +2876,35 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
     else
         local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
 
+    if (config.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file))
+    {
+	std::string xml_directory = config.sXMLDirectory + "/" + gamename;
+	Util::createXML(filepath, config.iChunkSize, xml_directory);
+    }
+
     if (boost::filesystem::exists(local_xml_file))
     {
         TiXmlDocument local_xml;
         local_xml.LoadFile(local_xml_file.string());
         TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
+	if (!fileNodeLocal && config.bAutomaticXMLCreation)
+	{
+	    std::string xml_directory = config.sXMLDirectory + "/" + gamename;
+	    Util::createXML(filepath, config.iChunkSize, xml_directory);
+	    local_xml.LoadFile(local_xml_file.string());
+	    fileNodeLocal = local_xml.FirstChild("file");
+	}
         if (fileNodeLocal)
         {
             TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
             localHash = fileElemLocal->Attribute("md5");
+	    return localHash;
         }
     }
-    else
+
+    if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
     {
-        if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
-        {
-            localHash = Util::getFileHash(path.string(), RHASH_MD5);
-        }
+	localHash = Util::getFileHash(path.string(), RHASH_MD5);
     }
     return localHash;
 }
