@@ -2467,6 +2467,17 @@ std::string Downloader::getSerialsFromJSON(const Json::Value& json)
     return serials.str();
 }
 
+// Linear search.  Good thing computers are fast and lists are small.
+static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path& path, Blacklist& blacklist)
+{
+    if(blacklist.isBlacklisted(path.native()))
+	return false;
+    for (unsigned int k = 0; k < list.size(); ++k)
+	if (list[k].getFilepath() == path.native())
+	    return true;
+    return false;
+}
+
 void Downloader::checkOrphans()
 {
     // Always check everything when checking for orphaned files
@@ -2529,7 +2540,7 @@ void Downloader::checkOrphans()
                             if (boost::filesystem::is_regular_file(dir_iter->status()))
                             {
                                 std::string filepath = dir_iter->path().string();
-                                if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
+                                if (config.ignorelist.isBlacklisted(filepath.substr(pathlen))) {
                                     if (config.bVerbose)
                                         std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                                 } else {
@@ -2556,80 +2567,20 @@ void Downloader::checkOrphans()
         {
             for (unsigned int j = 0; j < filepath_vector.size(); ++j)
             {
-                bool bFoundFile = false; // Assume that the file is orphaned
+                bool bFoundFile = isPresent(games[i].installers, filepath_vector[j], config.blacklist)
+		               || isPresent(games[i].extras, filepath_vector[j], config.blacklist)
+		               || isPresent(games[i].patches, filepath_vector[j], config.blacklist)
+		               || isPresent(games[i].languagepacks, filepath_vector[j], config.blacklist);
 
-                // Check installers
-                for (unsigned int k = 0; k < games[i].installers.size(); ++k)
-                {
-                    if (games[i].installers[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                    {
-                        bFoundFile = true;
-                        break;
-                    }
-                }
-                if (!bFoundFile)
-                {   // Check extras
-                    for (unsigned int k = 0; k < games[i].extras.size(); ++k)
-                    {
-                        if (games[i].extras[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                        {
-                            bFoundFile = true;
-                            break;
-                        }
-                    }
-                }
-                if (!bFoundFile)
-                {   // Check patches
-                    for (unsigned int k = 0; k < games[i].patches.size(); ++k)
-                    {
-                        if (games[i].patches[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                        {
-                            bFoundFile = true;
-                            break;
-                        }
-                    }
-                }
-                if (!bFoundFile)
-                {   // Check language packs
-                    for (unsigned int k = 0; k < games[i].languagepacks.size(); ++k)
-                    {
-                        if (games[i].languagepacks[k].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                        {
-                            bFoundFile = true;
-                            break;
-                        }
-                    }
-                }
                 if (!bFoundFile)
                 {   // Check dlcs
                     for (unsigned int k = 0; k < games[i].dlcs.size(); ++k)
                     {
-                        for (unsigned int index = 0; index < games[i].dlcs[k].installers.size(); ++index)
-                        {
-                            if (games[i].dlcs[k].installers[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                            {
-                                bFoundFile = true;
-                                break;
-                            }
-                        }
-                        if (bFoundFile) break;
-                        for (unsigned int index = 0; index < games[i].dlcs[k].patches.size(); ++index)
-                        {
-                            if (games[i].dlcs[k].patches[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                            {
-                                bFoundFile = true;
-                                break;
-                            }
-                        }
-                        for (unsigned int index = 0; index < games[i].dlcs[k].extras.size(); ++index)
-                        {
-                            if (games[i].dlcs[k].extras[index].path.find(filepath_vector[j].filename().string()) != std::string::npos)
-                            {
-                                bFoundFile = true;
-                                break;
-                            }
-                        }
-                        if (bFoundFile) break;
+			bFoundFile = isPresent(games[i].dlcs[k].installers, filepath_vector[j], config.blacklist)
+			          || isPresent(games[i].dlcs[k].extras, filepath_vector[j], config.blacklist)
+				  || isPresent(games[i].dlcs[k].patches, filepath_vector[j], config.blacklist);
+			if(bFoundFile)
+			    break;
                     }
                 }
                 if (!bFoundFile)

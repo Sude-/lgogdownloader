@@ -62,7 +62,15 @@ If \fB$XDG_CACHE_HOME\fP is not set, it will use \fI$HOME/.cache/lgogdownloader/
 
 .TP
 \fI$XDG_CONFIG_HOME/lgogdownloader/blacklist.txt\fP
-Allows user to specify individual files that should not be downloaded or mentioned as orphans.
+Allows user to specify individual files that should not be downloaded.
+.br
+It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
+
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/ignorelist.txt\fP
+Allows user to specify individual files that should not be mentioned
+as orphans.  The file has the same format and interpretation as a
+blacklist.
 .br
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 

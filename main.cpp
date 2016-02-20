@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
     config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
     config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
+    config.sIgnorelistFilePath = config.sConfigDirectory + "/ignorelist.txt";
 
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
@@ -269,6 +270,27 @@ int main(int argc, char *argv[])
                     lines.push_back(std::move(line));
                 }
                 config.blacklist.initialize(lines);
+            }
+        }
+
+        if (boost::filesystem::exists(config.sIgnorelistFilePath))
+        {
+            std::ifstream ifs(config.sIgnorelistFilePath.c_str());
+            if (!ifs)
+            {
+                std::cerr << "Could not open ignorelist file: " << config.sIgnorelistFilePath << std::endl;
+                return 1;
+            }
+            else
+            {
+                std::string line;
+                std::vector<std::string> lines;
+                while (!ifs.eof())
+                {
+                    std::getline(ifs, line);
+                    lines.push_back(std::move(line));
+                }
+                config.ignorelist.initialize(lines);
             }
         }
 
