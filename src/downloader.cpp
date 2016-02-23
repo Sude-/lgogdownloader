@@ -220,6 +220,7 @@ int Downloader::getGameDetails()
     dirConfDefault.sExtrasSubdir = config.sExtrasSubdir;
     dirConfDefault.sLanguagePackSubdir = config.sLanguagePackSubdir;
     dirConfDefault.sDLCSubdir = config.sDLCSubdir;
+    dirConfDefault.sPatchesSubdir = config.sPatchesSubdir;
 
     if (config.bUseCache && !config.bUpdateCache)
     {
