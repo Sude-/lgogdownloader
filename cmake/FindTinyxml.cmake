@@ -6,7 +6,7 @@
 #  Tinyxml_LIBRARIES - The libraries needed to use tinyxml
 
 find_package(PkgConfig)
-pkg_check_modules(PC_TINYXML REQUIRED tinyxml)
+pkg_check_modules(PC_TINYXML tinyxml)
 
 find_path(TINYXML_INCLUDE_DIR tinyxml.h
   HINTS
@@ -26,8 +26,8 @@ find_library(TINYXML_LIBRARY tinyxml
 
 mark_as_advanced(TINYXML_INCLUDE_DIR TINYXML_LIBRARY)
 
-if(PC_TINYXML_FOUND)
+if(TINYXML_INCLUDE_DIR)
   set(Tinyxml_FOUND ON)
   set(Tinyxml_INCLUDE_DIRS ${TINYXML_INCLUDE_DIR})
   set(Tinyxml_LIBRARIES ${TINYXML_LIBRARY})
-endif(PC_TINYXML_FOUND)
+endif(TINYXML_INCLUDE_DIR)

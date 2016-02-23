@@ -60,6 +60,7 @@ class Config
         std::string sCookiePath;
         std::string sConfigFilePath;
         std::string sBlacklistFilePath;
+        std::string sIgnorelistFilePath;
         std::string sOrphanRegex;
         std::string sCoverList;
         std::string sReportFilePath;
@@ -87,6 +88,7 @@ class Config
         curl_off_t iDownloadRate;
         long int iTimeout;
         Blacklist blacklist;
+        Blacklist ignorelist;
 };
 
 #endif // CONFIG_H__

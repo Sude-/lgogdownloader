@@ -72,7 +72,7 @@ class API
         std::string getErrorMessage() { return this->error_message; };
         std::string getToken() { return this->config.oauth_token; };
         std::string getSecret() { return this->config.oauth_secret; };
-        template <typename T> CURLcode curlSetOpt(CURLoption option, T value) { return curl_easy_setopt(this->curlhandle, option, value); };
+        template <typename T> CURLcode curlSetOpt(CURLoption option, T value) { return curl_easy_setopt(this->curlhandle, option, value); }
         virtual ~API();
     protected:
     private:
