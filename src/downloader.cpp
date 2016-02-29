@@ -2877,7 +2877,7 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
     else
         local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
 
-    if (config.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file))
+    if (config.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file) && boost::filesystem::exists(path))
     {
 	std::string xml_directory = config.sXMLDirectory + "/" + gamename;
 	Util::createXML(filepath, config.iChunkSize, xml_directory);
