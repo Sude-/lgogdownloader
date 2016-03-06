@@ -98,6 +98,8 @@ class Downloader
         Json::Value getGameDetailsJSON(const std::string& gameid);
         std::string getSerialsFromJSON(const Json::Value& json);
         void saveSerials(const std::string& serials, const std::string& filepath);
+        std::string getChangelogFromJSON(const Json::Value& json);
+        void saveChangelog(const std::string& changelog, const std::string& filepath);
 
         static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);

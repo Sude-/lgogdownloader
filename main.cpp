@@ -176,6 +176,7 @@ int main(int argc, char *argv[])
             ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
             ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
             ("automatic-xml-creation", bpo::value<bool>(&config.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
+            ("save-changelogs", bpo::value<bool>(&config.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
         ;
         // Options read from config file
         options_cfg_only.add_options()

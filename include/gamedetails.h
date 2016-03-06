@@ -23,15 +23,18 @@ class gameDetails
         std::string title;
         std::string icon;
         std::string serials;
+        std::string changelog;
         void filterWithPriorities(const gameSpecificConfig& config);
         void makeFilepaths(const gameSpecificDirectoryConfig& config);
         std::string getSerialsFilepath();
+        std::string getChangelogFilepath();
         Json::Value getDetailsAsJson();
         virtual ~gameDetails();
     protected:
         void filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config);
     private:
         std::string serialsFilepath;
+        std::string changelogFilepath;
 };
 
 #endif // GAMEDETAILS_H

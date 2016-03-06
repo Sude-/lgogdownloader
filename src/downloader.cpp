@@ -330,6 +330,12 @@ int Downloader::getGameDetails()
                     gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
                 game.serials = this->getSerialsFromJSON(gameDetailsJSON);
             }
+            if (config.bSaveChangelogs)
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                game.changelog = this->getChangelogFromJSON(gameDetailsJSON);
+            }
 
             // Ignore DLC count and try to get DLCs from JSON
             if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
@@ -390,6 +396,31 @@ int Downloader::getGameDetails()
                                 if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
                                 {
                                     dlc.serials = this->getSerialsFromJSON(gameDetailsJSON["dlcs"][k]);
+                                }
+                            }
+                        }
+                    }
+
+                    if (config.bSaveChangelogs)
+                    {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+
+                        // Make sure we save changelog for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("changelog") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
+                            {
+                                // Assuming that only DLC with installers can have changelog
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
+                            }
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.changelog = this->getChangelogFromJSON(gameDetailsJSON["dlcs"][k]);
                                 }
                             }
                         }
@@ -881,6 +912,12 @@ void Downloader::download()
             this->saveSerials(games[i].serials, filepath);
         }
 
+        if (config.bSaveChangelogs && !games[i].changelog.empty())
+        {
+            std::string filepath = games[i].getChangelogFilepath();
+            this->saveChangelog(games[i].changelog, filepath);
+        }
+
         // Download covers
         if (config.bCover && !config.bUpdateCheck)
         {
@@ -1083,6 +1120,11 @@ void Downloader::download()
                 {
                     std::string filepath = games[i].dlcs[j].getSerialsFilepath();
                     this->saveSerials(games[i].dlcs[j].serials, filepath);
+                }
+                if (config.bSaveChangelogs && !games[i].dlcs[j].changelog.empty())
+                {
+                    std::string filepath = games[i].dlcs[j].getChangelogFilepath();
+                    this->saveChangelog(games[i].dlcs[j].changelog, filepath);
                 }
 
                 if (config.bInstallers)
@@ -2457,6 +2499,27 @@ std::string Downloader::getSerialsFromJSON(const Json::Value& json)
     return serials.str();
 }
 
+std::string Downloader::getChangelogFromJSON(const Json::Value& json)
+{
+    std::string changelog;
+    std::string title = "Changelog";
+
+    if (!json.isMember("changelog"))
+        return std::string();
+
+    changelog = json["changelog"].asString();
+
+    if (changelog.empty())
+        return std::string();
+
+    if (json.isMember("title"))
+        title = title + ": " + json["title"].asString();
+
+    changelog = "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>" + title + "</title>\n</head>\n<body>" + changelog + "</body>\n</html>";
+
+    return changelog;
+}
+
 // Linear search.  Good thing computers are fast and lists are small.
 static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path& path, Blacklist& blacklist)
 {
@@ -3043,6 +3106,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         game.title = gameDetailsNode["title"].asString();
         game.icon = gameDetailsNode["icon"].asString();
         game.serials = gameDetailsNode["serials"].asString();
+        game.changelog = gameDetailsNode["changelog"].asString();
 
         // Make a vector of valid node names to make things easier
         std::vector<std::string> nodes;
@@ -3173,6 +3237,47 @@ void Downloader::saveSerials(const std::string& serials, const std::string& file
     {
         std::cout << "Saving serials: " << filepath << std::endl;
         ofs << serials;
+        ofs.close();
+    }
+    else
+    {
+        std::cout << "Failed to create file: " << filepath << std::endl;
+    }
+
+    return;
+}
+
+// Save changelog to file
+void Downloader::saveChangelog(const std::string& changelog, const std::string& filepath)
+{
+    // Get directory from filepath
+    boost::filesystem::path pathname = filepath;
+    std::string directory = pathname.parent_path().string();
+
+    // Check that directory exists and create subdirectories
+    boost::filesystem::path path = directory;
+    if (boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::is_directory(path))
+        {
+            std::cout << path << " is not directory" << std::endl;
+            return;
+        }
+    }
+    else
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return;
+        }
+    }
+
+    std::ofstream ofs(filepath);
+    if (ofs)
+    {
+        std::cout << "Saving changelog: " << filepath << std::endl;
+        ofs << changelog;
         ofs.close();
     }
     else

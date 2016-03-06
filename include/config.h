@@ -47,6 +47,7 @@ class Config
         bool bPlatformDetection;
         bool bShowWishlist;
         bool bAutomaticXMLCreation;
+        bool bSaveChangelogs;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sCacheDirectory;
