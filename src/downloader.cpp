@@ -3138,6 +3138,7 @@ void Downloader::updateCache()
     config.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     config.vLanguagePriority.clear();
     config.vPlatformPriority.clear();
+    config.sIgnoreDLCCountRegex = ".*"; // Ignore DLC count for all games because GOG doesn't report DLC count correctly
 
     this->getGameList();
     this->getGameDetails();
