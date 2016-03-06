@@ -315,9 +315,13 @@ int Downloader::getGameDetails()
             game.filterWithPriorities(conf);
             Json::Value gameDetailsJSON;
 
+            if (!gameItems[i].gamedetailsjson.empty())
+                gameDetailsJSON = gameItems[i].gamedetailsjson;
+
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
-                gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
                 game.extras = this->getExtrasFromJSON(gameDetailsJSON, gameItems[i].name);
             }
             if (config.bSaveSerials)
@@ -2262,24 +2266,9 @@ std::vector<gameItem> Downloader::getGames()
 
                     if (bDownloadDLCInfo)
                     {
-                        std::string gameinfo = this->getResponse("https://www.gog.com/account/gameDetails/" + game.id + ".json");
-                        Json::Value info;
-                        if (!jsonparser->parse(gameinfo, info))
-                        {
-                            #ifdef DEBUG
-                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << gameinfo << std::endl;
-                            #endif
-                            std::cout << jsonparser->getFormattedErrorMessages();
-                            delete jsonparser;
-                            exit(1);
-                        }
-                        else
-                        {
-                            #ifdef DEBUG
-                                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << info << std::endl;
-                            #endif
-                            game.dlcnames = Util::getDLCNamesFromJSON(info["dlcs"]);
-                        }
+                        game.gamedetailsjson = this->getGameDetailsJSON(game.id);
+                        if (!game.gamedetailsjson.empty())
+                            game.dlcnames = Util::getDLCNamesFromJSON(game.gamedetailsjson["dlcs"]);
                     }
                 }
                 games.push_back(game);

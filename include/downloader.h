@@ -52,6 +52,7 @@ class gameItem {
         std::string name;
         std::string id;
         std::vector<std::string> dlcnames;
+        Json::Value gamedetailsjson;
 };
 
 class Downloader
