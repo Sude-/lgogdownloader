@@ -557,9 +557,13 @@ int main(int argc, char *argv[])
     else if (config.bCheckStatus)
         downloader.checkStatus();
     else
-    {   // Show help message
-        std::cerr   << config.sVersionString << std::endl
-                    << options_cli_all << std::endl;
+    {
+        if (!(config.bLoginAPI || config.bLoginHTTP))
+        {
+            // Show help message
+            std::cerr   << config.sVersionString << std::endl
+                        << options_cli_all << std::endl;
+        }
     }
 
     // Orphan check was called at the same time as download. Perform it after download has finished
