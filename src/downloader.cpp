@@ -2135,6 +2135,84 @@ int Downloader::HTTP_Login(const std::string& email, const std::string& password
     char *redirect_url;
     curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
 
+    // Handle two step authorization
+    if (std::string(redirect_url).find("two_step") != std::string::npos)
+    {
+        std::string security_code, tagname_two_step_send, tagname_two_step_auth_letter_1, tagname_two_step_auth_letter_2, tagname_two_step_auth_letter_3, tagname_two_step_auth_letter_4, tagname_two_step_token, token_two_step;
+        std::string two_step_html = this->getResponse(redirect_url);
+        redirect_url = NULL;
+
+        tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
+        tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
+        tree<htmlcxx::HTML::Node>::iterator two_step_it_end = two_step_dom.end();
+        for (; two_step_it != two_step_it_end; ++two_step_it)
+        {
+            if (two_step_it->tagName()=="input")
+            {
+                two_step_it->parseAttributes();
+                std::string id_two_step = two_step_it->attribute("id").second;
+                if (id_two_step == "second_step_authentication_token_letter_1")
+                {
+                    tagname_two_step_auth_letter_1 = two_step_it->attribute("name").second;
+                }
+                else if (id_two_step == "second_step_authentication_token_letter_2")
+                {
+                    tagname_two_step_auth_letter_2 = two_step_it->attribute("name").second;
+                }
+                else if (id_two_step == "second_step_authentication_token_letter_3")
+                {
+                    tagname_two_step_auth_letter_3 = two_step_it->attribute("name").second;
+                }
+                else if (id_two_step == "second_step_authentication_token_letter_4")
+                {
+                    tagname_two_step_auth_letter_4 = two_step_it->attribute("name").second;
+                }
+                else if (id_two_step == "second_step_authentication__token")
+                {
+                    token_two_step = two_step_it->attribute("value").second; // two step token
+                    tagname_two_step_token = two_step_it->attribute("name").second;
+                }
+            }
+            else if (two_step_it->tagName()=="button")
+            {
+                two_step_it->parseAttributes();
+                std::string id_two_step = two_step_it->attribute("id").second;
+                if (id_two_step == "second_step_authentication_send")
+                {
+                    tagname_two_step_send = two_step_it->attribute("name").second;
+                }
+            }
+        }
+        std::cerr << "Security code: ";
+        std::getline(std::cin,security_code);
+        if (security_code.size() != 4)
+        {
+            std::cerr << "Security code must be 4 characters long" << std::endl;
+            exit(1);
+        }
+        postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_4.c_str(), tagname_two_step_auth_letter_4.size()) + "=" + security_code[3]
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_send.c_str(), tagname_two_step_send.size()) + "="
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_token.c_str(), tagname_two_step_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_two_step.c_str(), token_two_step.size());
+
+        curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
+        curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
+        curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+
+        // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
+        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
+        result = curl_easy_perform(curlhandle);
+        memory.str(std::string());
+        curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+    }
+
     curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
