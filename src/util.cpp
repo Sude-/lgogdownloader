@@ -388,11 +388,11 @@ int Util::getTerminalWidth()
 void Util::getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls)
 {
     if(root.size() > 0) {
-        for(Json::ValueIterator it = root.begin() ; it != root.end() ; ++it)
+        for(Json::ValueConstIterator it = root.begin() ; it != root.end() ; ++it)
         {
             if (it.key() == "downloaderUrl")
             {
-                Json::Value& url = *it;
+                Json::Value url = *it;
                 urls.push_back(url.asString());
             }
             else
