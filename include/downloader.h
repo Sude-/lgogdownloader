@@ -24,6 +24,7 @@
 #include "config.h"
 #include "api.h"
 #include "progressbar.h"
+#include "website.h"
 #include <curl/curl.h>
 #include <json/json.h>
 #include <ctime>
@@ -45,14 +46,6 @@ class Timer
         ~Timer() {};
     private:
         struct timeval last_update;
-};
-
-class gameItem {
-    public:
-        std::string name;
-        std::string id;
-        std::vector<std::string> dlcnames;
-        Json::Value gamedetailsjson;
 };
 
 class Downloader
@@ -91,11 +84,7 @@ class Downloader
         int loadGameDetailsCache();
         int saveGameDetailsCache();
         std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);
-        int HTTP_Login(const std::string& email, const std::string& password);
-        std::vector<gameItem> getGames();
-        std::vector<gameItem> getFreeGames();
         std::vector<gameFile> getExtrasFromJSON(const Json::Value& json, const std::string& gamename);
-        Json::Value getGameDetailsJSON(const std::string& gameid);
         std::string getSerialsFromJSON(const Json::Value& json);
         void saveSerials(const std::string& serials, const std::string& filepath);
         std::string getChangelogFromJSON(const Json::Value& json);
@@ -106,7 +95,7 @@ class Downloader
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
-
+        Website *gogWebsite;
         API *gogAPI;
         std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;

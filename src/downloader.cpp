@@ -23,7 +23,6 @@
 #include <json/json.h>
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/Uri.h>
-#include <boost/algorithm/string/case_conv.hpp>
 
 namespace bptime = boost::posix_time;
 
@@ -42,6 +41,7 @@ Downloader::~Downloader()
             this->report_ofs.close();
     delete progressbar;
     delete gogAPI;
+    delete gogWebsite;
     curl_easy_cleanup(curlhandle);
     curl_global_cleanup();
     // Make sure that cookie file is only readable/writable by owner
@@ -67,8 +67,6 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
@@ -80,6 +78,10 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
+    // Create new GOG website handle
+    gogWebsite = new Website(config);
+    bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
+
     // Create new API handle and set curl options for the API
     gogAPI = new API(config.sToken, config.sSecret);
     gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
@@ -89,7 +91,7 @@ int Downloader::init()
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 
     bool bInitOK = gogAPI->init(); // Initialize the API
-    if (!bInitOK || config.bLoginHTTP || config.bLoginAPI)
+    if (!bInitOK || !bWebsiteIsLoggedIn || config.bLoginHTTP || config.bLoginAPI)
         return 1;
 
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
@@ -139,7 +141,7 @@ int Downloader::login()
         // Login to website
         if (config.bLoginHTTP)
         {
-            if (!HTTP_Login(email, password))
+            if (!gogWebsite->Login(email, password))
             {
                 std::cerr << "HTTP: Login failed" << std::endl;
                 return 0;
@@ -197,11 +199,11 @@ void Downloader::getGameList()
 {
     if (config.sGameRegex == "free")
     {
-        gameItems = this->getFreeGames();
+        gameItems = gogWebsite->getFreeGames();
     }
     else
     {
-        gameItems = this->getGames();
+        gameItems = gogWebsite->getGames();
     }
 }
 
@@ -321,19 +323,19 @@ int Downloader::getGameDetails()
             if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
             {
                 if (gameDetailsJSON.empty())
-                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
                 game.extras = this->getExtrasFromJSON(gameDetailsJSON, gameItems[i].name);
             }
             if (config.bSaveSerials)
             {
                 if (gameDetailsJSON.empty())
-                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
                 game.serials = this->getSerialsFromJSON(gameDetailsJSON);
             }
             if (config.bSaveChangelogs)
             {
                 if (gameDetailsJSON.empty())
-                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
                 game.changelog = this->getChangelogFromJSON(gameDetailsJSON);
             }
 
@@ -341,7 +343,7 @@ int Downloader::getGameDetails()
             if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
             {
                 if (gameDetailsJSON.empty())
-                    gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
 
                 gameItems[i].dlcnames = Util::getDLCNamesFromJSON(gameDetailsJSON["dlcs"]);
                 bHasDLC = !gameItems[i].dlcnames.empty();
@@ -357,7 +359,7 @@ int Downloader::getGameDetails()
                     if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         if (gameDetailsJSON.empty())
-                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
 
                         // Make sure we get extras for the right DLC
                         for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
@@ -379,7 +381,7 @@ int Downloader::getGameDetails()
                     if (config.bSaveSerials)
                     {
                         if (gameDetailsJSON.empty())
-                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
 
                         // Make sure we save serial for the right DLC
                         for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
@@ -404,7 +406,7 @@ int Downloader::getGameDetails()
                     if (config.bSaveChangelogs)
                     {
                         if (gameDetailsJSON.empty())
-                            gameDetailsJSON = this->getGameDetailsJSON(gameItems[i].id);
+                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
 
                         // Make sure we save changelog for the right DLC
                         for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
@@ -2000,468 +2002,6 @@ uintmax_t Downloader::getResumePosition()
     return this->resume_position;
 }
 
-// Login to GOG website
-int Downloader::HTTP_Login(const std::string& email, const std::string& password)
-{
-    int res = 0;
-    std::string postdata;
-    std::ostringstream memory;
-    std::string token;
-    std::string tagname_username;
-    std::string tagname_password;
-    std::string tagname_login;
-    std::string tagname_token;
-
-    // Get login token
-    std::string html = this->getResponse("https://www.gog.com/");
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    // Find auth_url
-    bool bFoundAuthUrl = false;
-    for (; it != end; ++it)
-    {
-        if (it->tagName()=="script")
-        {
-            std::string auth_url;
-            for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
-            {
-                tree<htmlcxx::HTML::Node>::iterator script_it = dom.child(it, i);
-                if (!script_it->isTag() && !script_it->isComment())
-                {
-                    if (script_it->text().find("GalaxyAccounts") != std::string::npos)
-                    {
-                        boost::match_results<std::string::const_iterator> what;
-                        boost::regex expression(".*'(https://auth.gog.com/.*?)'.*");
-                        boost::regex_match(script_it->text(), what, expression);
-                        auth_url = what[1];
-                        break;
-                    }
-                }
-            }
-
-            if (!auth_url.empty())
-            {   // Found auth_url, get the necessary info for login
-                bFoundAuthUrl = true;
-                std::string login_form_html = this->getResponse(auth_url);
-                #ifdef DEBUG
-                    std::cerr << "DEBUG INFO (Downloader::HTTP_Login)" << std::endl;
-                    std::cerr << login_form_html << std::endl;
-                #endif
-                if (login_form_html.find("google.com/recaptcha") != std::string::npos)
-                {
-                    std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
-                                << "Login with browser and export cookies to \"" << config.sCookiePath << "\"" << std::endl;
-                    return res = 0;
-                }
-
-                tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
-                tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
-                tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
-                for (; login_it != login_it_end; ++login_it)
-                {
-                    if (login_it->tagName()=="input")
-                    {
-                        login_it->parseAttributes();
-                        std::string id_login = login_it->attribute("id").second;
-                        if (id_login == "login_username")
-                        {
-                            tagname_username = login_it->attribute("name").second;
-                        }
-                        else if (id_login == "login_password")
-                        {
-                            tagname_password = login_it->attribute("name").second;
-                        }
-                        else if (id_login == "login__token")
-                        {
-                            token = login_it->attribute("value").second; // login token
-                            tagname_token = login_it->attribute("name").second;
-                        }
-                    }
-                    else if (login_it->tagName()=="button")
-                    {
-                        login_it->parseAttributes();
-                        std::string id_login = login_it->attribute("id").second;
-                        if (id_login == "login_login")
-                        {
-                            tagname_login = login_it->attribute("name").second;
-                        }
-                    }
-                }
-                break;
-            }
-        }
-    }
-
-    if (!bFoundAuthUrl)
-    {
-        std::cout << "Failed to find url for login form" << std::endl;
-    }
-
-    if (token.empty())
-    {
-        std::cout << "Failed to get login token" << std::endl;
-        return res = 0;
-    }
-
-    //Create postdata - escape characters in email/password to support special characters
-    postdata = (std::string)curl_easy_escape(curlhandle, tagname_username.c_str(), tagname_username.size()) + "=" + (std::string)curl_easy_escape(curlhandle, email.c_str(), email.size())
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_password.c_str(), tagname_password.size()) + "=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_login.c_str(), tagname_login.size()) + "="
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token.c_str(), token.size());
-    curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login_check");
-    curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
-
-    // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-    CURLcode result = curl_easy_perform(curlhandle);
-    memory.str(std::string());
-
-    if (result != CURLE_OK)
-    {
-        // Expected to hit maximum amount of redirects so don't print error on it
-        if (result != CURLE_TOO_MANY_REDIRECTS)
-            std::cout << curl_easy_strerror(result) << std::endl;
-    }
-
-    // Get redirect url
-    char *redirect_url;
-    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-
-    // Handle two step authorization
-    if (std::string(redirect_url).find("two_step") != std::string::npos)
-    {
-        std::string security_code, tagname_two_step_send, tagname_two_step_auth_letter_1, tagname_two_step_auth_letter_2, tagname_two_step_auth_letter_3, tagname_two_step_auth_letter_4, tagname_two_step_token, token_two_step;
-        std::string two_step_html = this->getResponse(redirect_url);
-        redirect_url = NULL;
-
-        tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
-        tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
-        tree<htmlcxx::HTML::Node>::iterator two_step_it_end = two_step_dom.end();
-        for (; two_step_it != two_step_it_end; ++two_step_it)
-        {
-            if (two_step_it->tagName()=="input")
-            {
-                two_step_it->parseAttributes();
-                std::string id_two_step = two_step_it->attribute("id").second;
-                if (id_two_step == "second_step_authentication_token_letter_1")
-                {
-                    tagname_two_step_auth_letter_1 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_2")
-                {
-                    tagname_two_step_auth_letter_2 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_3")
-                {
-                    tagname_two_step_auth_letter_3 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_4")
-                {
-                    tagname_two_step_auth_letter_4 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication__token")
-                {
-                    token_two_step = two_step_it->attribute("value").second; // two step token
-                    tagname_two_step_token = two_step_it->attribute("name").second;
-                }
-            }
-            else if (two_step_it->tagName()=="button")
-            {
-                two_step_it->parseAttributes();
-                std::string id_two_step = two_step_it->attribute("id").second;
-                if (id_two_step == "second_step_authentication_send")
-                {
-                    tagname_two_step_send = two_step_it->attribute("name").second;
-                }
-            }
-        }
-        std::cerr << "Security code: ";
-        std::getline(std::cin,security_code);
-        if (security_code.size() != 4)
-        {
-            std::cerr << "Security code must be 4 characters long" << std::endl;
-            exit(1);
-        }
-        postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_4.c_str(), tagname_two_step_auth_letter_4.size()) + "=" + security_code[3]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_send.c_str(), tagname_two_step_send.size()) + "="
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_token.c_str(), tagname_two_step_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_two_step.c_str(), token_two_step.size());
-
-        curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
-        curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
-        curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-        curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
-        curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
-
-        // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
-        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-        result = curl_easy_perform(curlhandle);
-        memory.str(std::string());
-        curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-    }
-
-    curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
-    curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    result = curl_easy_perform(curlhandle);
-
-    if (result != CURLE_OK)
-    {
-        std::cout << curl_easy_strerror(result) << std::endl;
-    }
-
-    html = this->getResponse("https://www.gog.com/account/settings/personal");
-
-    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
-    dom = parser.parseTree(html);
-    it = dom.begin();
-    end = dom.end();
-    for (; it != end; ++it)
-    {
-        if (it->tagName()=="strong")
-        {
-            it->parseAttributes();
-            if (it->attribute("class").second == "settings-item__value settings-item__section")
-            {
-                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
-                {
-                    tree<htmlcxx::HTML::Node>::iterator tag_it = dom.child(it, i);
-                    if (!tag_it->isTag() && !tag_it->isComment())
-                    {
-                        std::string tag_text = boost::algorithm::to_lower_copy(tag_it->text());
-                        if (tag_text == email_lowercase)
-                        {
-                            res = 1; // Login successful
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (res == 1) // Login was successful so no need to go through the remaining tags
-            break;
-    }
-
-    // Simple login check if complex check failed. Check login by trying to get account page. If response code isn't 200 then login failed.
-    if (res == 0)
-    {
-        std::string url = "https://www.gog.com/account";
-        curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-        curl_easy_perform(curlhandle);
-        memory.str(std::string());
-        long int response_code = 0;
-        curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-        if (response_code == 200)
-            res = 1; // Login successful
-    }
-
-    return res;
-}
-
-// Get list of games from account page
-std::vector<gameItem> Downloader::getGames()
-{
-    std::vector<gameItem> games;
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    int i = 1;
-    bool bAllPagesParsed = false;
-
-    do
-    {
-        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
-
-        // Parse JSON
-        if (!jsonparser->parse(response, root))
-        {
-            #ifdef DEBUG
-                std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << response << std::endl;
-            #endif
-            std::cout << jsonparser->getFormattedErrorMessages();
-            delete jsonparser;
-            if (!response.empty())
-            {
-                if(response[0] != '{')
-                {
-                    // Response was not JSON. Assume that cookies have expired.
-                    std::cerr << "Response was not JSON. Cookies have most likely expired. Try --login first." << std::endl;
-                }
-            }
-            exit(1);
-        }
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::getGames)" << std::endl << root << std::endl;
-        #endif
-        if (root["page"].asInt() == root["totalPages"].asInt())
-            bAllPagesParsed = true;
-        if (root["products"].isArray())
-        {
-            for (unsigned int i = 0; i < root["products"].size(); ++i)
-            {
-                Json::Value product = root["products"][i];
-                gameItem game;
-                game.name = product["slug"].asString();
-                game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
-
-                unsigned int platform = 0;
-                if (product["worksOn"]["Windows"].asBool())
-                    platform |= GlobalConstants::PLATFORM_WINDOWS;
-                if (product["worksOn"]["Mac"].asBool())
-                    platform |= GlobalConstants::PLATFORM_MAC;
-                if (product["worksOn"]["Linux"].asBool())
-                    platform |= GlobalConstants::PLATFORM_LINUX;
-
-                // Skip if platform doesn't match
-                if (config.bPlatformDetection && !(platform & config.iInstallerPlatform))
-                    continue;
-
-                // Filter the game list
-                if (!config.sGameRegex.empty())
-                {
-                    // GameRegex filter aliases
-                    if (config.sGameRegex == "all")
-                        config.sGameRegex = ".*";
-
-                    boost::regex expression(config.sGameRegex);
-                    boost::match_results<std::string::const_iterator> what;
-                    if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
-                        continue;
-                }
-
-                if (config.bDLC)
-                {
-                    int dlcCount = product["dlcCount"].asInt();
-
-                    bool bDownloadDLCInfo = (dlcCount != 0);
-
-                    if (!bDownloadDLCInfo && !config.sIgnoreDLCCountRegex.empty())
-                    {
-                        boost::regex expression(config.sIgnoreDLCCountRegex);
-                        boost::match_results<std::string::const_iterator> what;
-                        if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
-                        {
-                            bDownloadDLCInfo = true;
-                        }
-                    }
-
-                    // Check game specific config
-                    if (!config.bUpdateCache) // Disable game specific config files for cache update
-                    {
-                        gameSpecificConfig conf;
-                        conf.bIgnoreDLCCount = false; // Assume false
-                        Util::getGameSpecificConfig(game.name, &conf);
-                        if (conf.bIgnoreDLCCount)
-                            bDownloadDLCInfo = true;
-                    }
-
-                    if (bDownloadDLCInfo && !config.sGameRegex.empty())
-                    {
-                        // don't download unnecessary info if user is only interested in a subset of his account
-                        boost::regex expression(config.sGameRegex);
-                        boost::match_results<std::string::const_iterator> what;
-                        if (!boost::regex_search(game.name, what, expression))
-                        {
-                            bDownloadDLCInfo = false;
-                        }
-                    }
-
-                    if (bDownloadDLCInfo)
-                    {
-                        game.gamedetailsjson = this->getGameDetailsJSON(game.id);
-                        if (!game.gamedetailsjson.empty())
-                            game.dlcnames = Util::getDLCNamesFromJSON(game.gamedetailsjson["dlcs"]);
-                    }
-                }
-                games.push_back(game);
-            }
-        }
-        i++;
-    } while (!bAllPagesParsed);
-
-    delete jsonparser;
-
-    return games;
-}
-
-// Get list of free games
-std::vector<gameItem> Downloader::getFreeGames()
-{
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    std::vector<gameItem> games;
-    std::string json = this->getResponse("https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&price=free&sort=title");
-
-    // Parse JSON
-    if (!jsonparser->parse(json, root))
-    {
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << json << std::endl;
-        #endif
-        std::cout << jsonparser->getFormattedErrorMessages();
-        delete jsonparser;
-        exit(1);
-    }
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::getFreeGames)" << std::endl << root << std::endl;
-    #endif
-
-    Json::Value products = root["products"];
-    for (unsigned int i = 0; i < products.size(); ++i)
-    {
-        gameItem game;
-        game.name = products[i]["slug"].asString();
-        game.id = products[i]["id"].isInt() ? std::to_string(products[i]["id"].asInt()) : products[i]["id"].asString();
-        games.push_back(game);
-    }
-    delete jsonparser;
-
-    return games;
-}
-
-Json::Value Downloader::getGameDetailsJSON(const std::string& gameid)
-{
-    std::string gameDataUrl = "https://www.gog.com/account/gameDetails/" + gameid + ".json";
-    std::string json = this->getResponse(gameDataUrl);
-
-    // Parse JSON
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    if (!jsonparser->parse(json, root))
-    {
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::getGameDetailsJSON)" << std::endl << json << std::endl;
-        #endif
-        std::cout << jsonparser->getFormattedErrorMessages();
-        delete jsonparser;
-        exit(1);
-    }
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Downloader::getGameDetailsJSON)" << std::endl << root << std::endl;
-    #endif
-    delete jsonparser;
-
-    return root;
-}
-
 std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, const std::string& gamename)
 {
     std::vector<gameFile> extras;
@@ -3414,141 +2954,37 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
 
 void Downloader::showWishlist()
 {
-    Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    int i = 1;
-    bool bAllPagesParsed = false;
-
-    do
+    std::vector<wishlistItem> wishlistItems = gogWebsite->getWishlistItems();
+    for (unsigned int i = 0; i < wishlistItems.size(); ++i)
     {
-        std::string response = this->getResponse("https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i));
-
-        // Parse JSON
-        if (!jsonparser->parse(response, root))
+        wishlistItem item = wishlistItems[i];
+        std::string platforms_text = Util::getOptionNameString(item.platform, GlobalConstants::PLATFORMS);
+        std::string tags_text;
+        for (unsigned int j = 0; j < item.tags.size(); ++j)
         {
-            #ifdef DEBUG
-                std::cerr << "DEBUG INFO (Downloader::showWishlist)" << std::endl << response << std::endl;
-            #endif
-            std::cout << jsonparser->getFormattedErrorMessages();
-            delete jsonparser;
-            exit(1);
+            tags_text += (tags_text.empty() ? "" : ", ")+item.tags[j];
         }
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Downloader::showWishlist)" << std::endl << root << std::endl;
-        #endif
-        if (root["page"].asInt() >= root["totalPages"].asInt())
-            bAllPagesParsed = true;
-        if (root["products"].isArray())
-        {
-            for (unsigned int i = 0; i < root["products"].size(); ++i)
-            {
-                Json::Value product = root["products"][i];
+        if (!tags_text.empty())
+            tags_text = "[" + tags_text + "]";
 
-                unsigned int platform = 0;
-                std::string platforms_text;
-                bool bIsMovie = product["isMovie"].asBool();
-                if (!bIsMovie)
-                {
-                    if (product["worksOn"]["Windows"].asBool())
-                        platform |= GlobalConstants::PLATFORM_WINDOWS;
-                    if (product["worksOn"]["Mac"].asBool())
-                        platform |= GlobalConstants::PLATFORM_MAC;
-                    if (product["worksOn"]["Linux"].asBool())
-                        platform |= GlobalConstants::PLATFORM_LINUX;
+        std::string price_text = item.price;
+        if (item.bIsDiscounted)
+            price_text += " (-" + item.discount_percent + " | -" + item.discount + ")";
 
-                    // Skip if platform doesn't match
-                    if (config.bPlatformDetection && !(platform & config.iInstallerPlatform))
-                        continue;
-
-                    platforms_text = Util::getOptionNameString(platform, GlobalConstants::PLATFORMS);
-                }
-
-                std::vector<std::string> tags;
-                if (product["isComingSoon"].asBool())
-                    tags.push_back("Coming soon");
-                if (product["isDiscounted"].asBool())
-                    tags.push_back("Discount");
-                if (bIsMovie)
-                    tags.push_back("Movie");
-
-                std::string tags_text;
-                for (unsigned int j = 0; j < tags.size(); ++j)
-                {
-                    tags_text += (tags_text.empty() ? "" : ", ")+tags[j];
-                }
-                if (!tags_text.empty())
-                    tags_text = "[" + tags_text + "]";
-
-                time_t release_date_time;
-                std::string release_date;
-                bool bShowReleaseDate = false;
-                if (product.isMember("releaseDate") && product["isComingSoon"].asBool())
-                {
-                    if (!product["releaseDate"].empty())
-                    {
-                        if (product["releaseDate"].isInt())
-                        {
-                            release_date_time = product["releaseDate"].asInt();
-                            bShowReleaseDate = true;
-                        }
-                        else
-                        {
-                            std::string release_date_time_string = product["releaseDate"].asString();
-                            if (!release_date_time_string.empty())
-                            {
-                                try
-                                {
-                                    release_date_time = std::stoi(release_date_time_string);
-                                    bShowReleaseDate = true;
-                                }
-                                catch (std::invalid_argument& e)
-                                {
-                                    bShowReleaseDate = false;
-                                }
-                            }
-                        }
-                    }
-
-                    if (bShowReleaseDate)
-                        release_date = bptime::to_simple_string(bptime::from_time_t(release_date_time));
-                }
-
-                std::string price_text;
-                std::string currency = product["price"]["symbol"].asString();
-                std::string price = product["price"]["finalAmount"].isDouble() ? std::to_string(product["price"]["finalAmount"].asDouble()) + currency : product["price"]["finalAmount"].asString() + currency;
-                std::string discount_percent = product["price"]["discountPercentage"].isInt() ? std::to_string(product["price"]["discountPercentage"].asInt()) + "%" : product["price"]["discountPercentage"].asString() + "%";
-                std::string discount = product["price"]["discountDifference"].isDouble() ? std::to_string(product["price"]["discountDifference"].asDouble()) + currency : product["price"]["discountDifference"].asString() + currency;
-                std::string store_credit = product["price"]["bonusStoreCreditAmount"].isDouble() ? std::to_string(product["price"]["bonusStoreCreditAmount"].asDouble()) + currency : product["price"]["bonusStoreCreditAmount"].asString() + currency;
-                price_text = price;
-                if (product["isDiscounted"].asBool())
-                    price_text += " (-" + discount_percent + " | -" + discount + ")";
-
-                std::string url = product["url"].asString();
-                if (url.find("/game/") == 0)
-                    url = "https://www.gog.com" + url;
-                else if (url.find("/movie/") == 0)
-                    url = "https://www.gog.com" + url;
-
-                std::cout << product["title"].asString();
-                if (!tags_text.empty())
-                    std::cout << " " << tags_text;
-                std::cout << std::endl;
-                std::cout << "\t" << url << std::endl;
-                if (!bIsMovie)
-                    std::cout << "\tPlatforms: " << platforms_text << std::endl;
-                if (bShowReleaseDate)
-                    std::cout << "\tRelease date: " << release_date << std::endl;
-                std::cout << "\tPrice: " << price_text << std::endl;
-                if (product["price"]["isBonusStoreCreditIncluded"].asBool())
-                    std::cout << "\tStore credit: " << store_credit << std::endl;
-
-                std::cout << std::endl;
-            }
-        }
-        i++;
-    } while (!bAllPagesParsed);
-
-    delete jsonparser;
+        std::cout << item.title;
+        if (!tags_text.empty())
+            std::cout << " " << tags_text;
+        std::cout << std::endl;
+        std::cout << "\t" << item.url << std::endl;
+        if (item.platform != 0)
+            std::cout << "\tPlatforms: " << platforms_text << std::endl;
+        if (item.release_date_time != 0)
+            std::cout << "\tRelease date: " << bptime::to_simple_string(bptime::from_time_t(item.release_date_time)) << std::endl;
+        std::cout << "\tPrice: " << price_text << std::endl;
+        if (item.bIsBonusStoreCreditIncluded)
+            std::cout << "\tStore credit: " << item.store_credit << std::endl;
+        std::cout << std::endl;
+    }
 
     return;
 }

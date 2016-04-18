@@ -43,6 +43,30 @@ struct gameSpecificConfig
     std::vector<unsigned int> vPlatformPriority;
 };
 
+struct gameItem
+{
+    std::string name;
+    std::string id;
+    std::vector<std::string> dlcnames;
+    Json::Value gamedetailsjson;
+};
+
+struct wishlistItem
+{
+    std::string title;
+    unsigned int platform;
+    std::vector<std::string> tags;
+    time_t release_date_time;
+    std::string currency;
+    std::string price;
+    std::string discount_percent;
+    std::string discount;
+    std::string store_credit;
+    std::string url;
+    bool bIsBonusStoreCreditIncluded;
+    bool bIsDiscounted;
+};
+
 namespace Util
 {
     std::string makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory = "", const unsigned int& platformId = 0, const std::string& dlcname = "");
