@@ -2831,6 +2831,7 @@ void Downloader::updateCache()
     config.vLanguagePriority.clear();
     config.vPlatformPriority.clear();
     config.sIgnoreDLCCountRegex = ".*"; // Ignore DLC count for all games because GOG doesn't report DLC count correctly
+    gogWebsite->setConfig(config); // Make sure that website handle has updated config
 
     this->getGameList();
     this->getGameDetails();

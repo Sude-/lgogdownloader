@@ -24,6 +24,7 @@ class Website
         std::vector<gameItem> getFreeGames();
         std::vector<wishlistItem> getWishlistItems();
         bool IsLoggedIn();
+        void setConfig(Config &conf);
         virtual ~Website();
     protected:
     private:

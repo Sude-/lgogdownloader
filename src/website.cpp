@@ -701,3 +701,8 @@ std::vector<wishlistItem> Website::getWishlistItems()
 
     return wishlistItems;
 }
+
+void Website::setConfig(Config &conf)
+{
+    this->config = conf;
+}
