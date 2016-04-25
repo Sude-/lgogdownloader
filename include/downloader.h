@@ -90,7 +90,8 @@ class Downloader
         std::string getChangelogFromJSON(const Json::Value& json);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
 
-        static int progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
+        static int progressCallbackOld(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow);
+        static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);

@@ -71,8 +71,12 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallbackOld);
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
+    #if LIBCURL_VERSION_NUM >= 0x072000 // libcurl version >= 7.32.0
+        curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
+    #endif // LIBCURL_VERSION_NUM
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
@@ -1869,7 +1873,16 @@ std::string Downloader::getResponse(const std::string& url)
     return response;
 }
 
-int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+int Downloader::progressCallbackOld(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
+{
+    return Downloader::progressCallback(clientp,
+                                        (curl_off_t)dltotal,
+                                        (curl_off_t)dlnow,
+                                        (curl_off_t)ultotal,
+                                        (curl_off_t)ulnow);
+}
+
+int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
     // on entry: dltotal - how much remains to download till the end of the file (bytes)
     //           dlnow   - how much was downloaded from the start of the program (bytes)
@@ -1886,7 +1899,7 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     // and there is no way to calculate the fraction, so we set to 0 (otherwise it'd be 1).
     // This is to prevent the progress bar from jumping to 100% and then to lower value.
     // It's visually better to jump from 0% to higher one.
-    bool starting = ((0.0 == dlnow) && (0.0 == dltotal));
+    bool starting = ((0 == dlnow) && (0 == dltotal));
 
     // (Shmerl): DEBUG: strange thing - when resuming a file which is already downloaded, dlnow is correctly 0.0
     // but dltotal is 389.0! This messes things up in the progress bar not showing the very last bar as full.
@@ -1896,10 +1909,10 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
     //
     // For now making a quirky workaround and setting dltotal to 0.0 in that case.
     // It's probably better to find a real fix.
-    if ((0.0 == dlnow) && (389.0 == dltotal)) dltotal = 0.0;
+    if ((0 == dlnow) && (389 == dltotal)) dltotal = 0;
 
     // setting full dlwnow and dltotal
-    double offset = static_cast<double>(downloader->getResumePosition());
+    curl_off_t offset = static_cast<curl_off_t>(downloader->getResumePosition());
     if (offset>0)
     {
         dlnow   += offset;
@@ -1951,7 +1964,7 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
         }
 
         // Create progressbar
-        double fraction = starting ? 0.0 : dlnow / dltotal;
+        double fraction = starting ? 0.0 : static_cast<double>(dlnow) / static_cast<double>(dltotal);
 
         // assuming that config is provided.
         printf("\033[0K\r%3.0f%% ", fraction * 100);
@@ -1969,7 +1982,7 @@ int Downloader::progressCallback(void *clientp, double dltotal, double dlnow, do
             rate_unit = "kB/s";
         }
         char status_text[200]; // We're probably never going to go as high as 200 characters but it's better to use too big number here than too small
-        sprintf(status_text, " %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", dlnow/1024/1024, dltotal/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
+        sprintf(status_text, " %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
         int status_text_length = strlen(status_text) + 6;
 
         if ((status_text_length + bar_length) > iTermWidth)
