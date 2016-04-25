@@ -6,21 +6,12 @@
 
 #include "gamefile.h"
 
-gameFile::gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language, const unsigned int& t_platform, const int& t_silent)
-{
-    this->updated = t_updated;
-    this->id = t_id;
-    this->name = t_name;
-    this->path = t_path;
-    this->size = t_size;
-    this->platform = t_platform;
-    this->language = t_language;
-    this->silent = t_silent;
-}
-
 gameFile::gameFile()
 {
-    //ctor
+    this->platform = GlobalConstants::PLATFORM_WINDOWS;
+    this->language = GlobalConstants::LANGUAGE_EN;
+    this->silent = 0;
+    this->type = 0;
 }
 
 gameFile::~gameFile()
@@ -50,6 +41,8 @@ Json::Value gameFile::getAsJson()
     json["platform"] = this->platform;
     json["language"] = this->language;
     json["silent"] = this->silent;
+    json["gamename"] = this->gamename;
+    json["type"] = this->type;
 
     return json;
 }

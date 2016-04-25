@@ -13,18 +13,25 @@
 #include <vector>
 #include <json/json.h>
 
+// Game file types
+const unsigned int GFTYPE_INSTALLER = 1 << 0;
+const unsigned int GFTYPE_EXTRA     = 1 << 1;
+const unsigned int GFTYPE_PATCH     = 1 << 2;
+const unsigned int GFTYPE_LANGPACK  = 1 << 3;
+
 class gameFile
 {
     public:
         gameFile();
-        gameFile(const int& t_updated, const std::string& t_id, const std::string& t_name, const std::string& t_path, const std::string& t_size, const unsigned int& t_language = GlobalConstants::LANGUAGE_EN, const unsigned int& t_platform = GlobalConstants::PLATFORM_WINDOWS, const int& t_silent = 0);
         int updated;
+        std::string gamename;
         std::string id;
         std::string name;
         std::string path;
         std::string size;
         unsigned int platform;
         unsigned int language;
+        unsigned int type;
         int score;
         int silent;
         void setFilepath(const std::string& path);

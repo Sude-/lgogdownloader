@@ -256,6 +256,11 @@ int Downloader::getGameDetails()
                 std::cerr << "Cache is too old." << std::endl;
                 std::cerr << "Update cache with --update-cache or use bigger --cache-valid" << std::endl;
             }
+            else if (result == 5)
+            {
+                std::cerr << "Cache version doesn't match current version." << std::endl;
+                std::cerr << "Update cache with --update-cache" << std::endl;
+            }
             return 1;
         }
     }
@@ -2056,14 +2061,15 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
             continue;
         }
 
-        extras.push_back(
-                            gameFile (  false,
-                                        id,
-                                        name,
-                                        path,
-                                        std::string()
-                                    )
-                         );
+        gameFile gf;
+        gf.type = GFTYPE_EXTRA;
+        gf.gamename = gamename;
+        gf.updated = false;
+        gf.id = id;
+        gf.name = name;
+        gf.path = path;
+
+        extras.push_back(gf);
     }
 
     return extras;
@@ -2609,6 +2615,7 @@ std::string Downloader::getRemoteFileHash(const std::string& gamename, const std
     returns 2 if JSON parsing failed
     returns 3 if cache is too old
     returns 4 if JSON doesn't contain "games" node
+    returns 5 if cache version doesn't match
 */
 int Downloader::loadGameDetailsCache()
 {
@@ -2641,14 +2648,25 @@ int Downloader::loadGameDetailsCache()
             }
         }
 
-        if (root.isMember("games"))
+        int iCacheVersion = 0;
+        if (root.isMember("gamedetails-cache-version"))
+            iCacheVersion = root["gamedetails-cache-version"].asInt();
+
+        if (iCacheVersion != GlobalConstants::GAMEDETAILS_CACHE_VERSION)
         {
-            this->games = getGameDetailsFromJsonNode(root["games"]);
-            res = 0;
+                res = 5;
         }
         else
         {
-            res = 4;
+            if (root.isMember("games"))
+            {
+                this->games = getGameDetailsFromJsonNode(root["games"]);
+                res = 0;
+            }
+            else
+            {
+                res = 4;
+            }
         }
     }
     else
@@ -2681,6 +2699,7 @@ int Downloader::saveGameDetailsCache()
 
     Json::Value json;
 
+    json["gamedetails-cache-version"] = GlobalConstants::GAMEDETAILS_CACHE_VERSION;
     json["version-string"] = config.sVersionString;
     json["version-number"] = config.sVersionNumber;
     json["date"] = bptime::to_iso_string(bptime::second_clock::local_time());
@@ -2764,6 +2783,8 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                         fileDetails.platform = fileDetailsNode["platform"].asUInt();
                         fileDetails.language = fileDetailsNode["language"].asUInt();
                         fileDetails.silent = fileDetailsNode["silent"].asInt();
+                        fileDetails.gamename = fileDetailsNode["gamename"].asString();
+                        fileDetails.type = fileDetailsNode["type"].asUInt();
 
                         if (nodeName != "extras" && !(fileDetails.platform & conf.iInstallerPlatform))
                             continue;

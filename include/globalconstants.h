@@ -12,6 +12,8 @@
 
 namespace GlobalConstants
 {
+    const int GAMEDETAILS_CACHE_VERSION = 1;
+
     struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};
     const std::string PROTOCOL_PREFIX = "gogdownloader://";
 

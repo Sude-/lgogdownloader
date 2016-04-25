@@ -349,17 +349,19 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             continue;
                     }
 
-                    game.installers.push_back(
-                                                gameFile(   installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString()),
-                                                            installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString(),
-                                                            installer["name"].asString(),
-                                                            installer["link"].asString(),
-                                                            installer["size"].asString(),
-                                                            language,
-                                                            installers[i].platform,
-                                                            installer["silent"].isInt() ? installer["silent"].asInt() : std::stoi(installer["silent"].asString())
-                                                         )
-                                            );
+                    gameFile gf;
+                    gf.type = GFTYPE_INSTALLER;
+                    gf.gamename = game.gamename;
+                    gf.updated = installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString());
+                    gf.id = installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString();
+                    gf.name = installer["name"].asString();
+                    gf.path = installer["link"].asString();
+                    gf.size = installer["size"].asString();
+                    gf.language = language;
+                    gf.platform = installers[i].platform;
+                    gf.silent = installer["silent"].isInt() ? installer["silent"].asInt() : std::stoi(installer["silent"].asString());
+
+                    game.installers.push_back(gf);
                 }
             }
 
@@ -369,14 +371,16 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
             {
                 Json::Value extra = extras[index];
 
-                game.extras.push_back(
-                                        gameFile(   false, /* extras don't have "updated" flag */
-                                                    extra["id"].isInt() ? std::to_string(extra["id"].asInt()) : extra["id"].asString(),
-                                                    extra["name"].asString(),
-                                                    extra["link"].asString(),
-                                                    extra["size_mb"].asString()
-                                                 )
-                                    );
+                gameFile gf;
+                gf.type = GFTYPE_EXTRA;
+                gf.gamename = game.gamename;
+                gf.updated = false; // extras don't have "updated" flag
+                gf.id = extra["id"].isInt() ? std::to_string(extra["id"].asInt()) : extra["id"].asString();
+                gf.name = extra["name"].asString();
+                gf.path = extra["link"].asString();
+                gf.size = extra["size_mb"].asString();
+
+                game.extras.push_back(gf);
             }
 
             // Patch details
@@ -434,16 +438,18 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                             continue;
                                     }
 
-                                    game.patches.push_back(
-                                                            gameFile(   patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString()),
-                                                                        patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString(),
-                                                                        patch["name"].asString(),
-                                                                        patch["link"].asString(),
-                                                                        patch["size"].asString(),
-                                                                        GlobalConstants::LANGUAGES[i].id,
-                                                                        patches[j].platform
-                                                                    )
-                                                        );
+                                    gameFile gf;
+                                    gf.type = GFTYPE_PATCH;
+                                    gf.gamename = game.gamename;
+                                    gf.updated = patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString());
+                                    gf.id = patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString();
+                                    gf.name = patch["name"].asString();
+                                    gf.path = patch["link"].asString();
+                                    gf.size = patch["size"].asString();
+                                    gf.language = GlobalConstants::LANGUAGES[i].id;
+                                    gf.platform = patches[j].platform;
+
+                                    game.patches.push_back(gf);
                                 }
                             }
                             else // Patch is a single file
@@ -465,16 +471,18 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                         continue;
                                 }
 
-                                game.patches.push_back(
-                                                        gameFile(   patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString()),
-                                                                    patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString(),
-                                                                    patchnode["name"].asString(),
-                                                                    patchnode["link"].asString(),
-                                                                    patchnode["size"].asString(),
-                                                                    GlobalConstants::LANGUAGES[i].id,
-                                                                    patches[j].platform
-                                                                 )
-                                                        );
+                                gameFile gf;
+                                gf.type = GFTYPE_PATCH;
+                                gf.gamename = game.gamename;
+                                gf.updated = patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString());
+                                gf.id = patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString();
+                                gf.name = patchnode["name"].asString();
+                                gf.path = patchnode["link"].asString();
+                                gf.size = patchnode["size"].asString();
+                                gf.language = GlobalConstants::LANGUAGES[i].id;
+                                gf.platform = patches[j].platform;
+
+                                game.patches.push_back(gf);
                             }
                         }
                     }
@@ -500,15 +508,18 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         for (unsigned int j = 0; j < langpacknames.size(); ++j)
                         {
                             Json::Value langpack = root["game"][langpacknames[j]];
-                            game.languagepacks.push_back(
-                                                        gameFile(   false, /* language packs don't have "updated" flag */
-                                                                    langpack["id"].isInt() ? std::to_string(langpack["id"].asInt()) : langpack["id"].asString(),
-                                                                    langpack["name"].asString(),
-                                                                    langpack["link"].asString(),
-                                                                    langpack["size"].asString(),
-                                                                    GlobalConstants::LANGUAGES[i].id
-                                                            )
-                                                    );
+
+                            gameFile gf;
+                            gf.type = GFTYPE_LANGPACK;
+                            gf.gamename = game.gamename;
+                            gf.updated = false; // language packs don't have "updated" flag
+                            gf.id = langpack["id"].isInt() ? std::to_string(langpack["id"].asInt()) : langpack["id"].asString();
+                            gf.name = langpack["name"].asString();
+                            gf.path = langpack["link"].asString();
+                            gf.size = langpack["size"].asString();
+                            gf.language = GlobalConstants::LANGUAGES[i].id;
+
+                            game.languagepacks.push_back(gf);
                         }
                     }
                 }
