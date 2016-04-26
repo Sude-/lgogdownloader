@@ -2962,6 +2962,8 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
             url = gogAPI->getInstallerLink(gamename, fileid);
         else if (fileid.find("patch") != std::string::npos)
             url = gogAPI->getPatchLink(gamename, fileid);
+        else if (fileid.find("langpack") != std::string::npos)
+            url = gogAPI->getLanguagePackLink(gamename, fileid);
         else
             url = gogAPI->getExtraLink(gamename, fileid);
 
