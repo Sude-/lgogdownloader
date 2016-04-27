@@ -16,6 +16,7 @@ class ProgressBar
         ProgressBar(bool bUnicode, bool bColor);
         virtual ~ProgressBar();
         void draw(unsigned int length, double fraction);
+        std::string createBarString(unsigned int length, double fraction);
     protected:
     private:
         std::vector<std::string> const m_bar_chars;

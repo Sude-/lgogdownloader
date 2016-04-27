@@ -6,6 +6,7 @@
 
 #include "progressbar.h"
 #include <cmath>
+#include <sstream>
 
 ProgressBar::ProgressBar(bool bUnicode, bool bColor)
 :
@@ -46,6 +47,12 @@ ProgressBar::~ProgressBar()
 
 void ProgressBar::draw(unsigned int length, double fraction)
 {
+    std::cout << createBarString(length, fraction);
+}
+
+std::string ProgressBar::createBarString(unsigned int length, double fraction)
+{
+    std::ostringstream ss;
     // validation
     if (!std::isnormal(fraction) || (fraction < 0.0)) fraction = 0.0;
     else if (fraction > 1.0) fraction = 1.0;
@@ -57,29 +64,31 @@ void ProgressBar::draw(unsigned int length, double fraction)
     unsigned int partial_bar_char_index = (unsigned int) std::floor((bar_part - whole_bar_chars) * 8.0);
 
     // left border
-    if (m_use_color) std::cout << m_border_color;
-    std::cout << (m_use_unicode ? m_left_border : m_simple_left_border);
+    if (m_use_color) ss << m_border_color;
+    ss << (m_use_unicode ? m_left_border : m_simple_left_border);
 
     // whole completed bars
-    if (m_use_color) std::cout << m_bar_color;
+    if (m_use_color) ss << m_bar_color;
     unsigned int i = 0;
     for (; i < whole_bar_chars_i; i++)
     {
-        std::cout << (m_use_unicode ? m_bar_chars[8] : m_simple_bar_char);
+        ss << (m_use_unicode ? m_bar_chars[8] : m_simple_bar_char);
     }
 
     // partial completed bar
-    if (i < length) std::cout << (m_use_unicode ? m_bar_chars[partial_bar_char_index] : m_simple_empty_fill);
+    if (i < length) ss << (m_use_unicode ? m_bar_chars[partial_bar_char_index] : m_simple_empty_fill);
 
     // whole unfinished bars
-    if (m_use_color) std::cout << COLOR_RESET;
+    if (m_use_color) ss << COLOR_RESET;
     for (i = whole_bar_chars_i + 1; i < length; i++)
     {  // first entry in m_bar_chars is assumed to be the empty bar
-        std::cout << (m_use_unicode ? m_bar_chars[0] : m_simple_empty_fill);
+        ss << (m_use_unicode ? m_bar_chars[0] : m_simple_empty_fill);
     }
 
     // right border
-    if (m_use_color) std::cout << m_border_color;
-    std::cout << (m_use_unicode ? m_right_border : m_simple_right_border);
-    if (m_use_color) std::cout << COLOR_RESET;
+    if (m_use_color) ss << m_border_color;
+    ss << (m_use_unicode ? m_right_border : m_simple_right_border);
+    if (m_use_color) ss << COLOR_RESET;
+
+    return ss.str();
 }
