@@ -12,7 +12,7 @@ find_package(Boost
   program_options
   date_time
   )
-find_package(CURL 7.17.1 REQUIRED)
+find_package(CURL 7.32.0 REQUIRED)
 find_package(OAuth REQUIRED)
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
