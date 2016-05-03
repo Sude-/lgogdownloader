@@ -65,18 +65,14 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_PROGRESSFUNCTION, Downloader::progressCallbackOld);
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
-    #if LIBCURL_VERSION_NUM >= 0x072000 // libcurl version >= 7.32.0
-        curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
-        curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
-    #endif // LIBCURL_VERSION_NUM
+    curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
@@ -1871,15 +1867,6 @@ std::string Downloader::getResponse(const std::string& url)
     }
 
     return response;
-}
-
-int Downloader::progressCallbackOld(void *clientp, double dltotal, double dlnow, double ultotal, double ulnow)
-{
-    return Downloader::progressCallback(clientp,
-                                        (curl_off_t)dltotal,
-                                        (curl_off_t)dlnow,
-                                        (curl_off_t)ultotal,
-                                        (curl_off_t)ulnow);
 }
 
 int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
