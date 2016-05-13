@@ -9,7 +9,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 * librhash
 * jsoncpp
 * htmlcxx
-* tinyxml
+* tinyxml2
 * boost (regex, date-time, system, filesystem, program-options)
 * help2man
 

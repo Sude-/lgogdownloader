@@ -19,7 +19,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <tinyxml.h>
+#include <tinyxml2.h>
 #include <json/json.h>
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/Uri.h>
@@ -1293,12 +1293,11 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         // Do version check if local hash exists
         if (!localHash.empty())
         {
-            TiXmlDocument remote_xml;
+            tinyxml2::XMLDocument remote_xml;
             remote_xml.Parse(xml_data.c_str());
-            TiXmlNode *fileNodeRemote = remote_xml.FirstChild("file");
-            if (fileNodeRemote)
+            tinyxml2::XMLElement *fileElemRemote = remote_xml.FirstChildElement("file");
+            if (fileElemRemote)
             {
-                TiXmlElement *fileElemRemote = fileNodeRemote->ToElement();
                 std::string remoteHash = fileElemRemote->Attribute("md5");
                 if (remoteHash != localHash)
                     bSameVersion = false;
@@ -1496,7 +1495,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     bool bFileExists = boost::filesystem::exists(pathname);
     bool bLocalXMLExists = boost::filesystem::exists(xml_file);
 
-    TiXmlDocument xml;
+    tinyxml2::XMLDocument xml;
     if (!xml_data.empty()) // Parse remote XML data
     {
         std::cout << "XML: Using remote file" << std::endl;
@@ -1507,12 +1506,12 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::cout << "XML: Using local file" << std::endl;
         if (!bLocalXMLExists)
             std::cout << "XML: File doesn't exist (" << xml_file << ")" << std::endl;
-        xml.LoadFile(xml_file);
+        xml.LoadFile(xml_file.c_str());
     }
 
     // Check if file node exists in XML data
-    TiXmlNode *fileNode = xml.FirstChild("file");
-    if (!fileNode)
+    tinyxml2::XMLElement *fileElem = xml.FirstChildElement("file");
+    if (!fileElem)
     {   // File node doesn't exist
         std::cout << "XML: Parsing failed / not valid XML" << std::endl;
         if (config.bDownload)
@@ -1523,23 +1522,22 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     else
     {   // File node exists --> valid XML
         std::cout << "XML: Valid XML" << std::endl;
-        TiXmlElement *fileElem = fileNode->ToElement();
         filename = fileElem->Attribute("name");
         filehash = fileElem->Attribute("md5");
         std::stringstream(fileElem->Attribute("chunks")) >> chunks;
         std::stringstream(fileElem->Attribute("total_size")) >> filesize;
 
         //Iterate through all chunk nodes
-        TiXmlNode *chunkNode = fileNode->FirstChild();
+        tinyxml2::XMLNode *chunkNode = fileElem->FirstChild();
         while (chunkNode)
         {
-            TiXmlElement *chunkElem = chunkNode->ToElement();
+            tinyxml2::XMLElement *chunkElem = chunkNode->ToElement();
             std::stringstream(chunkElem->Attribute("from")) >> from_offset;
             std::stringstream(chunkElem->Attribute("to")) >> to_offset;
             chunk_from.push_back(from_offset);
             chunk_to.push_back(to_offset);
             chunk_hash.push_back(chunkElem->GetText());
-            chunkNode = fileNode->IterateChildren(chunkNode);
+            chunkNode = chunkNode->NextSibling();
         }
 
         std::cout   << "XML: Parsing finished" << std::endl << std::endl
@@ -1735,7 +1733,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 int Downloader::downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data)
 {
     int res = 0;
-    TiXmlDocument xml;
+    tinyxml2::XMLDocument xml;
 
     // Check that directory exists and create subdirectories
     boost::filesystem::path path = directory;
@@ -1758,7 +1756,7 @@ int Downloader::downloadCovers(const std::string& gamename, const std::string& d
     }
 
     xml.Parse(cover_xml_data.c_str());
-    TiXmlElement *rootNode = xml.RootElement();
+    tinyxml2::XMLElement *rootNode = xml.RootElement();
     if (!rootNode)
     {
         std::cout << "Not valid XML" << std::endl;
@@ -1766,19 +1764,19 @@ int Downloader::downloadCovers(const std::string& gamename, const std::string& d
     }
     else
     {
-        TiXmlNode *gameNode = rootNode->FirstChild();
+        tinyxml2::XMLNode *gameNode = rootNode->FirstChild();
         while (gameNode)
         {
-            TiXmlElement *gameElem = gameNode->ToElement();
+            tinyxml2::XMLElement *gameElem = gameNode->ToElement();
             std::string game_name = gameElem->Attribute("name");
 
             if (game_name == gamename)
             {
                 boost::match_results<std::string::const_iterator> what;
-                TiXmlNode *coverNode = gameNode->FirstChild();
+                tinyxml2::XMLNode *coverNode = gameNode->FirstChild();
                 while (coverNode)
                 {
-                    TiXmlElement *coverElem = coverNode->ToElement();
+                    tinyxml2::XMLElement *coverElem = coverNode->ToElement();
                     std::string cover_url = coverElem->GetText();
                     // Get file extension for the image
                     boost::regex e1(".*(\\.\\w+)$", boost::regex::perl | boost::regex::icase);
@@ -1806,11 +1804,11 @@ int Downloader::downloadCovers(const std::string& gamename, const std::string& d
                             std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << cover_url << ")" << std::endl;
                     }
 
-                    coverNode = gameNode->IterateChildren(coverNode);
+                    coverNode = coverNode->NextSibling();
                 }
                 break; // Found cover for game, no need to go through rest of the game nodes
             }
-            gameNode = rootNode->IterateChildren(gameNode);
+            gameNode = gameNode->NextSibling();
         }
     }
 
@@ -1871,6 +1869,10 @@ std::string Downloader::getResponse(const std::string& url)
 
 int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
 {
+    // unused so lets prevent warnings and be more pedantic
+    (void) ulnow;
+    (void) ultotal;
+
     // on entry: dltotal - how much remains to download till the end of the file (bytes)
     //           dlnow   - how much was downloaded from the start of the program (bytes)
     int bar_length      = 26;
@@ -2326,12 +2328,11 @@ void Downloader::checkStatus()
 
                         if (boost::filesystem::exists(local_xml_file))
                         {
-                            TiXmlDocument local_xml;
-                            local_xml.LoadFile(local_xml_file.string());
-                            TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
-                            if (fileNodeLocal)
+                            tinyxml2::XMLDocument local_xml;
+                            local_xml.LoadFile(local_xml_file.string().c_str());
+                            tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
+                            if (fileElemLocal)
                             {
-                                TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
                                 std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
                                 filesize_xml = std::stoull(filesize_xml_str);
                             }
@@ -2463,12 +2464,11 @@ void Downloader::checkStatus()
 
                                 if (boost::filesystem::exists(local_xml_file))
                                 {
-                                    TiXmlDocument local_xml;
-                                    local_xml.LoadFile(local_xml_file.string());
-                                    TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
-                                    if (fileNodeLocal)
+                                    tinyxml2::XMLDocument local_xml;
+                                    local_xml.LoadFile(local_xml_file.string().c_str());
+                                    tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
+                                    if (fileElemLocal)
                                     {
-                                        TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
                                         std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
                                         filesize_xml = std::stoull(filesize_xml_str);
                                     }
@@ -2561,19 +2561,18 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
 
     if (boost::filesystem::exists(local_xml_file))
     {
-        TiXmlDocument local_xml;
-        local_xml.LoadFile(local_xml_file.string());
-        TiXmlNode *fileNodeLocal = local_xml.FirstChild("file");
-	if (!fileNodeLocal && config.bAutomaticXMLCreation)
+        tinyxml2::XMLDocument local_xml;
+        local_xml.LoadFile(local_xml_file.string().c_str());
+        tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
+	if (!fileElemLocal && config.bAutomaticXMLCreation)
 	{
 	    std::string xml_directory = config.sXMLDirectory + "/" + gamename;
 	    Util::createXML(filepath, config.iChunkSize, xml_directory);
-	    local_xml.LoadFile(local_xml_file.string());
-	    fileNodeLocal = local_xml.FirstChild("file");
+	    local_xml.LoadFile(local_xml_file.string().c_str());
+	    fileElemLocal = local_xml.FirstChildElement("file");
 	}
-        if (fileNodeLocal)
+        if (fileElemLocal)
         {
-            TiXmlElement *fileElemLocal = fileNodeLocal->ToElement();
             localHash = fileElemLocal->Attribute("md5");
 	    return localHash;
         }
@@ -2597,12 +2596,11 @@ std::string Downloader::getRemoteFileHash(const std::string& gamename, const std
     }
     if (!xml_data.empty())
     {
-        TiXmlDocument remote_xml;
+        tinyxml2::XMLDocument remote_xml;
         remote_xml.Parse(xml_data.c_str());
-        TiXmlNode *fileNodeRemote = remote_xml.FirstChild("file");
-        if (fileNodeRemote)
+        tinyxml2::XMLElement *fileElemRemote = remote_xml.FirstChildElement("file");
+        if (fileElemRemote)
         {
-            TiXmlElement *fileElemRemote = fileNodeRemote->ToElement();
             remoteHash = fileElemRemote->Attribute("md5");
         }
     }
