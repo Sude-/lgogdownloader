@@ -4,19 +4,19 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
 ## Dependencies
 
-* libcurl
-* liboauth
-* librhash
-* jsoncpp
-* htmlcxx
-* tinyxml2
-* boost (regex, date-time, system, filesystem, program-options)
-* help2man
+* [libcurl](https://curl.haxx.se/libcurl/)
+* [liboauth](https://sourceforge.net/projects/liboauth/)
+* [librhash](https://github.com/rhash/RHash)
+* [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
+* [htmlcxx](http://htmlcxx.sourceforge.net/)
+* [tinyxml2](https://github.com/leethomason/tinyxml2)
+* [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options)
+* [help2man](https://www.gnu.org/software/help2man/help2man.html)
 
 ### Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
-    libjsoncpp-dev liboauth-dev librhash-dev libtinyxml-dev libhtmlcxx-dev\
+    libjsoncpp-dev liboauth-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev\
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev\
     libboost-date-time-dev help2man cmake
 
