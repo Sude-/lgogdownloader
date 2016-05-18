@@ -8,7 +8,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
-#include <tinyxml.h>
+#include <tinyxml2.h>
 #include <json/json.h>
 #include <fstream>
 #include <sys/ioctl.h>
@@ -132,11 +132,11 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
                 << "Chunks: " << chunks << std::endl
                 << "Chunk size: " << (chunk_size >> 20) << " MB" << std::endl;
 
-    TiXmlDocument xml;
-    TiXmlElement *fileElem = new TiXmlElement("file");
-    fileElem->SetAttribute("name", filename);
+    tinyxml2::XMLDocument xml;
+    tinyxml2::XMLElement *fileElem = xml.NewElement("file");
+    fileElem->SetAttribute("name", filename.c_str());
     fileElem->SetAttribute("chunks", chunks);
-    fileElem->SetAttribute("total_size", std::to_string(filesize));
+    fileElem->SetAttribute("total_size", std::to_string(filesize).c_str());
 
     std::cout << "Getting MD5 for chunks" << std::endl;
 
@@ -175,12 +175,12 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
 
         free(chunk);
 
-        TiXmlElement *chunkElem = new TiXmlElement("chunk");
+        tinyxml2::XMLElement *chunkElem = xml.NewElement("chunk");
         chunkElem->SetAttribute("id", i);
-        chunkElem->SetAttribute("from", std::to_string(range_begin));
-        chunkElem->SetAttribute("to", std::to_string(range_end));
+        chunkElem->SetAttribute("from", std::to_string(range_begin).c_str());
+        chunkElem->SetAttribute("to", std::to_string(range_end).c_str());
         chunkElem->SetAttribute("method", "md5");
-        TiXmlText *text = new TiXmlText(hash);
+        tinyxml2::XMLText *text = xml.NewText(hash.c_str());
         chunkElem->LinkEndChild(text);
         fileElem->LinkEndChild(chunkElem);
 
@@ -192,15 +192,15 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
     rhash_print(rhash_result, rhash_context, RHASH_MD5, RHPR_HEX);
     rhash_free(rhash_context);
 
-    std::string file_md5 = rhash_result;
-    std::cout << std::endl << "MD5: " << file_md5 << std::endl;
-    fileElem->SetAttribute("md5", file_md5);
+    std::cout << std::endl << "MD5: " << rhash_result << std::endl;
+    fileElem->SetAttribute("md5", rhash_result);
 
     xml.LinkEndChild(fileElem);
 
     std::cout << "Writing XML: " << filenameXML << std::endl;
     if ((xmlfile=fopen(filenameXML.c_str(), "w"))!=NULL) {
-        xml.Print(xmlfile);
+        tinyxml2::XMLPrinter printer(xmlfile);
+        xml.Print(&printer);
         fclose(xmlfile);
         res = 1;
     } else {

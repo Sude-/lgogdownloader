@@ -16,7 +16,7 @@ find_package(CURL 7.32.0 REQUIRED)
 find_package(OAuth REQUIRED)
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
-find_package(Tinyxml REQUIRED)
+find_package(Tinyxml2 REQUIRED)
 find_package(Rhash REQUIRED)
 
 file(GLOB SRC_FILES
@@ -83,7 +83,7 @@ target_include_directories(${PROJECT_NAME}
   PRIVATE ${OAuth_INCLUDE_DIRS}
   PRIVATE ${Jsoncpp_INCLUDE_DIRS}
   PRIVATE ${Htmlcxx_INCLUDE_DIRS}
-  PRIVATE ${Tinyxml_INCLUDE_DIRS}
+  PRIVATE ${Tinyxml2_INCLUDE_DIRS}
   PRIVATE ${Rhash_INCLUDE_DIRS}
   )
 
@@ -93,7 +93,7 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE ${OAuth_LIBRARIES}
   PRIVATE ${Jsoncpp_LIBRARIES}
   PRIVATE ${Htmlcxx_LIBRARIES}
-  PRIVATE ${Tinyxml_LIBRARIES}
+  PRIVATE ${Tinyxml2_LIBRARIES}
   PRIVATE ${Rhash_LIBRARIES}
   )
 
@@ -106,7 +106,7 @@ if(MSVC)
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-long-long -fexceptions")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-long-long -fexceptions")
 endif()
 
 set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
