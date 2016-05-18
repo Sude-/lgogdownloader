@@ -2555,33 +2555,12 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
 
     if (config.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file) && boost::filesystem::exists(path))
     {
-	std::string xml_directory = config.sXMLDirectory + "/" + gamename;
-	Util::createXML(filepath, config.iChunkSize, xml_directory);
+        std::string xml_directory = config.sXMLDirectory + "/" + gamename;
+        Util::createXML(filepath, config.iChunkSize, xml_directory);
     }
 
-    if (boost::filesystem::exists(local_xml_file))
-    {
-        tinyxml2::XMLDocument local_xml;
-        local_xml.LoadFile(local_xml_file.string().c_str());
-        tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
-	if (!fileElemLocal && config.bAutomaticXMLCreation)
-	{
-	    std::string xml_directory = config.sXMLDirectory + "/" + gamename;
-	    Util::createXML(filepath, config.iChunkSize, xml_directory);
-	    local_xml.LoadFile(local_xml_file.string().c_str());
-	    fileElemLocal = local_xml.FirstChildElement("file");
-	}
-        if (fileElemLocal)
-        {
-            localHash = fileElemLocal->Attribute("md5");
-	    return localHash;
-        }
-    }
+    localHash = Util::getFileHash(path.string(), RHASH_MD5);
 
-    if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
-    {
-	localHash = Util::getFileHash(path.string(), RHASH_MD5);
-    }
     return localHash;
 }
 

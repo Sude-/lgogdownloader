@@ -540,3 +540,32 @@ void Util::parseOptionString(const std::string &option_string, std::vector<unsig
         type |= value;
     }
 }
+
+std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename)
+{
+    std::string localHash;
+    boost::filesystem::path path = filepath;
+    boost::filesystem::path local_xml_file;
+    if (!gamename.empty())
+        local_xml_file = xml_dir + "/" + gamename + "/" + path.filename().string() + ".xml";
+    else
+        local_xml_file = xml_dir + "/" + path.filename().string() + ".xml";
+
+    if (boost::filesystem::exists(local_xml_file))
+    {
+        tinyxml2::XMLDocument local_xml;
+        local_xml.LoadFile(local_xml_file.string().c_str());
+        tinyxml2::XMLElement *fileElem = local_xml.FirstChildElement("file");
+
+        if (fileElem)
+        {
+            localHash = fileElem->Attribute("md5");
+        }
+    }
+    else if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
+    {
+        localHash = Util::getFileHash(path.string(), RHASH_MD5);
+    }
+
+    return localHash;
+}
