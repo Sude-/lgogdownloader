@@ -2559,7 +2559,7 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
         Util::createXML(filepath, config.iChunkSize, xml_directory);
     }
 
-    localHash = Util::getFileHash(path.string(), RHASH_MD5);
+    localHash = Util::getLocalFileHash(config.sXMLDirectory, filepath, gamename);
 
     return localHash;
 }
