@@ -150,6 +150,7 @@ std::vector<gameItem> Website::getGames()
         {
             for (unsigned int i = 0; i < root["products"].size(); ++i)
             {
+                std::cerr << "Getting game names " << "(" << root["page"].asInt() << "/" << root["totalPages"].asInt() << ") " << i+1 << " / " << root["products"].size() << "\r" << std::flush;
                 Json::Value product = root["products"][i];
                 gameItem game;
                 game.name = product["slug"].asString();
@@ -229,6 +230,7 @@ std::vector<gameItem> Website::getGames()
         }
         i++;
     } while (!bAllPagesParsed);
+    std::cerr << std::endl;
 
     delete jsonparser;
 
