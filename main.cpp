@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
             ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
             ("automatic-xml-creation", bpo::value<bool>(&config.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
             ("save-changelogs", bpo::value<bool>(&config.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
+            ("threads", bpo::value<unsigned int>(&config.iThreads)->default_value(4), "Number of download threads")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -310,6 +311,12 @@ int main(int argc, char *argv[])
 
         if (config.iWait > 0)
             config.iWait *= 1000;
+
+        if (config.iThreads < 1)
+        {
+            config.iThreads = 1;
+            set_vm_value(vm, "threads", config.iThreads);
+        }
 
         config.bVerifyPeer = !bInsecure;
         config.bColor = !bNoColor;

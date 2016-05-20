@@ -89,6 +89,7 @@ namespace Util
     std::string getOptionNameString(const unsigned int& value, const std::vector<GlobalConstants::optionsStruct>& options);
     void parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options);
     std::string getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename = std::string());
+    void shortenStringToTerminalWidth(std::string& str);
 }
 
 #endif // UTIL_H

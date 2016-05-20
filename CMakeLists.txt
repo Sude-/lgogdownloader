@@ -3,7 +3,10 @@ project (lgogdownloader LANGUAGES CXX VERSION 2.28)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1")
+set(LINK_LIBCRYPTO 0)
 
+find_program(READELF readelf DOC "Location of the readelf program")
+find_program(GREP grep DOC "Location of the grep program")
 find_package(Boost
   REQUIRED
   system
@@ -13,11 +16,25 @@ find_package(Boost
   date_time
   )
 find_package(CURL 7.32.0 REQUIRED)
+if(CURL_FOUND)
+  execute_process(
+    COMMAND ${READELF} -d ${CURL_LIBRARIES}
+    COMMAND ${GREP} -q "libssl\\|libcrypto"
+    RESULT_VARIABLE READELF_RESULT_VAR
+  )
+  if(READELF_RESULT_VAR EQUAL 0)
+    add_definitions(-DSSL_THREAD_SETUP_OPENSSL=1)
+    find_package(Libcrypto REQUIRED)
+    set(LINK_LIBCRYPTO 1)
+  endif(READELF_RESULT_VAR EQUAL 0)
+endif(CURL_FOUND)
+
 find_package(OAuth REQUIRED)
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)
 find_package(Rhash REQUIRED)
+find_package(Threads REQUIRED)
 
 file(GLOB SRC_FILES
   main.cpp
@@ -95,7 +112,14 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE ${Htmlcxx_LIBRARIES}
   PRIVATE ${Tinyxml2_LIBRARIES}
   PRIVATE ${Rhash_LIBRARIES}
+  PRIVATE ${CMAKE_THREAD_LIBS_INIT}
   )
+
+if(LINK_LIBCRYPTO EQUAL 1)
+  target_link_libraries(${PROJECT_NAME}
+    PRIVATE ${Libcrypto_LIBRARIES}
+  )
+endif(LINK_LIBCRYPTO EQUAL 1)
 
 if(MSVC)
   # Force to always compile with W4

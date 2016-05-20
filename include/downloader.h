@@ -25,6 +25,7 @@
 #include "api.h"
 #include "progressbar.h"
 #include "website.h"
+#include "threadsafequeue.h"
 #include <curl/curl.h>
 #include <json/json.h>
 #include <ctime>
@@ -46,6 +47,15 @@ class Timer
         ~Timer() {};
     private:
         struct timeval last_update;
+};
+
+struct xferInfo
+{
+    unsigned int tid;
+    CURL* curlhandle;
+    Timer timer;
+    std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
+    curl_off_t offset;
 };
 
 class Downloader
@@ -89,6 +99,9 @@ class Downloader
         void saveSerials(const std::string& serials, const std::string& filepath);
         std::string getChangelogFromJSON(const Json::Value& json);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
+        static void processDownloadQueue(Config conf, const unsigned int& tid);
+        static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
+        void printProgress();
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);

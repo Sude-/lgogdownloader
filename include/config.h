@@ -82,6 +82,7 @@ class Config
         unsigned int iInstallerPlatform;
         unsigned int iInstallerLanguage;
         unsigned int iInclude;
+        unsigned int iThreads;
         int iRetries;
         int iWait;
         int iCacheValid;

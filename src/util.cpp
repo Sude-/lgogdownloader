@@ -569,3 +569,17 @@ std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string
 
     return localHash;
 }
+
+void Util::shortenStringToTerminalWidth(std::string& str)
+{
+    int iStrLen = static_cast<int>(str.length());
+    int iTermWidth = Util::getTerminalWidth();
+    if (iStrLen >= iTermWidth)
+    {
+        size_t chars_to_remove = (iStrLen - iTermWidth) + 4;
+        size_t middle = iStrLen / 2;
+        size_t pos1 = middle - (chars_to_remove / 2);
+        size_t pos2 = middle + (chars_to_remove / 2);
+        str.replace(str.begin()+pos1, str.begin()+pos2, "...");
+    }
+}
