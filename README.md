@@ -4,14 +4,20 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
 ## Dependencies
 
-* [libcurl](https://curl.haxx.se/libcurl/)
+* [libcurl](https://curl.haxx.se/libcurl/) >= 7.32.0
 * [liboauth](https://sourceforge.net/projects/liboauth/)
 * [librhash](https://github.com/rhash/RHash)
 * [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
 * [htmlcxx](http://htmlcxx.sourceforge.net/)
 * [tinyxml2](https://github.com/leethomason/tinyxml2)
 * [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options)
-* [help2man](https://www.gnu.org/software/help2man/help2man.html)
+* [libcrypto](https://www.openssl.org/) if libcurl is built with OpenSSL
+
+## Make dependencies
+* [cmake](https://cmake.org/) >= 3.0.0
+* [help2man](https://www.gnu.org/software/help2man/help2man.html) (optional, man page generation)
+* [grep](https://www.gnu.org/software/grep/)
+* [binutils](https://www.gnu.org/software/binutils/) (readelf)
 
 ### Debian/Ubuntu
 
@@ -24,7 +30,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
     $ mkdir build
     $ cd build
-    $ cmake ..
+    $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
     $ make
     # sudo make install
 
