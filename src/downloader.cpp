@@ -3034,6 +3034,16 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         else
         {
             msgQueue.push(msg_prefix + "Finished download (" + static_cast<std::string>(curl_easy_strerror(result)) + "): " + filepath.filename().string());
+
+            // Delete the file if download failed and was not a resume attempt or the result is zero length file
+            if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
+            {
+                if ((result != CURLE_PARTIAL_FILE && !bResume && result != CURLE_OPERATION_TIMEDOUT) || boost::filesystem::file_size(filepath) == 0)
+                {
+                    if (!boost::filesystem::remove(filepath))
+                        msgQueue.push(msg_prefix + "Failed to delete " + filepath.filename().string());
+                }
+            }
         }
 
         // Automatic xml creation
