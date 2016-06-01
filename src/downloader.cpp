@@ -2101,12 +2101,12 @@ void Downloader::checkOrphans()
                 {   // Check dlcs
                     for (unsigned int k = 0; k < games[i].dlcs.size(); ++k)
                     {
-                    bFoundFile = isPresent(games[i].dlcs[k].installers, filepath_vector[j], config.blacklist)
-                        || isPresent(games[i].dlcs[k].extras, filepath_vector[j], config.blacklist)
-                        || isPresent(games[i].dlcs[k].patches, filepath_vector[j], config.blacklist)
-                        || isPresent(games[i].dlcs[k].languagepacks, filepath_vector[j], config.blacklist);
-                    if(bFoundFile)
-                        break;
+                        bFoundFile = isPresent(games[i].dlcs[k].installers, filepath_vector[j], config.blacklist)
+                            || isPresent(games[i].dlcs[k].extras, filepath_vector[j], config.blacklist)
+                            || isPresent(games[i].dlcs[k].patches, filepath_vector[j], config.blacklist)
+                            || isPresent(games[i].dlcs[k].languagepacks, filepath_vector[j], config.blacklist);
+                        if(bFoundFile)
+                            break;
                     }
                 }
                 if (!bFoundFile)
