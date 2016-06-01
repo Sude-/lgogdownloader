@@ -132,6 +132,13 @@ void gameDetails::makeFilepaths(const gameSpecificDirectoryConfig& config)
             filepath = Util::makeFilepath(directory, this->dlcs[i].extras[j].path, this->gamename, subdir, 0, this->dlcs[i].gamename);
             this->dlcs[i].extras[j].setFilepath(filepath);
         }
+
+        for (unsigned int j = 0; j < this->dlcs[i].languagepacks.size(); ++j)
+        {
+            subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sLanguagePackSubdir : "";
+            filepath = Util::makeFilepath(directory, this->dlcs[i].languagepacks[j].path, this->gamename, subdir, 0, this->dlcs[i].gamename);
+            this->dlcs[i].languagepacks[j].setFilepath(filepath);
+        }
     }
 }
 

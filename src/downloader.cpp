@@ -650,6 +650,22 @@ void Downloader::listGames()
                                     << "\tsize: " << games[i].dlcs[j].extras[k].size << std::endl
                                     << std::endl;
                     }
+                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
+                    {
+                        std::string filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
+                            if (config.bVerbose)
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
+                        std::cout   << "\tgamename: " << games[i].dlcs[j].gamename << std::endl
+                                    << "\tid: " << games[i].dlcs[j].languagepacks[k].id << std::endl
+                                    << "\tname: " << games[i].dlcs[j].languagepacks[k].name << std::endl
+                                    << "\tpath: " << games[i].dlcs[j].languagepacks[k].path << std::endl
+                                    << "\tsize: " << games[i].dlcs[j].languagepacks[k].size << std::endl
+                                    << std::endl;
+                    }
                 }
             }
         }
@@ -910,6 +926,41 @@ void Downloader::repair()
                         std::cout << std::endl;
                     }
                 }
+                if (config.bLanguagePacks)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
+                    {
+                        std::string filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
+                        if (config.blacklist.isBlacklisted(filepath)) {
+                            if (config.bVerbose)
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
+                            continue;
+                        }
+
+                        // Get XML data
+                        std::string XML = "";
+                        if (config.bRemoteXML)
+                        {
+                            XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].languagepacks[k].id);
+                            if (gogAPI->getError())
+                            {
+                                std::cerr << gogAPI->getErrorMessage() << std::endl;
+                                gogAPI->clearError();
+                            }
+                        }
+
+                        std::string url = gogAPI->getLanguagePackLink(games[i].dlcs[j].gamename, games[i].dlcs[j].languagepacks[k].id);
+                        if (gogAPI->getError())
+                        {
+                            std::cerr << gogAPI->getErrorMessage() << std::endl;
+                            gogAPI->clearError();
+                            continue;
+                        }
+                        std::cout << "Repairing file " << filepath << std::endl;
+                        this->repairFile(url, filepath, XML, games[i].dlcs[j].gamename);
+                        std::cout << std::endl;
+                    }
+                }
             }
         }
     }
@@ -1011,6 +1062,13 @@ void Downloader::download()
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
                         dlQueue.push(games[i].dlcs[j].extras[k]);
+                    }
+                }
+                if (config.bLanguagePacks)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
+                    {
+                        dlQueue.push(games[i].dlcs[j].languagepacks[k]);
                     }
                 }
             }
@@ -2086,8 +2144,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].installers[j].getFilepath();
 
-		if (config.blacklist.isBlacklisted(filepath.native()))
-		    continue;
+                if (config.blacklist.isBlacklisted(filepath.native()))
+                    continue;
                 std::string remoteHash;
                 std::string localHash;
                 bool bHashOK = true; // assume hash OK
@@ -2149,8 +2207,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].extras[j].getFilepath();
 
-		if (config.blacklist.isBlacklisted(filepath.native()))
-		    continue;
+                if (config.blacklist.isBlacklisted(filepath.native()))
+                    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2172,8 +2230,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].patches[j].getFilepath();
 
-		if (config.blacklist.isBlacklisted(filepath.native()))
-		    continue;
+                if (config.blacklist.isBlacklisted(filepath.native()))
+                    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2195,8 +2253,8 @@ void Downloader::checkStatus()
             {
                 boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
 
-		if (config.blacklist.isBlacklisted(filepath.native()))
-		    continue;
+                if (config.blacklist.isBlacklisted(filepath.native()))
+                    continue;
                 std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
                 uintmax_t filesize;
 
@@ -2222,8 +2280,8 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].installers[k].getFilepath();
 
-			if (config.blacklist.isBlacklisted(filepath.native()))
-			    continue;
+                        if (config.blacklist.isBlacklisted(filepath.native()))
+                            continue;
                         std::string remoteHash;
                         std::string localHash;
                         bool bHashOK = true; // assume hash OK
@@ -2285,8 +2343,8 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
 
-			if (config.blacklist.isBlacklisted(filepath.native()))
-			    continue;
+                        if (config.blacklist.isBlacklisted(filepath.native()))
+                            continue;
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         uintmax_t filesize;
 
@@ -2308,8 +2366,31 @@ void Downloader::checkStatus()
                     {
                         boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
 
-			if (config.blacklist.isBlacklisted(filepath.native()))
-			    continue;
+                        if (config.blacklist.isBlacklisted(filepath.native()))
+                            continue;
+                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
+                        uintmax_t filesize;
+
+                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
+                        {
+                            filesize = boost::filesystem::file_size(filepath);
+                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
+                        }
+                    }
+                }
+
+                if (config.bLanguagePacks)
+                {
+                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
+                    {
+                        boost::filesystem::path filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
+
+                        if (config.blacklist.isBlacklisted(filepath.native()))
+                            continue;
                         std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
                         uintmax_t filesize;
 
@@ -3166,7 +3247,7 @@ void Downloader::printProgress()
 
             char progress_percentage_text[200];
             sprintf(progress_percentage_text, "%3.0f%% ", fraction * 100);
-            int progress_percentage_text_length = strlen(progress_percentage_text);
+            int progress_percentage_text_length = strlen(progress_percentage_text) + 1;
 
             bptime::time_duration eta(bptime::seconds((long)((progress_info.dltotal - progress_info.dlnow) / progress_info.rate)));
             std::stringstream eta_ss;
