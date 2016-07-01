@@ -3112,7 +3112,25 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
         }
         if (result == CURLE_OK || result == CURLE_RANGE_ERROR || (result == CURLE_HTTP_RETURNED_ERROR && response_code == 416))
-            msgQueue.push(msg_prefix + "Finished download: " + filepath.filename().string());
+        {
+            // Average download speed
+            std::ostringstream dlrate_avg;
+            std::string rate_unit;
+            progressInfo progress_info = vDownloadInfo[tid].getProgressInfo();
+            if (progress_info.rate_avg > 1048576) // 1 MB
+            {
+                progress_info.rate_avg /= 1048576;
+                rate_unit = "MB/s";
+            }
+            else
+            {
+                progress_info.rate_avg /= 1024;
+                rate_unit = "kB/s";
+            }
+            dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
+
+            msgQueue.push(msg_prefix + "Finished download: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")");
+        }
         else
         {
             msgQueue.push(msg_prefix + "Finished download (" + static_cast<std::string>(curl_easy_strerror(result)) + "): " + filepath.filename().string());
@@ -3166,7 +3184,7 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
 
         // trying to get rate and setting to NaN if it fails
         if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD, &info.rate))
-           info.rate = std::numeric_limits<double>::quiet_NaN();
+           info.rate_avg = std::numeric_limits<double>::quiet_NaN();
 
         // setting full dlwnow and dltotal
         if (xferinfo->offset > 0)
@@ -3186,6 +3204,10 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
             time_t time_last = xferinfo->TimeAndSize.back().first;
             uintmax_t size_last = xferinfo->TimeAndSize.back().second;
             info.rate = (size_last - size_first) / static_cast<double>((time_last - time_first));
+        }
+        else
+        {
+            info.rate = info.rate_avg;
         }
 
         vDownloadInfo[xferinfo->tid].setProgressInfo(info);

@@ -20,6 +20,7 @@ struct progressInfo
     curl_off_t dlnow;
     curl_off_t dltotal;
     double rate;
+    double rate_avg;
 };
 
 class DownloadInfo
