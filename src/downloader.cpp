@@ -3183,8 +3183,8 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
         info.dltotal = dltotal;
 
         // trying to get rate and setting to NaN if it fails
-        if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD, &info.rate))
-           info.rate_avg = std::numeric_limits<double>::quiet_NaN();
+        if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD, &info.rate_avg))
+            info.rate_avg = std::numeric_limits<double>::quiet_NaN();
 
         // setting full dlwnow and dltotal
         if (xferinfo->offset > 0)
