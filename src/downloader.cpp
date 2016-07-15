@@ -1374,16 +1374,15 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::stringstream(fileElem->Attribute("total_size")) >> filesize;
 
         //Iterate through all chunk nodes
-        tinyxml2::XMLNode *chunkNode = fileElem->FirstChild();
-        while (chunkNode)
+        tinyxml2::XMLElement *chunkElem = fileElem->FirstChildElement("chunk");
+        while (chunkElem)
         {
-            tinyxml2::XMLElement *chunkElem = chunkNode->ToElement();
             std::stringstream(chunkElem->Attribute("from")) >> from_offset;
             std::stringstream(chunkElem->Attribute("to")) >> to_offset;
             chunk_from.push_back(from_offset);
             chunk_to.push_back(to_offset);
             chunk_hash.push_back(chunkElem->GetText());
-            chunkNode = chunkNode->NextSibling();
+            chunkElem = chunkElem->NextSiblingElement("chunk");
         }
 
         std::cout   << "XML: Parsing finished" << std::endl << std::endl
