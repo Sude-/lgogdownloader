@@ -25,6 +25,7 @@
 #include <json/json.h>
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/Uri.h>
+#include <termios.h>
 
 namespace bptime = boost::posix_time;
 
@@ -130,7 +131,6 @@ int Downloader::init()
 */
 int Downloader::login()
 {
-    char *pwd;
     std::string email;
     if (!isatty(STDIN_FILENO)) {
         std::cerr << "Unable to read email and password" << std::endl;
@@ -138,8 +138,18 @@ int Downloader::login()
     }
     std::cerr << "Email: ";
     std::getline(std::cin,email);
-    pwd = getpass("Password: ");
-    std::string password = (std::string)pwd;
+
+    std::string password;
+    std::cerr << "Password: ";
+    struct termios termios_old, termios_new;
+    tcgetattr(STDIN_FILENO, &termios_old); // Get current terminal attributes
+    termios_new = termios_old;
+    termios_new.c_lflag &= ~ECHO; // Set ECHO off
+    tcsetattr(STDIN_FILENO, TCSANOW, &termios_new); // Set terminal attributes
+    std::getline(std::cin, password);
+    tcsetattr(STDIN_FILENO, TCSANOW, &termios_old); // Restore old terminal attributes
+    std::cerr << std::endl;
+
     if (email.empty() || password.empty())
     {
         std::cerr << "Email and/or password empty" << std::endl;
