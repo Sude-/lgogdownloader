@@ -201,6 +201,7 @@ void Downloader::updateCheck()
     if (gogAPI->user.notifications_games)
     {
         config.sGameRegex = ".*"; // Always check all games
+        gogWebsite->setConfig(config); // Make sure that website handle has updated config
         if (config.bList || config.bListDetails || config.bDownload)
         {
             if (config.bList)
