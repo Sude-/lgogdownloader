@@ -2880,6 +2880,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "] ";
 
     API* api = new API(conf.sToken, conf.sSecret);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
+    if (!conf.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, conf.sCACertPath.c_str());
+
     if (!api->init())
     {
         delete api;
