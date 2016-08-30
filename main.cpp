@@ -143,6 +143,7 @@ int main(int argc, char *argv[])
             ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
             ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
             ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
+            ("cacert", bpo::value<std::string>(&config.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -426,6 +427,15 @@ int main(int argc, char *argv[])
     else
     {
         config.sDirectory = "./"; // Directory wasn't specified, use current directory
+    }
+
+    // CA certificate bundle
+    if (config.sCACertPath.empty())
+    {
+        // Use CURL_CA_BUNDLE environment variable for CA certificate path if it is set
+        char *ca_bundle = getenv("CURL_CA_BUNDLE");
+        if (ca_bundle)
+            config.sCACertPath = (std::string)ca_bundle;
     }
 
     if (!unrecognized_options_cfg.empty() && (!config.bSaveConfig || !config.bResetConfig))

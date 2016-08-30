@@ -88,6 +88,9 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
+    if (!config.sCACertPath.empty())
+        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, config.sCACertPath.c_str());
+
     // Create new GOG website handle
     gogWebsite = new Website(config);
     bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
@@ -97,6 +100,8 @@ int Downloader::init()
     gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
     gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
     gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+    if (!config.sCACertPath.empty())
+        gogAPI->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
 
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
 

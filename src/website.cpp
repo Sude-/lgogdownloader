@@ -31,6 +31,8 @@ Website::Website(Config &conf)
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
+    if (!config.sCACertPath.empty())
+        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, config.sCACertPath.c_str());
 }
 
 Website::~Website()
@@ -79,6 +81,11 @@ std::string Website::getResponse(const std::string& url)
                 std::cout << response_code << " (" << url << ")" << std::endl;
             else
                 std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << url << ")" << std::endl;
+        }
+        else if (result == CURLE_SSL_CACERT)
+        {
+            std::cout << "Try using CA certificate bundle from cURL: https://curl.haxx.se/ca/cacert.pem" << std::endl;
+            std::cout << "Use --cacert to set the path for CA certificate bundle" << std::endl;
         }
     }
 

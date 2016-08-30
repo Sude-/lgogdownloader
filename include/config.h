@@ -76,6 +76,7 @@ class Config
         std::string sLanguagePriority;
         std::string sPlatformPriority;
         std::string sIgnoreDLCCountRegex;
+        std::string sCACertPath;
         std::vector<unsigned int> vLanguagePriority;
         std::vector<unsigned int> vPlatformPriority;
 
