@@ -2905,6 +2905,9 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
+    if (!conf.sCACertPath.empty())
+        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.sCACertPath.c_str());
+
     xferInfo xferinfo;
     xferinfo.tid = tid;
     xferinfo.curlhandle = dlhandle;
