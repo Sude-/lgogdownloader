@@ -495,12 +495,15 @@ int Downloader::getGameDetails()
     return 0;
 }
 
-void Downloader::listGames()
+int Downloader::listGames()
 {
     if (config.bListDetails) // Detailed list
     {
-        if (this->games.empty())
-            this->getGameDetails();
+        if (this->games.empty()) {
+            int res = this->getGameDetails();
+            if (res > 0)
+                return res;
+        }
 
         for (unsigned int i = 0; i < games.size(); ++i)
         {
@@ -696,6 +699,7 @@ void Downloader::listGames()
         }
     }
 
+    return 0;
 }
 
 void Downloader::repair()

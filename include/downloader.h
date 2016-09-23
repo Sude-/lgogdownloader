@@ -65,7 +65,7 @@ class Downloader
         virtual ~Downloader();
         int init();
         int login();
-        void listGames();
+        int listGames();
         void updateCheck();
         void repair();
         void download();

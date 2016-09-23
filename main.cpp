@@ -571,7 +571,7 @@ int main(int argc, char *argv[])
     else if (config.bDownload) // Download games
         downloader.download();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
-        downloader.listGames();
+        res = downloader.listGames();
     else if (!config.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
     else if (config.bCheckStatus)
