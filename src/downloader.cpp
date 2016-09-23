@@ -2790,8 +2790,9 @@ void Downloader::saveChangelog(const std::string& changelog, const std::string& 
     return;
 }
 
-void Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
+int Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
 {
+    int res = 1;
     size_t pos = fileid_string.find("/");
     if (pos == std::string::npos)
     {
@@ -2825,7 +2826,7 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
             else
                 filepath = output_filepath;
             std::cout << "Downloading: " << filepath << std::endl;
-            this->downloadFile(url, filepath, std::string(), gamename);
+            res = this->downloadFile(url, filepath, std::string(), gamename);
             std::cout << std::endl;
         }
         else
@@ -2835,7 +2836,7 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
         }
     }
 
-    return;
+    return res;
 }
 
 void Downloader::showWishlist()
