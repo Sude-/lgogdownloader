@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
             ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
             ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
             ("cacert", bpo::value<std::string>(&config.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
+            ("respect-umask", bpo::value<bool>(&config.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -462,8 +463,11 @@ int main(int argc, char *argv[])
     }
 
     // Make sure that config file and cookie file are only readable/writable by owner
-    Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
-    Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+    if (!config.bRespectUmask)
+    {
+        Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+        Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+    }
 
     if (config.bSaveConfig || iLoginResult == 1)
     {
@@ -520,7 +524,8 @@ int main(int argc, char *argv[])
                 }
             }
             ofs.close();
-            Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+            if (!config.bRespectUmask)
+                Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             if (config.bSaveConfig)
                 return 0;
         }
@@ -541,7 +546,8 @@ int main(int argc, char *argv[])
                 ofs << "secret = " << config.sSecret << std::endl;
             }
             ofs.close();
-            Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+            if (!config.bRespectUmask)
+                Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             return 0;
         }
         else

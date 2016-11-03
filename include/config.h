@@ -48,6 +48,7 @@ class Config
         bool bShowWishlist;
         bool bAutomaticXMLCreation;
         bool bSaveChangelogs;
+        bool bRespectUmask;
         std::string sGameRegex;
         std::string sDirectory;
         std::string sCacheDirectory;
