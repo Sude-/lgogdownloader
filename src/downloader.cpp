@@ -9,6 +9,7 @@
 #include "globalconstants.h"
 #include "ssl_thread_setup.h"
 #include "downloadinfo.h"
+#include "message.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -31,7 +32,7 @@ namespace bptime = boost::posix_time;
 
 std::vector<DownloadInfo> vDownloadInfo;
 ThreadSafeQueue<gameFile> dlQueue;
-ThreadSafeQueue<std::string> msgQueue;
+ThreadSafeQueue<Message> msgQueue;
 ThreadSafeQueue<gameFile> createXMLQueue;
 
 Downloader::Downloader(Config &conf)
@@ -2883,7 +2884,7 @@ void Downloader::showWishlist()
 
 void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 {
-    std::string msg_prefix = "[Thread #" + std::to_string(tid) + "] ";
+    std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
     API* api = new API(conf.sToken, conf.sSecret);
     api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
@@ -2894,7 +2895,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     if (!api->init())
     {
         delete api;
-        msgQueue.push(msg_prefix + "API init failed");
+        msgQueue.push(Message("API init failed", MSGTYPE_ERROR, msg_prefix));
         vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
         return;
     }
@@ -2943,8 +2944,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         // Skip blacklisted files
         if (conf.blacklist.isBlacklisted(filepath.string()))
         {
-            if (conf.bVerbose)
-                msgQueue.push(msg_prefix + "Skipped blacklisted file: " + filepath.string());
+            msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix));
             continue;
         }
 
@@ -2953,14 +2953,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         boost::filesystem::path local_xml_file = xml_directory + "/" + filenameXML;
 
         vDownloadInfo[tid].setFilename(filepath.filename().string());
-        msgQueue.push(msg_prefix + "Starting download: " + filepath.filename().string());
+        msgQueue.push(Message("Begin download: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
 
         // Check that directory exists and create subdirectories
         if (boost::filesystem::exists(directory))
         {
             if (!boost::filesystem::is_directory(directory))
             {
-                msgQueue.push(msg_prefix + directory.string() + " is not directory");
+                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_WARNING, msg_prefix));
                 continue;
             }
         }
@@ -2968,7 +2968,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         {
             if (!boost::filesystem::create_directories(directory))
             {
-                msgQueue.push(msg_prefix + "Failed to create directory: " + directory.string());
+                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix));
                 continue;
             }
         }
@@ -2982,7 +2982,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             xml = api->getXML(gf.gamename, gf.id);
             if (api->getError())
             {
-                msgQueue.push(msg_prefix + api->getErrorMessage());
+                msgQueue.push(Message(api->getErrorMessage(), MSGTYPE_ERROR, msg_prefix));
                 api->clearError();
             }
             else
@@ -3016,14 +3016,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
             else
             {
-                msgQueue.push(msg_prefix + "Remote file is different, renaming local file");
+                msgQueue.push(Message("Remote file is different, renaming local file", MSGTYPE_INFO, msg_prefix));
                 std::string date_old = "." + bptime::to_iso_string(bptime::second_clock::local_time()) + ".old";
                 boost::filesystem::path new_name = filepath.string() + date_old; // Rename old file by appending date and ".old" to filename
                 boost::system::error_code ec;
                 boost::filesystem::rename(filepath, new_name, ec); // Rename the file
                 if (ec)
                 {
-                    msgQueue.push(msg_prefix + "Failed to rename " + filepath.string() + " to " + new_name.string() + "\nSkipping file");
+                    msgQueue.push(Message("Failed to rename " + filepath.string() + " to " + new_name.string() + " - Skipping file", MSGTYPE_WARNING, msg_prefix));
                     continue;
                 }
             }
@@ -3040,14 +3040,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 {
                     if (!boost::filesystem::is_directory(path))
                     {
-                        msgQueue.push(msg_prefix + path.string() + " is not directory");
+                        msgQueue.push(Message(path.string() + " is not directory", MSGTYPE_WARNING, msg_prefix));
                     }
                 }
                 else
                 {
                     if (!boost::filesystem::create_directories(path))
                     {
-                        msgQueue.push(msg_prefix + "Failed to create directory: " + path.string());
+                        msgQueue.push(Message("Failed to create directory: " + path.string(), MSGTYPE_ERROR, msg_prefix));
                     }
                 }
                 std::ofstream ofs(local_xml_file.string().c_str());
@@ -3058,7 +3058,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(msg_prefix + "Can't create " + local_xml_file.string());
+                    msgQueue.push(Message("Can't create " + local_xml_file.string(), MSGTYPE_ERROR, msg_prefix));
                 }
             }
         }
@@ -3078,7 +3078,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         if (api->getError())
         {
-            msgQueue.push(msg_prefix + api->getErrorMessage());
+            msgQueue.push(Message(api->getErrorMessage(), MSGTYPE_ERROR, msg_prefix));
             api->clearError();
             continue;
         }
@@ -3087,7 +3087,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         do
         {
             if (iRetryCount != 0)
-                msgQueue.push(msg_prefix + "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string());
+                msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
 
             FILE* outfile;
             // File exists, resume
@@ -3102,7 +3102,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(msg_prefix + "Failed to open " + filepath.string());
+                    msgQueue.push(Message("Failed to open " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
                     break;
                 }
             }
@@ -3115,7 +3115,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(msg_prefix + "Failed to create " + filepath.string());
+                    msgQueue.push(Message("Failed to create " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
                     break;
                 }
             }
@@ -3158,11 +3158,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
             dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
 
-            msgQueue.push(msg_prefix + "Finished download: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")");
+            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix));
         }
         else
         {
-            msgQueue.push(msg_prefix + "Finished download (" + static_cast<std::string>(curl_easy_strerror(result)) + "): " + filepath.filename().string());
+            msgQueue.push(Message("Download complete (" + static_cast<std::string>(curl_easy_strerror(result)) + "): " + filepath.filename().string(), MSGTYPE_WARNING, msg_prefix));
 
             // Delete the file if download failed and was not a resume attempt or the result is zero length file
             if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
@@ -3170,7 +3170,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 if ((result != CURLE_PARTIAL_FILE && !bResume && result != CURLE_OPERATION_TIMEDOUT) || boost::filesystem::file_size(filepath) == 0)
                 {
                     if (!boost::filesystem::remove(filepath))
-                        msgQueue.push(msg_prefix + "Failed to delete " + filepath.filename().string());
+                        msgQueue.push(Message("Failed to delete " + filepath.filename().string(), MSGTYPE_ERROR, msg_prefix));
                 }
             }
         }
@@ -3190,7 +3190,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     delete api;
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-    msgQueue.push(msg_prefix + "Finished all tasks");
+    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix));
 
     return;
 }
@@ -3260,13 +3260,13 @@ void Downloader::printProgress()
         std::cout << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
 
         // Print messages from message queue first
-        std::string msg;
+        Message msg;
         while (msgQueue.try_pop(msg))
         {
-            std::cout << msg << std::endl;
+            std::cout << msg.getFormattedString(config.bColor, true) << std::endl;
             if (config.bReport)
             {
-                this->report_ofs << bptime::to_simple_string(bptime::second_clock::local_time()) << ": " << msg << std::endl;
+                this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
             }
         }
 
