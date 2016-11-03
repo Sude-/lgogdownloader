@@ -2960,7 +2960,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         {
             if (!boost::filesystem::is_directory(directory))
             {
-                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_WARNING, msg_prefix));
+                msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix));
                 continue;
             }
         }
@@ -2968,8 +2968,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         {
             if (!boost::filesystem::create_directories(directory))
             {
-                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix));
-                continue;
+                /* Multiple threads could have tried to create the directory at the same time because they detected that the directory didn't exist at the time
+                 * boost::filesystem::create_directories() could have returned false because of this race condition so we have to check again if directory exists */
+                if (!boost::filesystem::exists(directory))
+                {
+                    // Failed to create directory and another thread hasn't created it either. Print error and skip the file download.
+                    msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix));
+                    continue;
+                }
             }
         }
 
