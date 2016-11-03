@@ -496,12 +496,15 @@ int Downloader::getGameDetails()
     return 0;
 }
 
-void Downloader::listGames()
+int Downloader::listGames()
 {
     if (config.bListDetails) // Detailed list
     {
-        if (this->games.empty())
-            this->getGameDetails();
+        if (this->games.empty()) {
+            int res = this->getGameDetails();
+            if (res > 0)
+                return res;
+        }
 
         for (unsigned int i = 0; i < games.size(); ++i)
         {
@@ -697,6 +700,7 @@ void Downloader::listGames()
         }
     }
 
+    return 0;
 }
 
 void Downloader::repair()
@@ -2791,8 +2795,9 @@ void Downloader::saveChangelog(const std::string& changelog, const std::string& 
     return;
 }
 
-void Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
+int Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
 {
+    int res = 1;
     size_t pos = fileid_string.find("/");
     if (pos == std::string::npos)
     {
@@ -2826,7 +2831,7 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
             else
                 filepath = output_filepath;
             std::cout << "Downloading: " << filepath << std::endl;
-            this->downloadFile(url, filepath, std::string(), gamename);
+            res = this->downloadFile(url, filepath, std::string(), gamename);
             std::cout << std::endl;
         }
         else
@@ -2836,7 +2841,7 @@ void Downloader::downloadFileWithId(const std::string& fileid_string, const std:
         }
     }
 
-    return;
+    return res;
 }
 
 void Downloader::showWishlist()

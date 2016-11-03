@@ -556,6 +556,9 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
+
+    int res = 0;
+
     if (config.bShowWishlist)
         downloader.showWishlist();
     else if (config.bUpdateCache)
@@ -566,7 +569,7 @@ int main(int argc, char *argv[])
     {
         for (std::vector<std::string>::iterator it = vFileIdStrings.begin(); it != vFileIdStrings.end(); it++)
         {
-            downloader.downloadFileWithId(*it, config.sOutputFilename);
+            res |= downloader.downloadFileWithId(*it, config.sOutputFilename) ? 1 : 0;
         }
     }
     else if (config.bRepair) // Repair file
@@ -574,7 +577,7 @@ int main(int argc, char *argv[])
     else if (config.bDownload) // Download games
         downloader.download();
     else if (config.bListDetails || config.bList) // Detailed list of games/extras
-        downloader.listGames();
+        res = downloader.listGames();
     else if (!config.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
     else if (config.bCheckStatus)
@@ -593,5 +596,5 @@ int main(int argc, char *argv[])
     if (!config.sOrphanRegex.empty() && config.bDownload)
         downloader.checkOrphans();
 
-    return 0;
+    return res;
 }

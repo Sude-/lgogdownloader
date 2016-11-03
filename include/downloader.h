@@ -65,14 +65,14 @@ class Downloader
         virtual ~Downloader();
         int init();
         int login();
-        void listGames();
+        int listGames();
         void updateCheck();
         void repair();
         void download();
         void checkOrphans();
         void checkStatus();
         void updateCache();
-        void downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath);
+        int downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath);
         void showWishlist();
         CURL* curlhandle;
         Timer timer;
