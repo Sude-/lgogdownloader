@@ -34,6 +34,7 @@ std::vector<DownloadInfo> vDownloadInfo;
 ThreadSafeQueue<gameFile> dlQueue;
 ThreadSafeQueue<Message> msgQueue;
 ThreadSafeQueue<gameFile> createXMLQueue;
+std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 
 Downloader::Downloader(Config &conf)
 {
@@ -2956,26 +2957,31 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         msgQueue.push(Message("Begin download: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
 
         // Check that directory exists and create subdirectories
+        mtx_create_directories.lock(); // Use mutex to avoid possible race conditions
         if (boost::filesystem::exists(directory))
         {
             if (!boost::filesystem::is_directory(directory))
             {
+                mtx_create_directories.unlock();
                 msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix));
                 continue;
+            }
+            else
+            {
+                mtx_create_directories.unlock();
             }
         }
         else
         {
             if (!boost::filesystem::create_directories(directory))
             {
-                /* Multiple threads could have tried to create the directory at the same time because they detected that the directory didn't exist at the time
-                 * boost::filesystem::create_directories() could have returned false because of this race condition so we have to check again if directory exists */
-                if (!boost::filesystem::exists(directory))
-                {
-                    // Failed to create directory and another thread hasn't created it either. Print error and skip the file download.
-                    msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix));
-                    continue;
-                }
+                mtx_create_directories.unlock();
+                msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix));
+                continue;
+            }
+            else
+            {
+                mtx_create_directories.unlock();
             }
         }
 
@@ -3042,6 +3048,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             {
                 // Check that directory exists and create subdirectories
                 boost::filesystem::path path = xml_directory;
+                mtx_create_directories.lock(); // Use mutex to avoid race conditions
                 if (boost::filesystem::exists(path))
                 {
                     if (!boost::filesystem::is_directory(path))
@@ -3056,6 +3063,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                         msgQueue.push(Message("Failed to create directory: " + path.string(), MSGTYPE_ERROR, msg_prefix));
                     }
                 }
+                mtx_create_directories.unlock();
                 std::ofstream ofs(local_xml_file.string().c_str());
                 if (ofs)
                 {
