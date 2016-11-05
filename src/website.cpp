@@ -204,14 +204,19 @@ std::vector<gameItem> Website::getGames()
                         }
                     }
 
+                    if (!bDownloadDLCInfo && !config.gamehasdlc.empty())
+                    {
+                        if (config.gamehasdlc.isBlacklisted(game.name))
+                            bDownloadDLCInfo = true;
+                    }
+
                     // Check game specific config
                     if (!config.bUpdateCache) // Disable game specific config files for cache update
                     {
                         gameSpecificConfig conf;
-                        conf.bIgnoreDLCCount = false; // Assume false
+                        conf.bIgnoreDLCCount = bDownloadDLCInfo;
                         Util::getGameSpecificConfig(game.name, &conf);
-                        if (conf.bIgnoreDLCCount)
-                            bDownloadDLCInfo = true;
+                        bDownloadDLCInfo = conf.bIgnoreDLCCount;
                     }
 
                     if (bDownloadDLCInfo && !config.sGameRegex.empty())

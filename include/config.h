@@ -63,8 +63,10 @@ class Config
         std::string sConfigFilePath;
         std::string sBlacklistFilePath;
         std::string sIgnorelistFilePath;
+        std::string sGameHasDLCListFilePath;
         std::string sOrphanRegex;
         std::string sCoverList;
+        std::string sGameHasDLCList;
         std::string sReportFilePath;
         std::string sInstallersSubdir;
         std::string sExtrasSubdir;
@@ -93,6 +95,7 @@ class Config
         long int iTimeout;
         Blacklist blacklist;
         Blacklist ignorelist;
+        Blacklist gamehasdlc;
 };
 
 #endif // CONFIG_H__

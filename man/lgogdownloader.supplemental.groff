@@ -75,6 +75,17 @@ blacklist.
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 
 .TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/game_has_dlc.txt\fP
+Allows user to specify which games have dlc and should have their DLC count
+information ignored. The file has the same format and interpretation as a
+blacklist.
+.br
+It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
+.br
+If the file exists lgogdownloader uses it instead of list specified with
+\fB--dlc-list\fP option
+
+.TP
 \fI$XDG_CONFIG_HOME/lgogdownloader/gamespecific/gamename.conf\fP
 JSON formatted file. Sets game specific settings for \fBgamename\fP.
 .br

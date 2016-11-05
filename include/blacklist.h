@@ -31,6 +31,8 @@ class Blacklist
         bool isBlacklisted(const std::string& path);
         bool isBlacklisted(const std::string& path, const std::string& gamename, std::string subdirectory = "");
 
+        std::vector<BlacklistItem>::size_type size() const { return blacklist_.size(); }
+        bool empty() { return blacklist_.empty(); }
     private:
         std::vector<BlacklistItem> blacklist_;
 };

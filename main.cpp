@@ -55,6 +55,7 @@ int main(int argc, char *argv[])
     config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
     config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
     config.sIgnorelistFilePath = config.sConfigDirectory + "/ignorelist.txt";
+    config.sGameHasDLCListFilePath = config.sConfigDirectory + "/game_has_dlc.txt";
 
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
@@ -164,7 +165,7 @@ int main(int argc, char *argv[])
             ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
             ("retries", bpo::value<int>(&config.iRetries)->default_value(3), "Set maximum number of retries on failed download")
             ("wait", bpo::value<int>(&config.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
-            ("cover-list", bpo::value<std::string>(&config.sCoverList)->default_value("https://sites.google.com/site/gogdownloader/covers.xml"), "Set URL for cover list")
+            ("cover-list", bpo::value<std::string>(&config.sCoverList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/covers.xml"), "Set URL for cover list")
             ("subdir-installers", bpo::value<std::string>(&config.sInstallersSubdir)->default_value(""), ("Set subdirectory for extras" + subdir_help_text).c_str())
             ("subdir-extras", bpo::value<std::string>(&config.sExtrasSubdir)->default_value("extras"), ("Set subdirectory for extras" + subdir_help_text).c_str())
             ("subdir-patches", bpo::value<std::string>(&config.sPatchesSubdir)->default_value("patches"), ("Set subdirectory for patches" + subdir_help_text).c_str())
@@ -180,6 +181,7 @@ int main(int argc, char *argv[])
             ("automatic-xml-creation", bpo::value<bool>(&config.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
             ("save-changelogs", bpo::value<bool>(&config.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&config.iThreads)->default_value(4), "Number of download threads")
+            ("dlc-list", bpo::value<std::string>(&config.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -295,6 +297,30 @@ int main(int argc, char *argv[])
                     lines.push_back(std::move(line));
                 }
                 config.ignorelist.initialize(lines);
+            }
+        }
+
+        if (config.sIgnoreDLCCountRegex.empty())
+        {
+            if (boost::filesystem::exists(config.sGameHasDLCListFilePath))
+            {
+                std::ifstream ifs(config.sGameHasDLCListFilePath.c_str());
+                if (!ifs)
+                {
+                    std::cerr << "Could not open list of games that have dlc: " << config.sGameHasDLCListFilePath << std::endl;
+                    return 1;
+                }
+                else
+                {
+                    std::string line;
+                    std::vector<std::string> lines;
+                    while (!ifs.eof())
+                    {
+                        std::getline(ifs, line);
+                        lines.push_back(std::move(line));
+                    }
+                    config.gamehasdlc.initialize(lines);
+                }
             }
         }
 

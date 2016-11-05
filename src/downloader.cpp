@@ -112,6 +112,17 @@ int Downloader::init()
     if (!bInitOK || !bWebsiteIsLoggedIn || config.bLoginHTTP || config.bLoginAPI)
         return 1;
 
+    if (!config.sGameHasDLCList.empty())
+    {
+        if (config.gamehasdlc.empty())
+        {
+            std::string game_has_dlc_list = this->getResponse(config.sGameHasDLCList);
+            if (!game_has_dlc_list.empty())
+                config.gamehasdlc.initialize(Util::tokenize(game_has_dlc_list, "\n"));
+        }
+    }
+    gogWebsite->setConfig(config); // Update config for website handle
+
     if (config.bCover && config.bDownload && !config.bUpdateCheck)
         coverXML = this->getResponse(config.sCoverList);
 
