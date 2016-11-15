@@ -94,14 +94,15 @@ class Downloader
         int loadGameDetailsCache();
         int saveGameDetailsCache();
         std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);
-        std::vector<gameFile> getExtrasFromJSON(const Json::Value& json, const std::string& gamename);
-        std::string getSerialsFromJSON(const Json::Value& json);
+        static std::vector<gameFile> getExtrasFromJSON(const Json::Value& json, const std::string& gamename, const Config& config);
+        static std::string getSerialsFromJSON(const Json::Value& json);
         void saveSerials(const std::string& serials, const std::string& filepath);
-        std::string getChangelogFromJSON(const Json::Value& json);
+        static std::string getChangelogFromJSON(const Json::Value& json);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
         static void processDownloadQueue(Config conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         void printProgress();
+        static void getGameDetailsThread(Config config, const unsigned int& tid);
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);

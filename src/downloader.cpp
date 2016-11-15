@@ -27,6 +27,7 @@
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/Uri.h>
 #include <termios.h>
+#include <algorithm>
 
 namespace bptime = boost::posix_time;
 
@@ -34,6 +35,8 @@ std::vector<DownloadInfo> vDownloadInfo;
 ThreadSafeQueue<gameFile> dlQueue;
 ThreadSafeQueue<Message> msgQueue;
 ThreadSafeQueue<gameFile> createXMLQueue;
+ThreadSafeQueue<gameItem> gameItemQueue;
+ThreadSafeQueue<gameDetails> gameDetailsQueue;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 
 Downloader::Downloader(Config &conf)
@@ -304,208 +307,77 @@ int Downloader::getGameDetails()
         }
     }
 
-    gameDetails game;
-    int updated = 0;
-    for (unsigned int i = 0; i < gameItems.size(); ++i)
+    if (!gameItems.empty())
     {
-        std::cerr << "Getting game info " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
-        bool bHasDLC = !gameItems[i].dlcnames.empty();
-
-        gameSpecificConfig conf;
-        conf.bDLC = config.bDLC;
-        conf.bIgnoreDLCCount = false;
-        conf.iInstallerLanguage = config.iInstallerLanguage;
-        conf.iInstallerPlatform = config.iInstallerPlatform;
-        conf.dirConf = dirConfDefault;
-        conf.vLanguagePriority = config.vLanguagePriority;
-        conf.vPlatformPriority = config.vPlatformPriority;
-        if (!config.bUpdateCache) // Disable game specific config files for cache update
+        for (unsigned int i = 0; i < gameItems.size(); ++i)
         {
-            int iOptionsOverridden = Util::getGameSpecificConfig(gameItems[i].name, &conf);
-            if (iOptionsOverridden > 0)
+            gameItemQueue.push(gameItems[i]);
+        }
+
+        // Create threads
+        unsigned int threads = config.iThreads;
+        if (gameItemQueue.size() < config.iThreads)
+        {
+            threads = gameItemQueue.size();
+        }
+        std::vector<std::thread> vThreads;
+        for (unsigned int i = 0; i < threads; ++i)
+        {
+            DownloadInfo dlInfo;
+            dlInfo.setStatus(DLSTATUS_NOTSTARTED);
+            vDownloadInfo.push_back(dlInfo);
+            vThreads.push_back(std::thread(Downloader::getGameDetailsThread, this->config, i));
+        }
+
+        unsigned int dl_status = DLSTATUS_NOTSTARTED;
+        while (dl_status != DLSTATUS_FINISHED)
+        {
+            dl_status = DLSTATUS_NOTSTARTED;
+
+            // Print progress information once per 100ms
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::cerr << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
+
+            // Print messages from message queue first
+            Message msg;
+            while (msgQueue.try_pop(msg))
             {
-                std::cerr << std::endl << gameItems[i].name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
-                if (config.bVerbose)
+                std::cerr << msg.getFormattedString(config.bColor, true) << std::endl;
+                if (config.bReport)
                 {
-                    if (conf.bIgnoreDLCCount)
-                        std::cerr << "\tIgnore DLC count" << std::endl;
-                    if (conf.bDLC != config.bDLC)
-                        std::cerr << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
-                    if (conf.iInstallerLanguage != config.iInstallerLanguage)
-                        std::cerr << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
-                    if (conf.vLanguagePriority != config.vLanguagePriority)
-                    {
-                        std::cerr << "\tLanguage priority:" << std::endl;
-                        for (unsigned int j = 0; j < conf.vLanguagePriority.size(); ++j)
-                        {
-                            std::cerr << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
-                        }
-                    }
-                    if (conf.iInstallerPlatform != config.iInstallerPlatform)
-                        std::cerr << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
-                    if (conf.vPlatformPriority != config.vPlatformPriority)
-                    {
-                        std::cerr << "\tPlatform priority:" << std::endl;
-                        for (unsigned int j = 0; j < conf.vPlatformPriority.size(); ++j)
-                        {
-                            std::cerr << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
-                        }
-                    }
+                    this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
                 }
+            }
+
+            for (unsigned int i = 0; i < vDownloadInfo.size(); ++i)
+            {
+                unsigned int status = vDownloadInfo[i].getStatus();
+                dl_status |= status;
+            }
+
+            std::cerr << "Getting game info " << (gameItems.size() - gameItemQueue.size()) << " / " << gameItems.size() << std::endl;
+
+            if (dl_status != DLSTATUS_FINISHED)
+            {
+                std::cerr << "\033[1A\r" << std::flush; // Move cursor up by 1 row
             }
         }
 
-        game = gogAPI->getGameDetails(gameItems[i].name, conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
-        if (!gogAPI->getError())
+        // Join threads
+        for (unsigned int i = 0; i < vThreads.size(); ++i)
+            vThreads[i].join();
+
+        vThreads.clear();
+        vDownloadInfo.clear();
+
+        gameDetails details;
+        while (gameDetailsQueue.try_pop(details))
         {
-            game.filterWithPriorities(conf);
-            Json::Value gameDetailsJSON;
-
-            if (!gameItems[i].gamedetailsjson.empty())
-                gameDetailsJSON = gameItems[i].gamedetailsjson;
-
-            if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
-            {
-                if (gameDetailsJSON.empty())
-                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-                game.extras = this->getExtrasFromJSON(gameDetailsJSON, gameItems[i].name);
-            }
-            if (config.bSaveSerials)
-            {
-                if (gameDetailsJSON.empty())
-                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-                game.serials = this->getSerialsFromJSON(gameDetailsJSON);
-            }
-            if (config.bSaveChangelogs)
-            {
-                if (gameDetailsJSON.empty())
-                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-                game.changelog = this->getChangelogFromJSON(gameDetailsJSON);
-            }
-
-            // Ignore DLC count and try to get DLCs from JSON
-            if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
-            {
-                if (gameDetailsJSON.empty())
-                    gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-
-                gameItems[i].dlcnames = Util::getDLCNamesFromJSON(gameDetailsJSON["dlcs"]);
-                bHasDLC = !gameItems[i].dlcnames.empty();
-            }
-
-            if (game.dlcs.empty() && bHasDLC && conf.bDLC)
-            {
-                for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
-                {
-                    gameDetails dlc;
-                    dlc = gogAPI->getGameDetails(gameItems[i].dlcnames[j], conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
-                    dlc.filterWithPriorities(conf);
-                    if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
-                    {
-                        if (gameDetailsJSON.empty())
-                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-
-                        // Make sure we get extras for the right DLC
-                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
-                        {
-                            std::vector<std::string> urls;
-                            if (gameDetailsJSON["dlcs"][k].isMember("extras"))
-                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["extras"], urls);
-
-                            if (!urls.empty())
-                            {
-                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
-                                {
-                                    dlc.extras = this->getExtrasFromJSON(gameDetailsJSON["dlcs"][k], gameItems[i].dlcnames[j]);
-                                }
-                            }
-                        }
-                    }
-
-                    if (config.bSaveSerials)
-                    {
-                        if (gameDetailsJSON.empty())
-                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-
-                        // Make sure we save serial for the right DLC
-                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
-                        {
-                            std::vector<std::string> urls;
-                            if (gameDetailsJSON["dlcs"][k].isMember("cdKey") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
-                            {
-                                // Assuming that only DLC with installers can have serial
-                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
-                            }
-
-                            if (!urls.empty())
-                            {
-                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
-                                {
-                                    dlc.serials = this->getSerialsFromJSON(gameDetailsJSON["dlcs"][k]);
-                                }
-                            }
-                        }
-                    }
-
-                    if (config.bSaveChangelogs)
-                    {
-                        if (gameDetailsJSON.empty())
-                            gameDetailsJSON = gogWebsite->getGameDetailsJSON(gameItems[i].id);
-
-                        // Make sure we save changelog for the right DLC
-                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
-                        {
-                            std::vector<std::string> urls;
-                            if (gameDetailsJSON["dlcs"][k].isMember("changelog") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
-                            {
-                                // Assuming that only DLC with installers can have changelog
-                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
-                            }
-
-                            if (!urls.empty())
-                            {
-                                if (urls[0].find("/" + gameItems[i].dlcnames[j] + "/") != std::string::npos)
-                                {
-                                    dlc.changelog = this->getChangelogFromJSON(gameDetailsJSON["dlcs"][k]);
-                                }
-                            }
-                        }
-                    }
-
-                    game.dlcs.push_back(dlc);
-                }
-            }
-
-            game.makeFilepaths(conf.dirConf);
-
-            if (!config.bUpdateCheck)
-                games.push_back(game);
-            else
-            { // Update check, only add games that have updated files
-                for (unsigned int j = 0; j < game.installers.size(); ++j)
-                {
-                    if (game.installers[j].updated)
-                    {
-                        games.push_back(game);
-                        updated++;
-                        break; // add the game only once
-                    }
-                }
-                if (updated >= gogAPI->user.notifications_games)
-                { // Gone through all updated games. No need to go through the rest.
-                    std::cerr << std::endl << "Got info for all updated games. Moving on..." << std::endl;
-                    break;
-                }
-            }
+            this->games.push_back(details);
         }
-        else
-        {
-            std::cerr << gogAPI->getErrorMessage() << std::endl;
-            gogAPI->clearError();
-            continue;
-        }
+        std::sort(this->games.begin(), this->games.end(), [](const gameDetails& i, const gameDetails& j) -> bool { return i.gamename < j.gamename; });
     }
-    std::cerr << std::endl;
+
     return 0;
 }
 
@@ -1888,12 +1760,23 @@ uintmax_t Downloader::getResumePosition()
     return this->resume_position;
 }
 
-std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, const std::string& gamename)
+std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, const std::string& gamename, const Config& config)
 {
     std::vector<gameFile> extras;
 
-    std::vector<std::string> downloaderUrls;
-    Util::getDownloaderUrlsFromJSON(json["extras"], downloaderUrls);
+    // Create new API handle and set curl options for the API
+    API* api = new API(config.sToken, config.sSecret);
+    api->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+    if (!config.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
+
+    if (!api->init())
+    {
+        delete api;
+        return extras;
+    }
 
     for (unsigned int i = 0; i < json["extras"].size(); ++i)
     {
@@ -1903,7 +1786,12 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
         id.assign(downloaderUrl.begin()+downloaderUrl.find_last_of("/")+1, downloaderUrl.end());
 
         // Get path from download link
-        std::string url = gogAPI->getExtraLink(gamename, id);
+        std::string url = api->getExtraLink(gamename, id);
+        if (api->getError())
+        {
+            api->clearError();
+            continue;
+        }
         url = htmlcxx::Uri::decode(url);
         if (url.find("/extras/") != std::string::npos)
         {
@@ -1952,6 +1840,7 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
 
         extras.push_back(gf);
     }
+    delete api;
 
     return extras;
 }
@@ -3418,4 +3307,246 @@ void Downloader::printProgress()
             std::cout << "\033[" << vProgressText.size() << "A\r" << std::flush;
         }
     }
+}
+
+void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
+{
+    std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
+
+    API* api = new API(config.sToken, config.sSecret);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+    if (!config.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
+
+    if (!api->init())
+    {
+        delete api;
+        msgQueue.push(Message("API init failed", MSGTYPE_ERROR, msg_prefix));
+        vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+        return;
+    }
+
+    // Create new GOG website handle
+    Website* website = new Website(config);
+    if (!website->IsLoggedIn())
+    {
+        delete api;
+        delete website;
+        msgQueue.push(Message("Website not logged in", MSGTYPE_ERROR, msg_prefix));
+        vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+        return;
+    }
+
+    // Set default game specific directory options to values from config
+    gameSpecificDirectoryConfig dirConfDefault;
+    dirConfDefault.sDirectory = config.sDirectory;
+    dirConfDefault.bSubDirectories = config.bSubDirectories;
+    dirConfDefault.sGameSubdir = config.sGameSubdir;
+    dirConfDefault.sInstallersSubdir = config.sInstallersSubdir;
+    dirConfDefault.sExtrasSubdir = config.sExtrasSubdir;
+    dirConfDefault.sLanguagePackSubdir = config.sLanguagePackSubdir;
+    dirConfDefault.sDLCSubdir = config.sDLCSubdir;
+    dirConfDefault.sPatchesSubdir = config.sPatchesSubdir;
+
+    gameItem game_item;
+    while (gameItemQueue.try_pop(game_item))
+    {
+        gameDetails game;
+        bool bHasDLC = !game_item.dlcnames.empty();
+
+        gameSpecificConfig conf;
+        conf.bDLC = config.bDLC;
+        conf.bIgnoreDLCCount = false;
+        conf.iInstallerLanguage = config.iInstallerLanguage;
+        conf.iInstallerPlatform = config.iInstallerPlatform;
+        conf.dirConf = dirConfDefault;
+        conf.vLanguagePriority = config.vLanguagePriority;
+        conf.vPlatformPriority = config.vPlatformPriority;
+        if (!config.bUpdateCache) // Disable game specific config files for cache update
+        {
+            int iOptionsOverridden = Util::getGameSpecificConfig(game_item.name, &conf);
+            if (iOptionsOverridden > 0)
+            {
+                std::ostringstream ss;
+                ss << game_item.name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
+                if (config.bVerbose)
+                {
+                    if (conf.bIgnoreDLCCount)
+                        ss << "\tIgnore DLC count" << std::endl;
+                    if (conf.bDLC != config.bDLC)
+                        ss << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+                    if (conf.iInstallerLanguage != config.iInstallerLanguage)
+                        ss << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
+                    if (conf.vLanguagePriority != config.vLanguagePriority)
+                    {
+                        ss << "\tLanguage priority:" << std::endl;
+                        for (unsigned int j = 0; j < conf.vLanguagePriority.size(); ++j)
+                        {
+                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
+                        }
+                    }
+                    if (conf.iInstallerPlatform != config.iInstallerPlatform)
+                        ss << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
+                    if (conf.vPlatformPriority != config.vPlatformPriority)
+                    {
+                        ss << "\tPlatform priority:" << std::endl;
+                        for (unsigned int j = 0; j < conf.vPlatformPriority.size(); ++j)
+                        {
+                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
+                        }
+                    }
+                }
+                msgQueue.push(Message(ss.str(), MSGTYPE_INFO, msg_prefix));
+            }
+        }
+
+        game = api->getGameDetails(game_item.name, conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
+        if (!api->getError())
+        {
+            game.filterWithPriorities(conf);
+            Json::Value gameDetailsJSON;
+
+            if (!game_item.gamedetailsjson.empty())
+                gameDetailsJSON = game_item.gamedetailsjson;
+
+            if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+                game.extras = Downloader::getExtrasFromJSON(gameDetailsJSON, game_item.name, config);
+            }
+            if (config.bSaveSerials)
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+                game.serials = Downloader::getSerialsFromJSON(gameDetailsJSON);
+            }
+            if (config.bSaveChangelogs)
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+                game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
+            }
+
+            // Ignore DLC count and try to get DLCs from JSON
+            if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
+            {
+                if (gameDetailsJSON.empty())
+                    gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+
+                game_item.dlcnames = Util::getDLCNamesFromJSON(gameDetailsJSON["dlcs"]);
+                bHasDLC = !game_item.dlcnames.empty();
+            }
+
+            if (game.dlcs.empty() && bHasDLC && conf.bDLC)
+            {
+                for (unsigned int j = 0; j < game_item.dlcnames.size(); ++j)
+                {
+                    gameDetails dlc;
+                    dlc = api->getGameDetails(game_item.dlcnames[j], conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
+                    dlc.filterWithPriorities(conf);
+                    if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
+                    {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+
+                        // Make sure we get extras for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("extras"))
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["extras"], urls);
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + game_item.dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.extras = Downloader::getExtrasFromJSON(gameDetailsJSON["dlcs"][k], game_item.dlcnames[j], config);
+                                }
+                            }
+                        }
+                    }
+
+                    if (config.bSaveSerials)
+                    {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+
+                        // Make sure we save serial for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("cdKey") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
+                            {
+                                // Assuming that only DLC with installers can have serial
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
+                            }
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + game_item.dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.serials = Downloader::getSerialsFromJSON(gameDetailsJSON["dlcs"][k]);
+                                }
+                            }
+                        }
+                    }
+
+                    if (config.bSaveChangelogs)
+                    {
+                        if (gameDetailsJSON.empty())
+                            gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
+
+                        // Make sure we save changelog for the right DLC
+                        for (unsigned int k = 0; k < gameDetailsJSON["dlcs"].size(); ++k)
+                        {
+                            std::vector<std::string> urls;
+                            if (gameDetailsJSON["dlcs"][k].isMember("changelog") && gameDetailsJSON["dlcs"][k].isMember("downloads"))
+                            {
+                                // Assuming that only DLC with installers can have changelog
+                                Util::getDownloaderUrlsFromJSON(gameDetailsJSON["dlcs"][k]["downloads"], urls);
+                            }
+
+                            if (!urls.empty())
+                            {
+                                if (urls[0].find("/" + game_item.dlcnames[j] + "/") != std::string::npos)
+                                {
+                                    dlc.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON["dlcs"][k]);
+                                }
+                            }
+                        }
+                    }
+
+                    game.dlcs.push_back(dlc);
+                }
+            }
+
+            game.makeFilepaths(conf.dirConf);
+
+            if (!config.bUpdateCheck)
+                gameDetailsQueue.push(game);
+            else
+            { // Update check, only add games that have updated files
+                for (unsigned int j = 0; j < game.installers.size(); ++j)
+                {
+                    if (game.installers[j].updated)
+                    {
+                        gameDetailsQueue.push(game);
+                        break; // add the game only once
+                    }
+                }
+            }
+        }
+        else
+        {
+            msgQueue.push(Message(api->getErrorMessage(), MSGTYPE_ERROR, msg_prefix));
+            api->clearError();
+            continue;
+        }
+    }
+    vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+    delete api;
+    delete website;
+    return;
 }
