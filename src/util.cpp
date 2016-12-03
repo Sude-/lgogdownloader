@@ -379,9 +379,16 @@ void Util::setFilePermissions(const boost::filesystem::path& path, const boost::
 
 int Util::getTerminalWidth()
 {
-    struct winsize w;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-    return static_cast<int>(w.ws_col);
+    int width;
+    if(isatty(STDOUT_FILENO))
+    {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        width = static_cast<int>(w.ws_col);
+    }
+    else
+        width = 10000;//Something sufficiently big
+    return width;
 }
 
 
