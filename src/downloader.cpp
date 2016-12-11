@@ -80,6 +80,7 @@ int Downloader::init()
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
@@ -2805,6 +2806,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.sVersionString.c_str());
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
 
     curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
     curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);

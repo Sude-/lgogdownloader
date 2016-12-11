@@ -34,6 +34,7 @@ API::API(const std::string& token, const std::string& secret)
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_PROGRESSDATA, this);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
+    curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
 
     this->error = false;
     this->config.oauth_token = token;
