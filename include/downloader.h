@@ -63,6 +63,7 @@ class Downloader
     public:
         Downloader(Config &conf);
         virtual ~Downloader();
+        bool isLoggedIn();
         int init();
         int login();
         int listGames();

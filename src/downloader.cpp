@@ -7,7 +7,6 @@
 #include "downloader.h"
 #include "util.h"
 #include "globalconstants.h"
-#include "ssl_thread_setup.h"
 #include "downloadinfo.h"
 #include "message.h"
 
@@ -28,6 +27,8 @@
 #include <htmlcxx/html/Uri.h>
 #include <termios.h>
 #include <algorithm>
+#include <thread>
+#include <mutex>
 
 namespace bptime = boost::posix_time;
 
@@ -41,41 +42,15 @@ std::mutex mtx_create_directories; // Mutex for creating directories in Download
 
 Downloader::Downloader(Config &conf)
 {
-    ssl_thread_setup();
     this->config = conf;
     if (config.bLoginHTTP && boost::filesystem::exists(config.sCookiePath))
         if (!boost::filesystem::remove(config.sCookiePath))
             std::cerr << "Failed to delete " << config.sCookiePath << std::endl;
-}
 
-Downloader::~Downloader()
-{
-    if (config.bReport)
-        if (this->report_ofs)
-            this->report_ofs.close();
-    delete progressbar;
-    delete gogAPI;
-    delete gogWebsite;
-    curl_easy_cleanup(curlhandle);
-    curl_global_cleanup();
-    ssl_thread_cleanup();
-    // Make sure that cookie file is only readable/writable by owner
-    if (!config.bRespectUmask)
-        Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
-}
-
-
-/* Initialize the downloader
-    returns 0 if successful
-    returns 1 if failed
-*/
-int Downloader::init()
-{
     this->resume_position = 0;
     this->retries = 0;
 
     // Initialize curl and set curl options
-    curl_global_init(CURL_GLOBAL_ALL);
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
@@ -100,7 +75,6 @@ int Downloader::init()
 
     // Create new GOG website handle
     gogWebsite = new Website(config);
-    bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
 
     // Create new API handle and set curl options for the API
     gogAPI = new API(config.sToken, config.sSecret);
@@ -110,12 +84,55 @@ int Downloader::init()
     if (!config.sCACertPath.empty())
         gogAPI->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
 
+    gogAPI->init();
+
     progressbar = new ProgressBar(config.bUnicode, config.bColor);
+}
 
-    bool bInitOK = gogAPI->init(); // Initialize the API
-    if (!bInitOK || !bWebsiteIsLoggedIn || config.bLoginHTTP || config.bLoginAPI)
-        return 1;
+Downloader::~Downloader()
+{
+    if (config.bReport)
+        if (this->report_ofs)
+            this->report_ofs.close();
+    delete progressbar;
+    delete gogAPI;
+    delete gogWebsite;
+    curl_easy_cleanup(curlhandle);
+    // Make sure that cookie file is only readable/writable by owner
+    if (!config.bRespectUmask)
+        Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+}
 
+/* Login check
+    returns false if not logged in
+    returns true if logged in
+*/
+bool Downloader::isLoggedIn()
+{
+    bool bIsLoggedIn = false;
+    config.bLoginAPI = false;
+    config.bLoginHTTP = false;
+
+    bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
+    if (!bWebsiteIsLoggedIn)
+        config.bLoginHTTP = true;
+
+    bool bIsLoggedInAPI = gogAPI->isLoggedIn();
+    if (!bIsLoggedInAPI)
+        config.bLoginAPI = true;
+
+    if (bIsLoggedInAPI && bWebsiteIsLoggedIn)
+        bIsLoggedIn = true;
+
+    return bIsLoggedIn;
+}
+
+/* Initialize the downloader
+    returns 0 if failed
+    returns 1 if successful
+*/
+int Downloader::init()
+{
     if (!config.sGameHasDLCList.empty())
     {
         if (config.gamehasdlc.empty())
@@ -127,25 +144,18 @@ int Downloader::init()
     }
     gogWebsite->setConfig(config); // Update config for website handle
 
-    if (config.bCover && config.bDownload && !config.bUpdateCheck)
-        coverXML = this->getResponse(config.sCoverList);
-
-    // updateCheck() calls getGameList() if needed
-    // getGameList() is not needed when using cache unless we want to list games from account
-    if ( !config.bUpdateCheck && (!config.bUseCache || (config.bUseCache && config.bList)) && config.sFileIdString.empty() && !config.bShowWishlist )
-        this->getGameList();
-
     if (config.bReport && (config.bDownload || config.bRepair))
     {
         this->report_ofs.open(config.sReportFilePath);
         if (!this->report_ofs)
         {
+            config.bReport = false;
             std::cerr << "Failed to create " << config.sReportFilePath << std::endl;
-            return 1;
+            return 0;
         }
     }
 
-    return 0;
+    return 1;
 }
 
 /* Login
@@ -183,6 +193,11 @@ int Downloader::login()
         // Login to website
         if (config.bLoginHTTP)
         {
+            // Delete old cookies
+            if (boost::filesystem::exists(config.sCookiePath))
+                if (!boost::filesystem::remove(config.sCookiePath))
+                    std::cerr << "Failed to delete " << config.sCookiePath << std::endl;
+
             if (!gogWebsite->Login(email, password))
             {
                 std::cerr << "HTTP: Login failed" << std::endl;
@@ -307,6 +322,9 @@ int Downloader::getGameDetails()
             return 1;
         }
     }
+
+    if (gameItems.empty())
+        this->getGameList();
 
     if (!gameItems.empty())
     {
@@ -578,6 +596,9 @@ int Downloader::listGames()
     }
     else
     {   // List game names
+        if (gameItems.empty())
+            this->getGameList();
+
         for (unsigned int i = 0; i < gameItems.size(); ++i)
         {
             std::cout << gameItems[i].name << std::endl;
@@ -877,6 +898,9 @@ void Downloader::download()
 {
     if (this->games.empty())
         this->getGameDetails();
+
+    if (config.bCover && !config.bUpdateCheck)
+        coverXML = this->getResponse(config.sCoverList);
 
     for (unsigned int i = 0; i < games.size(); ++i)
     {

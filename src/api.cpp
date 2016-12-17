@@ -41,10 +41,31 @@ API::API(const std::string& token, const std::string& secret)
     this->config.oauth_secret = secret;
 }
 
+/* Initialize the API
+    returns 0 if failed
+    returns 1 if successful
+*/
 int API::init()
 {
     int res = 0;
+
     this->getAPIConfig();
+
+    if (!this->getError())
+        res = 1;
+    else
+        this->clearError();
+
+    return res;
+}
+
+/* Login check
+    returns false if not logged in
+    returns true if logged in
+*/
+bool API::isLoggedIn()
+{
+    int res = 0;
 
     // Check if we already have token and secret
     if (!this->config.oauth_token.empty() && !this->config.oauth_secret.empty())
@@ -55,7 +76,6 @@ int API::init()
 
     return res;
 }
-
 
 int API::getAPIConfig()
 {

@@ -8,6 +8,7 @@
 #include "config.h"
 #include "util.h"
 #include "globalconstants.h"
+#include "ssl_thread_setup.h"
 
 #include <fstream>
 #include <boost/filesystem.hpp>
@@ -475,17 +476,43 @@ int main(int argc, char *argv[])
         std::cerr << std::endl;
     }
 
-    Downloader downloader(config);
-    int initResult = downloader.init();
+    // Init curl globally
+    ssl_thread_setup();
+    curl_global_init(CURL_GLOBAL_ALL);
 
-    int iLoginResult = 0;
-    if (config.bLoginAPI || config.bLoginHTTP || initResult == 1)
+    if (config.bLoginAPI)
     {
-        if (!config.bLoginAPI && !config.bLoginHTTP)
-            downloader.config.bLoginAPI = true;
-        iLoginResult = downloader.login();
-        if (iLoginResult == 0)
-            return 1;
+        config.sToken = "";
+        config.sSecret = "";
+    }
+
+    Downloader downloader(config);
+
+    int iLoginTries = 0;
+    bool bLoginOK = false;
+
+    // Login because --login, --login-api or --login-website was used
+    if (config.bLoginAPI || config.bLoginHTTP)
+        bLoginOK = downloader.login();
+
+    bool bIsLoggedin = downloader.isLoggedIn();
+
+    // Login because we are not logged in
+    while (iLoginTries++ < config.iRetries && !bIsLoggedin)
+    {
+        bLoginOK = downloader.login();
+        if (bLoginOK)
+        {
+            bIsLoggedin = downloader.isLoggedIn();
+        }
+    }
+
+    // Login failed, cleanup
+    if (!bLoginOK && !bIsLoggedin)
+    {
+        curl_global_cleanup();
+        ssl_thread_cleanup();
+        return 1;
     }
 
     // Make sure that config file and cookie file are only readable/writable by owner
@@ -495,9 +522,9 @@ int main(int argc, char *argv[])
         Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
     }
 
-    if (config.bSaveConfig || iLoginResult == 1)
+    if (config.bSaveConfig || bLoginOK)
     {
-        if (iLoginResult == 1)
+        if (bLoginOK)
         {
             set_vm_value(vm, "token", downloader.config.sToken);
             set_vm_value(vm, "secret", downloader.config.sSecret);
@@ -553,11 +580,17 @@ int main(int argc, char *argv[])
             if (!config.bRespectUmask)
                 Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             if (config.bSaveConfig)
+            {
+                curl_global_cleanup();
+                ssl_thread_cleanup();
                 return 0;
+            }
         }
         else
         {
             std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            curl_global_cleanup();
+            ssl_thread_cleanup();
             return 1;
         }
     }
@@ -574,13 +607,26 @@ int main(int argc, char *argv[])
             ofs.close();
             if (!config.bRespectUmask)
                 Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+
+            curl_global_cleanup();
+            ssl_thread_cleanup();
             return 0;
         }
         else
         {
             std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            curl_global_cleanup();
+            ssl_thread_cleanup();
             return 1;
         }
+    }
+
+    bool bInitOK = downloader.init();
+    if (!bInitOK)
+    {
+        curl_global_cleanup();
+        ssl_thread_cleanup();
+        return 1;
     }
 
     int res = 0;
@@ -621,6 +667,9 @@ int main(int argc, char *argv[])
     // Orphan check was called at the same time as download. Perform it after download has finished
     if (!config.sOrphanRegex.empty() && config.bDownload)
         downloader.checkOrphans();
+
+    curl_global_cleanup();
+    ssl_thread_cleanup();
 
     return res;
 }

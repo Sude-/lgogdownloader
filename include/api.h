@@ -55,6 +55,7 @@ class API
 
         API(const std::string& token,const std::string& secret);
         int init();
+        bool isLoggedIn();
         int login(const std::string& email, const std::string& password);
         int getAPIConfig();
         std::string getResponse(const std::string& url);
