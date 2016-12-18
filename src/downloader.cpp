@@ -334,11 +334,7 @@ int Downloader::getGameDetails()
         }
 
         // Create threads
-        unsigned int threads = config.iThreads;
-        if (gameItemQueue.size() < config.iThreads)
-        {
-            threads = gameItemQueue.size();
-        }
+        unsigned int threads = std::min(config.iThreads, static_cast<unsigned int>(gameItemQueue.size()));
         std::vector<std::thread> vThreads;
         for (unsigned int i = 0; i < threads; ++i)
         {
@@ -1006,24 +1002,30 @@ void Downloader::download()
         }
     }
 
-    // Create download threads
-    std::vector<std::thread> vThreads;
-    for (unsigned int i = 0; i < config.iThreads; ++i)
+    if (!dlQueue.empty())
     {
-        DownloadInfo dlInfo;
-        dlInfo.setStatus(DLSTATUS_NOTSTARTED);
-        vDownloadInfo.push_back(dlInfo);
-        vThreads.push_back(std::thread(Downloader::processDownloadQueue, this->config, i));
+        // Limit thread count to number of items in download queue
+        unsigned int iThreads = std::min(config.iThreads, static_cast<unsigned int>(dlQueue.size()));
+
+        // Create download threads
+        std::vector<std::thread> vThreads;
+        for (unsigned int i = 0; i < iThreads; ++i)
+        {
+            DownloadInfo dlInfo;
+            dlInfo.setStatus(DLSTATUS_NOTSTARTED);
+            vDownloadInfo.push_back(dlInfo);
+            vThreads.push_back(std::thread(Downloader::processDownloadQueue, this->config, i));
+        }
+
+        this->printProgress();
+
+        // Join threads
+        for (unsigned int i = 0; i < vThreads.size(); ++i)
+            vThreads[i].join();
+
+        vThreads.clear();
+        vDownloadInfo.clear();
     }
-
-    this->printProgress();
-
-    // Join threads
-    for (unsigned int i = 0; i < vThreads.size(); ++i)
-        vThreads[i].join();
-
-    vThreads.clear();
-    vDownloadInfo.clear();
 
     // Create xml data for all files in the queue
     if (!createXMLQueue.empty())
