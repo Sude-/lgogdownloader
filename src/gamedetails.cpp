@@ -181,3 +181,25 @@ std::string gameDetails::getChangelogFilepath()
 {
     return this->changelogFilepath;
 }
+
+// Return vector containing all game files
+std::vector<gameFile> gameDetails::getGameFileVector()
+{
+    std::vector<gameFile> vGameFiles;
+
+    vGameFiles.insert(std::end(vGameFiles), std::begin(installers), std::end(installers));
+    vGameFiles.insert(std::end(vGameFiles), std::begin(patches), std::end(patches));
+    vGameFiles.insert(std::end(vGameFiles), std::begin(extras), std::end(extras));
+    vGameFiles.insert(std::end(vGameFiles), std::begin(languagepacks), std::end(languagepacks));
+
+    if (!dlcs.empty())
+    {
+        for (unsigned int i = 0; i < dlcs.size(); ++i)
+        {
+            std::vector<gameFile> vGameFilesDLC = dlcs[i].getGameFileVector();
+            vGameFiles.insert(std::end(vGameFiles), std::begin(vGameFilesDLC), std::end(vGameFilesDLC));
+        }
+    }
+
+    return vGameFiles;
+}

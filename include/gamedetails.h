@@ -35,6 +35,7 @@ class gameDetails
         std::string getSerialsFilepath();
         std::string getChangelogFilepath();
         Json::Value getDetailsAsJson();
+        std::vector<gameFile> getGameFileVector();
         virtual ~gameDetails();
     protected:
         void filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config);

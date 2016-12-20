@@ -18,6 +18,7 @@ const unsigned int GFTYPE_INSTALLER = 1 << 0;
 const unsigned int GFTYPE_EXTRA     = 1 << 1;
 const unsigned int GFTYPE_PATCH     = 1 << 2;
 const unsigned int GFTYPE_LANGPACK  = 1 << 3;
+const unsigned int GFTYPE_DLC       = 1 << 4;
 
 class gameFile
 {

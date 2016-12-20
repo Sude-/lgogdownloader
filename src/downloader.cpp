@@ -2086,276 +2086,88 @@ void Downloader::checkStatus()
     if (this->games.empty())
         this->getGameDetails();
 
+    // Create a vector containing all game files
+    std::vector<gameFile> vGameFiles;
     for (unsigned int i = 0; i < games.size(); ++i)
     {
-        if (config.bInstallers)
+        std::vector<gameFile> vec = games[i].getGameFileVector();
+        vGameFiles.insert(std::end(vGameFiles), std::begin(vec), std::end(vec));
+    }
+
+    for (unsigned int i = 0; i < vGameFiles.size(); ++i)
+    {
+        unsigned int type = vGameFiles[i].type;
+        if (!config.bDLC && (type & GFTYPE_DLC))
+            continue;
+        if (!config.bInstallers && (type & GFTYPE_INSTALLER))
+            continue;
+        if (!config.bExtras && (type & GFTYPE_EXTRA))
+            continue;
+        if (!config.bPatches && (type & GFTYPE_PATCH))
+            continue;
+        if (!config.bLanguagePacks && (type & GFTYPE_LANGPACK))
+            continue;
+
+        boost::filesystem::path filepath = vGameFiles[i].getFilepath();
+
+        if (config.blacklist.isBlacklisted(filepath.native()))
+            continue;
+
+        std::string gamename = vGameFiles[i].gamename;
+        std::string id = vGameFiles[i].id;
+
+        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
         {
-            for (unsigned int j = 0; j < games[i].installers.size(); ++j)
+            std::string remoteHash;
+            bool bHashOK = true; // assume hash OK
+            uintmax_t filesize = boost::filesystem::file_size(filepath);
+
+            // GOG only provides xml data for installers, patches and language packs
+            if (type & (GFTYPE_INSTALLER | GFTYPE_PATCH | GFTYPE_LANGPACK))
+                remoteHash = this->getRemoteFileHash(gamename, id);
+            std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
+
+            if (!remoteHash.empty())
             {
-                boost::filesystem::path filepath = games[i].installers[j].getFilepath();
-
-                if (config.blacklist.isBlacklisted(filepath.native()))
-                    continue;
-                std::string remoteHash;
-                std::string localHash;
-                bool bHashOK = true; // assume hash OK
-                uintmax_t filesize;
-
-                localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                remoteHash = this->getRemoteFileHash(games[i].gamename, games[i].installers[j].id);
-
-                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
+                if (remoteHash != localHash)
+                    bHashOK = false;
+                else
                 {
-                    filesize = boost::filesystem::file_size(filepath);
-
-                    if (remoteHash != localHash)
-                        bHashOK = false;
+                    // Check for incomplete file by comparing the filesizes
+                    // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
+                    uintmax_t filesize_xml = 0;
+                    boost::filesystem::path path = filepath;
+                    boost::filesystem::path local_xml_file;
+                    if (!gamename.empty())
+                        local_xml_file = config.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
                     else
+                        local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+
+                    if (boost::filesystem::exists(local_xml_file))
                     {
-                        // Check for incomplete file by comparing the filesizes
-                        // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                        uintmax_t filesize_xml = 0;
-                        boost::filesystem::path path = filepath;
-                        boost::filesystem::path local_xml_file;
-                        if (!games[i].gamename.empty())
-                            local_xml_file = config.sXMLDirectory + "/" + games[i].gamename + "/" + path.filename().string() + ".xml";
-                        else
-                            local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
-
-                        if (boost::filesystem::exists(local_xml_file))
+                        tinyxml2::XMLDocument local_xml;
+                        local_xml.LoadFile(local_xml_file.string().c_str());
+                        tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
+                        if (fileElemLocal)
                         {
-                            tinyxml2::XMLDocument local_xml;
-                            local_xml.LoadFile(local_xml_file.string().c_str());
-                            tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
-                            if (fileElemLocal)
-                            {
-                                std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
-                                filesize_xml = std::stoull(filesize_xml_str);
-                            }
-                        }
-
-                        if (filesize_xml > 0 && filesize_xml != filesize)
-                        {
-                            localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                            std::cout << "FS " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                            continue;
+                            std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
+                            filesize_xml = std::stoull(filesize_xml_str);
                         }
                     }
 
-                    std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                }
-                else
-                {
-                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
+                    if (filesize_xml > 0 && filesize_xml != filesize)
+                    {
+                        localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                        std::cout << "FS " << gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+                        continue;
+                    }
                 }
             }
+            std::cout << (bHashOK ? "OK " : "MD5 ") << gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
         }
-
-        if (config.bExtras)
+        else
         {
-            for (unsigned int j = 0; j < games[i].extras.size(); ++j)
-            {
-                boost::filesystem::path filepath = games[i].extras[j].getFilepath();
-
-                if (config.blacklist.isBlacklisted(filepath.native()))
-                    continue;
-                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                uintmax_t filesize;
-
-                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                {
-                    filesize = boost::filesystem::file_size(filepath);
-                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                }
-                else
-                {
-                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
-                }
-            }
-        }
-
-        if (config.bPatches)
-        {
-            for (unsigned int j = 0; j < games[i].patches.size(); ++j)
-            {
-                boost::filesystem::path filepath = games[i].patches[j].getFilepath();
-
-                if (config.blacklist.isBlacklisted(filepath.native()))
-                    continue;
-                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                uintmax_t filesize;
-
-                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                {
-                    filesize = boost::filesystem::file_size(filepath);
-                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                }
-                else
-                {
-                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
-                }
-            }
-        }
-
-        if (config.bLanguagePacks)
-        {
-            for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
-            {
-                boost::filesystem::path filepath = games[i].languagepacks[j].getFilepath();
-
-                if (config.blacklist.isBlacklisted(filepath.native()))
-                    continue;
-                std::string localHash = this->getLocalFileHash(filepath.string(), games[i].gamename);
-                uintmax_t filesize;
-
-                if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                {
-                    filesize = boost::filesystem::file_size(filepath);
-                    std::cout << "OK " << games[i].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                }
-                else
-                {
-                    std::cout << "ND " << games[i].gamename << " " << filepath.filename().string() << std::endl;
-                }
-            }
-        }
-
-        if (config.bDLC)
-        {
-            for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
-            {
-                if (config.bInstallers)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
-                    {
-                        boost::filesystem::path filepath = games[i].dlcs[j].installers[k].getFilepath();
-
-                        if (config.blacklist.isBlacklisted(filepath.native()))
-                            continue;
-                        std::string remoteHash;
-                        std::string localHash;
-                        bool bHashOK = true; // assume hash OK
-                        uintmax_t filesize;
-
-                        localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        remoteHash = this->getRemoteFileHash(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
-
-                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                        {
-                            filesize = boost::filesystem::file_size(filepath);
-
-                            if (remoteHash != localHash)
-                                bHashOK = false;
-                            else
-                            {
-                                // Check for incomplete file by comparing the filesizes
-                                // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                                uintmax_t filesize_xml = 0;
-                                boost::filesystem::path path = filepath;
-                                boost::filesystem::path local_xml_file;
-                                if (!games[i].dlcs[j].gamename.empty())
-                                    local_xml_file = config.sXMLDirectory + "/" + games[i].dlcs[j].gamename + "/" + path.filename().string() + ".xml";
-                                else
-                                    local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
-
-                                if (boost::filesystem::exists(local_xml_file))
-                                {
-                                    tinyxml2::XMLDocument local_xml;
-                                    local_xml.LoadFile(local_xml_file.string().c_str());
-                                    tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
-                                    if (fileElemLocal)
-                                    {
-                                        std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
-                                        filesize_xml = std::stoull(filesize_xml_str);
-                                    }
-                                }
-
-                                if (filesize_xml > 0 && filesize_xml != filesize)
-                                {
-                                    localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                                    std::cout << "FS " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                                    continue;
-                                }
-                            }
-
-                            std::cout << (bHashOK ? "OK " : "MD5 ") << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                        }
-                        else
-                        {
-                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
-                        }
-                    }
-                }
-
-                if (config.bPatches)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
-                    {
-                        boost::filesystem::path filepath = games[i].dlcs[j].patches[k].getFilepath();
-
-                        if (config.blacklist.isBlacklisted(filepath.native()))
-                            continue;
-                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        uintmax_t filesize;
-
-                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                        {
-                            filesize = boost::filesystem::file_size(filepath);
-                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                        }
-                        else
-                        {
-                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
-                        }
-                    }
-                }
-
-                if (config.bExtras)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
-                    {
-                        boost::filesystem::path filepath = games[i].dlcs[j].extras[k].getFilepath();
-
-                        if (config.blacklist.isBlacklisted(filepath.native()))
-                            continue;
-                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        uintmax_t filesize;
-
-                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                        {
-                            filesize = boost::filesystem::file_size(filepath);
-                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                        }
-                        else
-                        {
-                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
-                        }
-                    }
-                }
-
-                if (config.bLanguagePacks)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
-                    {
-                        boost::filesystem::path filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
-
-                        if (config.blacklist.isBlacklisted(filepath.native()))
-                            continue;
-                        std::string localHash = this->getLocalFileHash(filepath.string(), games[i].dlcs[j].gamename);
-                        uintmax_t filesize;
-
-                        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
-                        {
-                            filesize = boost::filesystem::file_size(filepath);
-                            std::cout << "OK " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                        }
-                        else
-                        {
-                            std::cout << "ND " << games[i].dlcs[j].gamename << " " << filepath.filename().string() << std::endl;
-                        }
-                    }
-                }
-            }
+            std::cout << "ND " << gamename << " " << filepath.filename().string() << std::endl;
         }
     }
 
@@ -3007,13 +2819,13 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         // Get download url
         std::string url;
-        if (gf.type == GFTYPE_INSTALLER)
+        if (gf.type & GFTYPE_INSTALLER)
             url = api->getInstallerLink(gf.gamename, gf.id);
-        else if (gf.type == GFTYPE_PATCH)
+        else if (gf.type & GFTYPE_PATCH)
             url = api->getPatchLink(gf.gamename, gf.id);
-        else if (gf.type == GFTYPE_LANGPACK)
+        else if (gf.type & GFTYPE_LANGPACK)
             url = api->getLanguagePackLink(gf.gamename, gf.id);
-        else if (gf.type == GFTYPE_EXTRA)
+        else if (gf.type & GFTYPE_EXTRA)
             url = api->getExtraLink(gf.gamename, gf.id);
         else
             url = api->getExtraLink(gf.gamename, gf.id); // assume extra if type didn't match any of the others
@@ -3545,6 +3357,16 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                             }
                         }
                     }
+
+                    // Add DLC type to all DLC files
+                    for (unsigned int a = 0; a < dlc.installers.size(); ++a)
+                        dlc.installers[a].type |= GFTYPE_DLC;
+                    for (unsigned int a = 0; a < dlc.extras.size(); ++a)
+                        dlc.extras[a].type |= GFTYPE_DLC;
+                    for (unsigned int a = 0; a < dlc.patches.size(); ++a)
+                        dlc.patches[a].type |= GFTYPE_DLC;
+                    for (unsigned int a = 0; a < dlc.languagepacks.size(); ++a)
+                        dlc.languagepacks[a].type |= GFTYPE_DLC;
 
                     game.dlcs.push_back(dlc);
                 }
