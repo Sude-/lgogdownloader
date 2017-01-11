@@ -163,6 +163,7 @@ std::vector<gameItem> Website::getGames()
                 gameItem game;
                 game.name = product["slug"].asString();
                 game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
+                game.updates = product["updates"].isInt() ? product["updates"].asInt() : std::stoi(product["updates"].asString());
 
                 unsigned int platform = 0;
                 if (product["worksOn"]["Windows"].asBool())

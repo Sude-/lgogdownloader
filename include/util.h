@@ -49,6 +49,7 @@ struct gameItem
     std::string id;
     std::vector<std::string> dlcnames;
     Json::Value gamedetailsjson;
+    int updates = 0;
 };
 
 struct wishlistItem

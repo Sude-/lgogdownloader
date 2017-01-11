@@ -597,7 +597,14 @@ int Downloader::listGames()
 
         for (unsigned int i = 0; i < gameItems.size(); ++i)
         {
-            std::cout << gameItems[i].name << std::endl;
+            std::string gamename = gameItems[i].name;
+            if (gameItems[i].updates > 0)
+            {
+                gamename += " [" + std::to_string(gameItems[i].updates) + "]";
+                if (config.bColor)
+                    gamename = "\033[32m" + gamename + "\033[0m";
+            }
+            std::cout << gamename << std::endl;
             for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 std::cout << "+> " << gameItems[i].dlcnames[j] << std::endl;
         }
