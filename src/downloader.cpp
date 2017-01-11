@@ -1733,8 +1733,7 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
         // Create progressbar
         double fraction = starting ? 0.0 : static_cast<double>(dlnow) / static_cast<double>(dltotal);
 
-        // assuming that config is provided.
-        printf("\033[0K\r%3.0f%% ", fraction * 100);
+        std::cout << Util::formattedString("\033[0K\r%3.0f%% ", fraction * 100);
 
         // Download rate unit conversion
         std::string rate_unit;
@@ -1748,9 +1747,8 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
             rate /= 1024;
             rate_unit = "kB/s";
         }
-        char status_text[200]; // We're probably never going to go as high as 200 characters but it's better to use too big number here than too small
-        sprintf(status_text, " %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
-        int status_text_length = strlen(status_text) + 6;
+        std::string status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
+        int status_text_length = status_text.length() + 6;
 
         if ((status_text_length + bar_length) > iTermWidth)
             bar_length -= (status_text_length + bar_length) - iTermWidth;
@@ -3051,9 +3049,8 @@ void Downloader::printProgress()
             bool starting = ((0 == progress_info.dlnow) && (0 == progress_info.dltotal));
             double fraction = starting ? 0.0 : static_cast<double>(progress_info.dlnow) / static_cast<double>(progress_info.dltotal);
 
-            char progress_percentage_text[200];
-            sprintf(progress_percentage_text, "%3.0f%% ", fraction * 100);
-            int progress_percentage_text_length = strlen(progress_percentage_text) + 1;
+            std::string progress_percentage_text = Util::formattedString("%3.0f%% ", fraction * 100);
+            int progress_percentage_text_length = progress_percentage_text.length() + 1;
 
             bptime::time_duration eta(bptime::seconds((long)((progress_info.dltotal - progress_info.dlnow) / progress_info.rate)));
             std::stringstream eta_ss;
@@ -3092,9 +3089,8 @@ void Downloader::printProgress()
                 rate_unit = "kB/s";
             }
 
-            char progress_status_text[200]; // We're probably never going to go as high as 200 characters but it's better to use too big number here than too small
-            sprintf(progress_status_text, " %0.2f/%0.2fMB @ %0.2f%s ETA: %s", static_cast<double>(progress_info.dlnow)/1024/1024, static_cast<double>(progress_info.dltotal)/1024/1024, progress_info.rate, rate_unit.c_str(), eta_ss.str().c_str());
-            int status_text_length = strlen(progress_status_text) + 1;
+            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s", static_cast<double>(progress_info.dlnow)/1024/1024, static_cast<double>(progress_info.dltotal)/1024/1024, progress_info.rate, rate_unit.c_str(), eta_ss.str().c_str());
+            int status_text_length = progress_status_text.length() + 1;
 
             if ((status_text_length + progress_percentage_text_length + bar_length) > iTermWidth)
                 bar_length -= (status_text_length + progress_percentage_text_length + bar_length) - iTermWidth;
@@ -3104,7 +3100,7 @@ void Downloader::printProgress()
             if (bar_length >= min_bar_length)
                 progress_bar_text = bar.createBarString(bar_length, fraction);
 
-            progress_text = std::string(progress_percentage_text) + progress_bar_text + std::string(progress_status_text);
+            progress_text = progress_percentage_text + progress_bar_text + progress_status_text;
             std::string filename_text = "#" + std::to_string(i) + " " + filename;
             Util::shortenStringToTerminalWidth(filename_text);
 
