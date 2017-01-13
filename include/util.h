@@ -15,6 +15,7 @@
 #include <cerrno>
 #include <iostream>
 #include <sstream>
+#include <memory>
 #include <rhash.h>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
