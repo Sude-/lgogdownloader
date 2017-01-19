@@ -163,7 +163,31 @@ std::vector<gameItem> Website::getGames()
                 gameItem game;
                 game.name = product["slug"].asString();
                 game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
-                game.updates = product["updates"].isInt() ? product["updates"].asInt() : std::stoi(product["updates"].asString());
+
+                if (product.isMember("updates"))
+                {
+                    if (product["updates"].isNull())
+                    {
+                        /* In some cases the value can be null.
+                         * For example when user owns a dlc but not the base game
+                         * https://github.com/Sude-/lgogdownloader/issues/101
+                         * Assume that there are no updates in this case */
+                        game.updates = 0;
+                    }
+                    else if (product["updates"].isInt())
+                        game.updates = product["updates"].asInt();
+                    else
+                    {
+                        try
+                        {
+                            game.updates = std::stoi(product["updates"].asString());
+                        }
+                        catch (std::invalid_argument& e)
+                        {
+                            game.updates = 0; // Assume no updates
+                        }
+                    }
+                }
 
                 unsigned int platform = 0;
                 if (product["worksOn"]["Windows"].asBool())
