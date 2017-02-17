@@ -241,31 +241,31 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
         if (root.isMember("language"))
         {
             if (root["language"].isInt())
-                conf->iInstallerLanguage = root["language"].asUInt();
+                conf->dlConf.iInstallerLanguage = root["language"].asUInt();
             else
             {
-                Util::parseOptionString(root["language"].asString(), conf->vLanguagePriority, conf->iInstallerLanguage, GlobalConstants::LANGUAGES);
+                Util::parseOptionString(root["language"].asString(), conf->dlConf.vLanguagePriority, conf->dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
             }
             res++;
         }
         if (root.isMember("platform"))
         {
             if (root["platform"].isInt())
-                conf->iInstallerPlatform = root["platform"].asUInt();
+                conf->dlConf.iInstallerPlatform = root["platform"].asUInt();
             else
             {
-                Util::parseOptionString(root["platform"].asString(), conf->vPlatformPriority, conf->iInstallerPlatform, GlobalConstants::PLATFORMS);
+                Util::parseOptionString(root["platform"].asString(), conf->dlConf.vPlatformPriority, conf->dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
             }
             res++;
         }
         if (root.isMember("dlc"))
         {
-            conf->bDLC = root["dlc"].asBool();
+            conf->dlConf.bDLC = root["dlc"].asBool();
             res++;
         }
         if (root.isMember("ignore-dlc-count"))
         {
-            conf->bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
+            conf->dlConf.bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
             res++;
         }
         if (root.isMember("subdirectories"))

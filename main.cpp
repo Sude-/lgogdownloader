@@ -9,12 +9,15 @@
 #include "util.h"
 #include "globalconstants.h"
 #include "ssl_thread_setup.h"
+#include "galaxyapi.h"
+#include "globals.h"
 
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
 namespace bpo = boost::program_options;
+Config Globals::globalConfig;
 
 template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value>& vm, const std::string& option, const T& value)
 {
@@ -44,19 +47,20 @@ int main(int argc, char *argv[])
         { OPTION_DLCS,       "d", "DLCs",           "d|dlc|dlcs"                }
     };
 
-    Config config;
-    config.sVersionString = VERSION_STRING;
-    config.sVersionNumber = VERSION_NUMBER;
+    Globals::globalConfig.sVersionString = VERSION_STRING;
+    Globals::globalConfig.sVersionNumber = VERSION_NUMBER;
 
-    config.sCacheDirectory = Util::getCacheHome() + "/lgogdownloader";
-    config.sXMLDirectory = config.sCacheDirectory + "/xml";
+    Globals::globalConfig.sCacheDirectory = Util::getCacheHome() + "/lgogdownloader";
+    Globals::globalConfig.sXMLDirectory = Globals::globalConfig.sCacheDirectory + "/xml";
 
-    config.sConfigDirectory = Util::getConfigHome() + "/lgogdownloader";
-    config.sCookiePath = config.sConfigDirectory + "/cookies.txt";
-    config.sConfigFilePath = config.sConfigDirectory + "/config.cfg";
-    config.sBlacklistFilePath = config.sConfigDirectory + "/blacklist.txt";
-    config.sIgnorelistFilePath = config.sConfigDirectory + "/ignorelist.txt";
-    config.sGameHasDLCListFilePath = config.sConfigDirectory + "/game_has_dlc.txt";
+    Globals::globalConfig.sConfigDirectory = Util::getConfigHome() + "/lgogdownloader";
+    Globals::globalConfig.curlConf.sCookiePath = Globals::globalConfig.sConfigDirectory + "/cookies.txt";
+    Globals::globalConfig.sConfigFilePath = Globals::globalConfig.sConfigDirectory + "/config.cfg";
+    Globals::globalConfig.sBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    Globals::globalConfig.sIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
+    Globals::globalConfig.sGameHasDLCListFilePath = Globals::globalConfig.sConfigDirectory + "/game_has_dlc.txt";
+
+    Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
 
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
@@ -97,12 +101,17 @@ int main(int argc, char *argv[])
     }
     include_options_text += "Separate with \",\" to use multiple values";
 
+    std::string galaxy_product_id_install;
+    std::string galaxy_product_id_show_builds;
+
     std::vector<std::string> vFileIdStrings;
     std::vector<std::string> unrecognized_options_cfg;
     std::vector<std::string> unrecognized_options_cli;
     bpo::variables_map vm;
     bpo::options_description options_cli_all("Options");
     bpo::options_description options_cli_no_cfg;
+    bpo::options_description options_cli_no_cfg_hidden;
+    bpo::options_description options_cli_all_include_hidden;
     bpo::options_description options_cli_cfg;
     bpo::options_description options_cfg_only;
     bpo::options_description options_cfg_all("Configuration");
@@ -120,40 +129,40 @@ int main(int argc, char *argv[])
         std::string sInstallerLanguage;
         std::string sIncludeOptions;
         std::string sExcludeOptions;
-        config.bReport = false;
+        Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
             ("version", "Print version information")
             ("login", bpo::value<bool>(&bLogin)->zero_tokens()->default_value(false), "Login")
-            ("list", bpo::value<bool>(&config.bList)->zero_tokens()->default_value(false), "List games")
-            ("list-details", bpo::value<bool>(&config.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
-            ("download", bpo::value<bool>(&config.bDownload)->zero_tokens()->default_value(false), "Download")
-            ("repair", bpo::value<bool>(&config.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
-            ("game", bpo::value<std::string>(&config.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)\nAliases: \"all\", \"free\"\nAlias \"free\" doesn't work with cached details")
-            ("create-xml", bpo::value<std::string>(&config.sXMLFile)->implicit_value("automatic"), "Create GOG XML for file\n\"automatic\" to enable automatic XML creation")
-            ("update-check", bpo::value<bool>(&config.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
-            ("check-orphans", bpo::value<std::string>(&config.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
-            ("status", bpo::value<bool>(&config.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download")
-            ("save-config", bpo::value<bool>(&config.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
-            ("reset-config", bpo::value<bool>(&config.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
-            ("report", bpo::value<std::string>(&config.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
-            ("update-cache", bpo::value<bool>(&config.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
+            ("list", bpo::value<bool>(&Globals::globalConfig.bList)->zero_tokens()->default_value(false), "List games")
+            ("list-details", bpo::value<bool>(&Globals::globalConfig.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
+            ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
+            ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
+            ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)\nAliases: \"all\", \"free\"\nAlias \"free\" doesn't work with cached details")
+            ("create-xml", bpo::value<std::string>(&Globals::globalConfig.sXMLFile)->implicit_value("automatic"), "Create GOG XML for file\n\"automatic\" to enable automatic XML creation")
+            ("update-check", bpo::value<bool>(&Globals::globalConfig.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
+            ("check-orphans", bpo::value<std::string>(&Globals::globalConfig.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
+            ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download")
+            ("save-config", bpo::value<bool>(&Globals::globalConfig.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
+            ("reset-config", bpo::value<bool>(&Globals::globalConfig.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
+            ("report", bpo::value<std::string>(&Globals::globalConfig.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
+            ("update-cache", bpo::value<bool>(&Globals::globalConfig.bUpdateCache)->zero_tokens()->default_value(false), "Update game details cache")
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
-            ("download-file", bpo::value<std::string>(&config.sFileIdString)->default_value(""), "Download files using fileid\n\nFormat:\n\"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\n\nMultiple files:\n\"gamename1/fileid1,gamename2/fileid2\"\nor: \"gogdownloader://gamename1/fileid1,gamename2/fileid2\"\n\nThis option ignores all subdir options. The files are downloaded to directory specified with --directory option.")
-            ("output-file,o", bpo::value<std::string>(&config.sOutputFilename)->default_value(""), "Set filename of file downloaded with --download-file.")
-            ("wishlist", bpo::value<bool>(&config.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
-            ("login-api", bpo::value<bool>(&config.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
-            ("login-website", bpo::value<bool>(&config.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
-            ("cacert", bpo::value<std::string>(&config.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
-            ("respect-umask", bpo::value<bool>(&config.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
+            ("download-file", bpo::value<std::string>(&Globals::globalConfig.sFileIdString)->default_value(""), "Download files using fileid\n\nFormat:\n\"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\n\nMultiple files:\n\"gamename1/fileid1,gamename2/fileid2\"\nor: \"gogdownloader://gamename1/fileid1,gamename2/fileid2\"\n\nThis option ignores all subdir options. The files are downloaded to directory specified with --directory option.")
+            ("output-file,o", bpo::value<std::string>(&Globals::globalConfig.sOutputFilename)->default_value(""), "Set filename of file downloaded with --download-file.")
+            ("wishlist", bpo::value<bool>(&Globals::globalConfig.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
+            ("login-api", bpo::value<bool>(&Globals::globalConfig.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
+            ("login-website", bpo::value<bool>(&Globals::globalConfig.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
+            ("cacert", bpo::value<std::string>(&Globals::globalConfig.curlConf.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
+            ("respect-umask", bpo::value<bool>(&Globals::globalConfig.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
-            ("directory", bpo::value<std::string>(&config.sDirectory)->default_value("."), "Set download directory")
-            ("limit-rate", bpo::value<curl_off_t>(&config.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
-            ("xml-directory", bpo::value<std::string>(&config.sXMLDirectory), "Set directory for GOG XML files")
-            ("chunk-size", bpo::value<size_t>(&config.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
+            ("directory", bpo::value<std::string>(&Globals::globalConfig.dirConf.sDirectory)->default_value("."), "Set download directory")
+            ("limit-rate", bpo::value<curl_off_t>(&Globals::globalConfig.curlConf.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
+            ("xml-directory", bpo::value<std::string>(&Globals::globalConfig.sXMLDirectory), "Set directory for GOG XML files")
+            ("chunk-size", bpo::value<size_t>(&Globals::globalConfig.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
             ("platform", bpo::value<std::string>(&sInstallerPlatform)->default_value("w+l"), platform_text.c_str())
             ("language", bpo::value<std::string>(&sInstallerLanguage)->default_value("en"), language_text.c_str())
             ("no-remote-xml", bpo::value<bool>(&bNoRemoteXML)->zero_tokens()->default_value(false), "Don't use remote XML for repair")
@@ -161,46 +170,52 @@ int main(int argc, char *argv[])
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar or status messages")
             ("no-duplicate-handling", bpo::value<bool>(&bNoDuplicateHandler)->zero_tokens()->default_value(false), "Don't use duplicate handler for installers\nDuplicate installers from different languages are handled separately")
             ("no-subdirectories", bpo::value<bool>(&bNoSubDirectories)->zero_tokens()->default_value(false), "Don't create subdirectories for extras, patches and language packs")
-            ("verbose", bpo::value<bool>(&config.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
+            ("verbose", bpo::value<bool>(&Globals::globalConfig.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
-            ("timeout", bpo::value<long int>(&config.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
-            ("retries", bpo::value<int>(&config.iRetries)->default_value(3), "Set maximum number of retries on failed download")
-            ("wait", bpo::value<int>(&config.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
-            ("cover-list", bpo::value<std::string>(&config.sCoverList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/covers.xml"), "Set URL for cover list")
-            ("subdir-installers", bpo::value<std::string>(&config.sInstallersSubdir)->default_value(""), ("Set subdirectory for extras" + subdir_help_text).c_str())
-            ("subdir-extras", bpo::value<std::string>(&config.sExtrasSubdir)->default_value("extras"), ("Set subdirectory for extras" + subdir_help_text).c_str())
-            ("subdir-patches", bpo::value<std::string>(&config.sPatchesSubdir)->default_value("patches"), ("Set subdirectory for patches" + subdir_help_text).c_str())
-            ("subdir-language-packs", bpo::value<std::string>(&config.sLanguagePackSubdir)->default_value("languagepacks"), ("Set subdirectory for language packs" + subdir_help_text).c_str())
-            ("subdir-dlc", bpo::value<std::string>(&config.sDLCSubdir)->default_value("dlc/%dlcname%"), ("Set subdirectory for dlc" + subdir_help_text).c_str())
-            ("subdir-game", bpo::value<std::string>(&config.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
-            ("use-cache", bpo::value<bool>(&config.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
-            ("cache-valid", bpo::value<int>(&config.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
-            ("save-serials", bpo::value<bool>(&config.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
-            ("ignore-dlc-count", bpo::value<std::string>(&config.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
+            ("timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
+            ("retries", bpo::value<int>(&Globals::globalConfig.iRetries)->default_value(3), "Set maximum number of retries on failed download")
+            ("wait", bpo::value<int>(&Globals::globalConfig.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
+            ("cover-list", bpo::value<std::string>(&Globals::globalConfig.sCoverList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/covers.xml"), "Set URL for cover list")
+            ("subdir-installers", bpo::value<std::string>(&Globals::globalConfig.dirConf.sInstallersSubdir)->default_value(""), ("Set subdirectory for extras" + subdir_help_text).c_str())
+            ("subdir-extras", bpo::value<std::string>(&Globals::globalConfig.dirConf.sExtrasSubdir)->default_value("extras"), ("Set subdirectory for extras" + subdir_help_text).c_str())
+            ("subdir-patches", bpo::value<std::string>(&Globals::globalConfig.dirConf.sPatchesSubdir)->default_value("patches"), ("Set subdirectory for patches" + subdir_help_text).c_str())
+            ("subdir-language-packs", bpo::value<std::string>(&Globals::globalConfig.dirConf.sLanguagePackSubdir)->default_value("languagepacks"), ("Set subdirectory for language packs" + subdir_help_text).c_str())
+            ("subdir-dlc", bpo::value<std::string>(&Globals::globalConfig.dirConf.sDLCSubdir)->default_value("dlc/%dlcname%"), ("Set subdirectory for dlc" + subdir_help_text).c_str())
+            ("subdir-game", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
+            ("use-cache", bpo::value<bool>(&Globals::globalConfig.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
+            ("cache-valid", bpo::value<int>(&Globals::globalConfig.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
+            ("save-serials", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
+            ("ignore-dlc-count", bpo::value<std::string>(&Globals::globalConfig.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
             ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
             ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
-            ("automatic-xml-creation", bpo::value<bool>(&config.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
-            ("save-changelogs", bpo::value<bool>(&config.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
-            ("threads", bpo::value<unsigned int>(&config.iThreads)->default_value(4), "Number of download threads")
-            ("dlc-list", bpo::value<std::string>(&config.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
+            ("automatic-xml-creation", bpo::value<bool>(&Globals::globalConfig.dlConf.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
+            ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
+            ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
+            ("dlc-list", bpo::value<std::string>(&Globals::globalConfig.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
         ;
         // Options read from config file
         options_cfg_only.add_options()
-            ("token", bpo::value<std::string>(&config.sToken)->default_value(""), "oauth token")
-            ("secret", bpo::value<std::string>(&config.sSecret)->default_value(""), "oauth secret")
+            ("token", bpo::value<std::string>(&Globals::globalConfig.apiConf.sToken)->default_value(""), "oauth token")
+            ("secret", bpo::value<std::string>(&Globals::globalConfig.apiConf.sSecret)->default_value(""), "oauth secret")
+        ;
+
+        options_cli_no_cfg_hidden.add_options()
+            ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id")
+            ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
         options_cfg_all.add(options_cfg_only).add(options_cli_cfg);
+        options_cli_all_include_hidden.add(options_cli_all).add(options_cli_no_cfg_hidden);
 
-        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, options_cli_all);
+        bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, options_cli_all_include_hidden);
         bpo::store(parsed, vm);
         unrecognized_options_cli = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
         bpo::notify(vm);
 
         if (vm.count("help"))
         {
-            std::cout   << config.sVersionString << std::endl
+            std::cout   << Globals::globalConfig.sVersionString << std::endl
                         << options_cli_all << std::endl;
             return 0;
         }
@@ -212,7 +227,7 @@ int main(int argc, char *argv[])
         }
 
         // Create lgogdownloader directories
-        boost::filesystem::path path = config.sXMLDirectory;
+        boost::filesystem::path path = Globals::globalConfig.sXMLDirectory;
         if (!boost::filesystem::exists(path))
         {
             if (!boost::filesystem::create_directories(path))
@@ -222,7 +237,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        path = config.sConfigDirectory;
+        path = Globals::globalConfig.sConfigDirectory;
         if (!boost::filesystem::exists(path))
         {
             if (!boost::filesystem::create_directories(path))
@@ -232,7 +247,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        path = config.sCacheDirectory;
+        path = Globals::globalConfig.sCacheDirectory;
         if (!boost::filesystem::exists(path))
         {
             if (!boost::filesystem::create_directories(path))
@@ -242,12 +257,12 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (boost::filesystem::exists(config.sConfigFilePath))
+        if (boost::filesystem::exists(Globals::globalConfig.sConfigFilePath))
         {
-            std::ifstream ifs(config.sConfigFilePath.c_str());
+            std::ifstream ifs(Globals::globalConfig.sConfigFilePath.c_str());
             if (!ifs)
             {
-                std::cerr << "Could not open config file: " << config.sConfigFilePath << std::endl;
+                std::cerr << "Could not open config file: " << Globals::globalConfig.sConfigFilePath << std::endl;
                 return 1;
             }
             else
@@ -259,12 +274,12 @@ int main(int argc, char *argv[])
                 unrecognized_options_cfg = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
             }
         }
-        if (boost::filesystem::exists(config.sBlacklistFilePath))
+        if (boost::filesystem::exists(Globals::globalConfig.sBlacklistFilePath))
         {
-            std::ifstream ifs(config.sBlacklistFilePath.c_str());
+            std::ifstream ifs(Globals::globalConfig.sBlacklistFilePath.c_str());
             if (!ifs)
             {
-                std::cerr << "Could not open blacklist file: " << config.sBlacklistFilePath << std::endl;
+                std::cerr << "Could not open blacklist file: " << Globals::globalConfig.sBlacklistFilePath << std::endl;
                 return 1;
             }
             else
@@ -276,16 +291,16 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                config.blacklist.initialize(lines);
+                Globals::globalConfig.blacklist.initialize(lines);
             }
         }
 
-        if (boost::filesystem::exists(config.sIgnorelistFilePath))
+        if (boost::filesystem::exists(Globals::globalConfig.sIgnorelistFilePath))
         {
-            std::ifstream ifs(config.sIgnorelistFilePath.c_str());
+            std::ifstream ifs(Globals::globalConfig.sIgnorelistFilePath.c_str());
             if (!ifs)
             {
-                std::cerr << "Could not open ignorelist file: " << config.sIgnorelistFilePath << std::endl;
+                std::cerr << "Could not open ignorelist file: " << Globals::globalConfig.sIgnorelistFilePath << std::endl;
                 return 1;
             }
             else
@@ -297,18 +312,18 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                config.ignorelist.initialize(lines);
+                Globals::globalConfig.ignorelist.initialize(lines);
             }
         }
 
-        if (config.sIgnoreDLCCountRegex.empty())
+        if (Globals::globalConfig.sIgnoreDLCCountRegex.empty())
         {
-            if (boost::filesystem::exists(config.sGameHasDLCListFilePath))
+            if (boost::filesystem::exists(Globals::globalConfig.sGameHasDLCListFilePath))
             {
-                std::ifstream ifs(config.sGameHasDLCListFilePath.c_str());
+                std::ifstream ifs(Globals::globalConfig.sGameHasDLCListFilePath.c_str());
                 if (!ifs)
                 {
-                    std::cerr << "Could not open list of games that have dlc: " << config.sGameHasDLCListFilePath << std::endl;
+                    std::cerr << "Could not open list of games that have dlc: " << Globals::globalConfig.sGameHasDLCListFilePath << std::endl;
                     return 1;
                 }
                 else
@@ -320,55 +335,56 @@ int main(int argc, char *argv[])
                         std::getline(ifs, line);
                         lines.push_back(std::move(line));
                     }
-                    config.gamehasdlc.initialize(lines);
+                    Globals::globalConfig.gamehasdlc.initialize(lines);
                 }
             }
         }
 
         if (vm.count("chunk-size"))
-            config.iChunkSize <<= 20; // Convert chunk size from bytes to megabytes
+            Globals::globalConfig.iChunkSize <<= 20; // Convert chunk size from bytes to megabytes
 
         if (vm.count("limit-rate"))
-            config.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
+            Globals::globalConfig.curlConf.iDownloadRate <<= 10; // Convert download rate from bytes to kilobytes
 
         if (vm.count("check-orphans"))
-            if (config.sOrphanRegex.empty())
-                config.sOrphanRegex = orphans_regex_default;
+            if (Globals::globalConfig.sOrphanRegex.empty())
+                Globals::globalConfig.sOrphanRegex = orphans_regex_default;
 
         if (vm.count("report"))
-            config.bReport = true;
+            Globals::globalConfig.bReport = true;
 
-        if (config.iWait > 0)
-            config.iWait *= 1000;
+        if (Globals::globalConfig.iWait > 0)
+            Globals::globalConfig.iWait *= 1000;
 
-        if (config.iThreads < 1)
+        if (Globals::globalConfig.iThreads < 1)
         {
-            config.iThreads = 1;
-            set_vm_value(vm, "threads", config.iThreads);
+            Globals::globalConfig.iThreads = 1;
+            set_vm_value(vm, "threads", Globals::globalConfig.iThreads);
         }
 
-        config.bVerifyPeer = !bInsecure;
-        config.bColor = !bNoColor;
-        config.bUnicode = !bNoUnicode;
-        config.bDuplicateHandler = !bNoDuplicateHandler;
-        config.bRemoteXML = !bNoRemoteXML;
-        config.bSubDirectories = !bNoSubDirectories;
-        config.bPlatformDetection = !bNoPlatformDetection;
+        Globals::globalConfig.curlConf.bVerbose = Globals::globalConfig.bVerbose;
+        Globals::globalConfig.curlConf.bVerifyPeer = !bInsecure;
+        Globals::globalConfig.bColor = !bNoColor;
+        Globals::globalConfig.bUnicode = !bNoUnicode;
+        Globals::globalConfig.dlConf.bDuplicateHandler = !bNoDuplicateHandler;
+        Globals::globalConfig.dlConf.bRemoteXML = !bNoRemoteXML;
+        Globals::globalConfig.dirConf.bSubDirectories = !bNoSubDirectories;
+        Globals::globalConfig.bPlatformDetection = !bNoPlatformDetection;
 
         for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
-                config.sFileIdString = *i;
+                Globals::globalConfig.sFileIdString = *i;
 
-        if (!config.sFileIdString.empty())
+        if (!Globals::globalConfig.sFileIdString.empty())
         {
-            if (config.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
+            if (Globals::globalConfig.sFileIdString.compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)
             {
-                config.sFileIdString.replace(0, GlobalConstants::PROTOCOL_PREFIX.length(), "");
+                Globals::globalConfig.sFileIdString.replace(0, GlobalConstants::PROTOCOL_PREFIX.length(), "");
             }
-            vFileIdStrings = Util::tokenize(config.sFileIdString, ",");
+            vFileIdStrings = Util::tokenize(Globals::globalConfig.sFileIdString, ",");
         }
 
-        if (!config.sOutputFilename.empty() && vFileIdStrings.size() > 1)
+        if (!Globals::globalConfig.sOutputFilename.empty() && vFileIdStrings.size() > 1)
         {
             std::cerr << "Cannot specify an output file name when downloading multiple files." << std::endl;
             return 1;
@@ -376,15 +392,15 @@ int main(int argc, char *argv[])
 
         if (bLogin)
         {
-            config.bLoginAPI = true;
-            config.bLoginHTTP = true;
+            Globals::globalConfig.bLoginAPI = true;
+            Globals::globalConfig.bLoginHTTP = true;
         }
 
-        if (config.sXMLFile == "automatic")
-            config.bAutomaticXMLCreation = true;
+        if (Globals::globalConfig.sXMLFile == "automatic")
+            Globals::globalConfig.dlConf.bAutomaticXMLCreation = true;
 
-        Util::parseOptionString(sInstallerLanguage, config.vLanguagePriority, config.iInstallerLanguage, GlobalConstants::LANGUAGES);
-        Util::parseOptionString(sInstallerPlatform, config.vPlatformPriority, config.iInstallerPlatform, GlobalConstants::PLATFORMS);
+        Util::parseOptionString(sInstallerLanguage, Globals::globalConfig.dlConf.vLanguagePriority, Globals::globalConfig.dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
+        Util::parseOptionString(sInstallerPlatform, Globals::globalConfig.dlConf.vPlatformPriority, Globals::globalConfig.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;
@@ -398,16 +414,16 @@ int main(int argc, char *argv[])
         {
             exclude_value |= Util::getOptionValue(*it, INCLUDE_OPTIONS);
         }
-        config.iInclude = include_value & ~exclude_value;
+        Globals::globalConfig.dlConf.iInclude = include_value & ~exclude_value;
 
         // Assign values
         // TODO: Use config.iInclude in Downloader class directly and get rid of this value assignment
-        config.bCover = (config.iInclude & OPTION_COVERS);
-        config.bInstallers = (config.iInclude & OPTION_INSTALLERS);
-        config.bExtras = (config.iInclude & OPTION_EXTRAS);
-        config.bPatches = (config.iInclude & OPTION_PATCHES);
-        config.bLanguagePacks = (config.iInclude & OPTION_LANGPACKS);
-        config.bDLC = (config.iInclude & OPTION_DLCS);
+        Globals::globalConfig.dlConf.bCover = (Globals::globalConfig.dlConf.iInclude & OPTION_COVERS);
+        Globals::globalConfig.dlConf.bInstallers = (Globals::globalConfig.dlConf.iInclude & OPTION_INSTALLERS);
+        Globals::globalConfig.dlConf.bExtras = (Globals::globalConfig.dlConf.iInclude & OPTION_EXTRAS);
+        Globals::globalConfig.dlConf.bPatches = (Globals::globalConfig.dlConf.iInclude & OPTION_PATCHES);
+        Globals::globalConfig.dlConf.bLanguagePacks = (Globals::globalConfig.dlConf.iInclude & OPTION_LANGPACKS);
+        Globals::globalConfig.dlConf.bDLC = (Globals::globalConfig.dlConf.iInclude & OPTION_DLCS);
     }
     catch (std::exception& e)
     {
@@ -420,55 +436,55 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (config.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || config.iInstallerPlatform > platform_all)
+    if (Globals::globalConfig.dlConf.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || Globals::globalConfig.dlConf.iInstallerPlatform > platform_all)
     {
         std::cerr << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (config.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || config.iInstallerLanguage > language_all)
+    if (Globals::globalConfig.dlConf.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || Globals::globalConfig.dlConf.iInstallerLanguage > language_all)
     {
         std::cerr << "Invalid value for --language" << std::endl;
         return 1;
     }
 
-    if (!config.sXMLDirectory.empty())
+    if (!Globals::globalConfig.sXMLDirectory.empty())
     {
         // Make sure that xml directory doesn't have trailing slash
-        if (config.sXMLDirectory.at(config.sXMLDirectory.length()-1)=='/')
-            config.sXMLDirectory.assign(config.sXMLDirectory.begin(),config.sXMLDirectory.end()-1);
+        if (Globals::globalConfig.sXMLDirectory.at(Globals::globalConfig.sXMLDirectory.length()-1)=='/')
+            Globals::globalConfig.sXMLDirectory.assign(Globals::globalConfig.sXMLDirectory.begin(), Globals::globalConfig.sXMLDirectory.end()-1);
     }
 
     // Create GOG XML for a file
-    if (!config.sXMLFile.empty() && (config.sXMLFile != "automatic"))
+    if (!Globals::globalConfig.sXMLFile.empty() && (Globals::globalConfig.sXMLFile != "automatic"))
     {
-        Util::createXML(config.sXMLFile, config.iChunkSize, config.sXMLDirectory);
+        Util::createXML(Globals::globalConfig.sXMLFile, Globals::globalConfig.iChunkSize, Globals::globalConfig.sXMLDirectory);
         return 0;
     }
 
     // Make sure that directory has trailing slash
-    if (!config.sDirectory.empty())
+    if (!Globals::globalConfig.dirConf.sDirectory.empty())
     {
-        if (config.sDirectory.at(config.sDirectory.length()-1)!='/')
-            config.sDirectory += "/";
+        if (Globals::globalConfig.dirConf.sDirectory.at(Globals::globalConfig.dirConf.sDirectory.length()-1)!='/')
+            Globals::globalConfig.dirConf.sDirectory += "/";
     }
     else
     {
-        config.sDirectory = "./"; // Directory wasn't specified, use current directory
+        Globals::globalConfig.dirConf.sDirectory = "./"; // Directory wasn't specified, use current directory
     }
 
     // CA certificate bundle
-    if (config.sCACertPath.empty())
+    if (Globals::globalConfig.curlConf.sCACertPath.empty())
     {
         // Use CURL_CA_BUNDLE environment variable for CA certificate path if it is set
         char *ca_bundle = getenv("CURL_CA_BUNDLE");
         if (ca_bundle)
-            config.sCACertPath = (std::string)ca_bundle;
+            Globals::globalConfig.curlConf.sCACertPath = (std::string)ca_bundle;
     }
 
-    if (!unrecognized_options_cfg.empty() && (!config.bSaveConfig || !config.bResetConfig))
+    if (!unrecognized_options_cfg.empty() && (!Globals::globalConfig.bSaveConfig || !Globals::globalConfig.bResetConfig))
     {
-        std::cerr << "Unrecognized options in " << config.sConfigFilePath << std::endl;
+        std::cerr << "Unrecognized options in " << Globals::globalConfig.sConfigFilePath << std::endl;
         for (unsigned int i = 0; i < unrecognized_options_cfg.size(); i+=2)
         {
             std::cerr << unrecognized_options_cfg[i] << " = " << unrecognized_options_cfg[i+1] << std::endl;
@@ -480,25 +496,25 @@ int main(int argc, char *argv[])
     ssl_thread_setup();
     curl_global_init(CURL_GLOBAL_ALL);
 
-    if (config.bLoginAPI)
+    if (Globals::globalConfig.bLoginAPI)
     {
-        config.sToken = "";
-        config.sSecret = "";
+        Globals::globalConfig.apiConf.sToken = "";
+        Globals::globalConfig.apiConf.sSecret = "";
     }
 
-    Downloader downloader(config);
+    Downloader downloader;
 
     int iLoginTries = 0;
     bool bLoginOK = false;
 
     // Login because --login, --login-api or --login-website was used
-    if (config.bLoginAPI || config.bLoginHTTP)
+    if (Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP)
         bLoginOK = downloader.login();
 
     bool bIsLoggedin = downloader.isLoggedIn();
 
     // Login because we are not logged in
-    while (iLoginTries++ < config.iRetries && !bIsLoggedin)
+    while (iLoginTries++ < Globals::globalConfig.iRetries && !bIsLoggedin)
     {
         bLoginOK = downloader.login();
         if (bLoginOK)
@@ -516,23 +532,24 @@ int main(int argc, char *argv[])
     }
 
     // Make sure that config file and cookie file are only readable/writable by owner
-    if (!config.bRespectUmask)
+    if (!Globals::globalConfig.bRespectUmask)
     {
-        Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
-        Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+        Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+        Util::setFilePermissions(Globals::globalConfig.curlConf.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+        Util::setFilePermissions(Globals::galaxyConf.getFilepath(), boost::filesystem::owner_read | boost::filesystem::owner_write);
     }
 
-    if (config.bSaveConfig || bLoginOK)
+    if (Globals::globalConfig.bSaveConfig || bLoginOK)
     {
         if (bLoginOK)
         {
-            set_vm_value(vm, "token", downloader.config.sToken);
-            set_vm_value(vm, "secret", downloader.config.sSecret);
+            set_vm_value(vm, "token", Globals::globalConfig.apiConf.sToken);
+            set_vm_value(vm, "secret", Globals::globalConfig.apiConf.sSecret);
         }
-        std::ofstream ofs(config.sConfigFilePath.c_str());
+        std::ofstream ofs(Globals::globalConfig.sConfigFilePath.c_str());
         if (ofs)
         {
-            std::cerr << "Saving config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Saving config: " << Globals::globalConfig.sConfigFilePath << std::endl;
             for (bpo::variables_map::iterator it = vm.begin(); it != vm.end(); ++it)
             {
                 std::string option = it->first;
@@ -577,9 +594,9 @@ int main(int argc, char *argv[])
                 }
             }
             ofs.close();
-            if (!config.bRespectUmask)
-                Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
-            if (config.bSaveConfig)
+            if (!Globals::globalConfig.bRespectUmask)
+                Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+            if (Globals::globalConfig.bSaveConfig)
             {
                 curl_global_cleanup();
                 ssl_thread_cleanup();
@@ -588,25 +605,25 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
             curl_global_cleanup();
             ssl_thread_cleanup();
             return 1;
         }
     }
-    else if (config.bResetConfig)
+    else if (Globals::globalConfig.bResetConfig)
     {
-        std::ofstream ofs(config.sConfigFilePath.c_str());
+        std::ofstream ofs(Globals::globalConfig.sConfigFilePath.c_str());
         if (ofs)
         {
-            if (!config.sToken.empty() && !config.sSecret.empty())
+            if (!Globals::globalConfig.apiConf.sToken.empty() && !Globals::globalConfig.apiConf.sSecret.empty())
             {
-                ofs << "token = " << config.sToken << std::endl;
-                ofs << "secret = " << config.sSecret << std::endl;
+                ofs << "token = " << Globals::globalConfig.apiConf.sToken << std::endl;
+                ofs << "secret = " << Globals::globalConfig.apiConf.sSecret << std::endl;
             }
             ofs.close();
-            if (!config.bRespectUmask)
-                Util::setFilePermissions(config.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+            if (!Globals::globalConfig.bRespectUmask)
+                Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
 
             curl_global_cleanup();
             ssl_thread_cleanup();
@@ -614,7 +631,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            std::cerr << "Failed to create config: " << config.sConfigFilePath << std::endl;
+            std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
             curl_global_cleanup();
             ssl_thread_cleanup();
             return 1;
@@ -631,41 +648,63 @@ int main(int argc, char *argv[])
 
     int res = 0;
 
-    if (config.bShowWishlist)
+    if (Globals::globalConfig.bShowWishlist)
         downloader.showWishlist();
-    else if (config.bUpdateCache)
+    else if (Globals::globalConfig.bUpdateCache)
         downloader.updateCache();
-    else if (config.bUpdateCheck) // Update check has priority over download and list
+    else if (Globals::globalConfig.bUpdateCheck) // Update check has priority over download and list
         downloader.updateCheck();
     else if (!vFileIdStrings.empty())
     {
         for (std::vector<std::string>::iterator it = vFileIdStrings.begin(); it != vFileIdStrings.end(); it++)
         {
-            res |= downloader.downloadFileWithId(*it, config.sOutputFilename) ? 1 : 0;
+            res |= downloader.downloadFileWithId(*it, Globals::globalConfig.sOutputFilename) ? 1 : 0;
         }
     }
-    else if (config.bRepair) // Repair file
+    else if (Globals::globalConfig.bRepair) // Repair file
         downloader.repair();
-    else if (config.bDownload) // Download games
+    else if (Globals::globalConfig.bDownload) // Download games
         downloader.download();
-    else if (config.bListDetails || config.bList) // Detailed list of games/extras
+    else if (Globals::globalConfig.bListDetails || Globals::globalConfig.bList) // Detailed list of games/extras
         res = downloader.listGames();
-    else if (!config.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
+    else if (!Globals::globalConfig.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
-    else if (config.bCheckStatus)
+    else if (Globals::globalConfig.bCheckStatus)
         downloader.checkStatus();
+    else if (!galaxy_product_id_show_builds.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_builds, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowBuilds(product_id, build_index);
+    }
+    else if (!galaxy_product_id_install.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_install, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyInstallGame(product_id, build_index);
+    }
     else
     {
-        if (!(config.bLoginAPI || config.bLoginHTTP))
+        if (!(Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP))
         {
             // Show help message
-            std::cerr   << config.sVersionString << std::endl
+            std::cerr   << Globals::globalConfig.sVersionString << std::endl
                         << options_cli_all << std::endl;
         }
     }
 
     // Orphan check was called at the same time as download. Perform it after download has finished
-    if (!config.sOrphanRegex.empty() && config.bDownload)
+    if (!Globals::globalConfig.sOrphanRegex.empty() && Globals::globalConfig.bDownload)
         downloader.checkOrphans();
 
     curl_global_cleanup();

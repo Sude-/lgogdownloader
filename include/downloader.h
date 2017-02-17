@@ -26,6 +26,9 @@
 #include "progressbar.h"
 #include "website.h"
 #include "threadsafequeue.h"
+#include "galaxyapi.h"
+#include "globals.h"
+
 #include <curl/curl.h>
 #include <json/json.h>
 #include <ctime>
@@ -58,10 +61,16 @@ struct xferInfo
     curl_off_t offset;
 };
 
+struct ChunkMemoryStruct
+{
+    char *memory;
+    curl_off_t size;
+};
+
 class Downloader
 {
     public:
-        Downloader(Config &conf);
+        Downloader();
         virtual ~Downloader();
         bool isLoggedIn();
         int init();
@@ -77,9 +86,12 @@ class Downloader
         void showWishlist();
         CURL* curlhandle;
         Timer timer;
-        Config config;
         ProgressBar* progressbar;
         std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
+        void saveGalaxyJSON();
+
+        void galaxyInstallGame(const std::string& product_id, int build_index = -1);
+        void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
     protected:
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
@@ -112,6 +124,7 @@ class Downloader
 
         Website *gogWebsite;
         API *gogAPI;
+        galaxyAPI *gogGalaxy;
         std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;
         std::string coverXML;

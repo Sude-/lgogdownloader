@@ -18,7 +18,7 @@ gameDetails::~gameDetails()
 
 void gameDetails::filterWithPriorities(const gameSpecificConfig& config)
 {
-    if (config.vPlatformPriority.empty() && config.vLanguagePriority.empty())
+    if (config.dlConf.vPlatformPriority.empty() && config.dlConf.vLanguagePriority.empty())
         return;
 
     filterListWithPriorities(installers, config);
@@ -40,19 +40,19 @@ void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const ga
     for (std::vector<gameFile>::iterator fileDetails = list.begin(); fileDetails != list.end(); fileDetails++)
         {
             fileDetails->score = 0;
-            if (!config.vPlatformPriority.empty())
+            if (!config.dlConf.vPlatformPriority.empty())
                 {
-                    for (size_t i = 0; i != config.vPlatformPriority.size(); i++)
-                        if (fileDetails->platform & config.vPlatformPriority[i])
+                    for (size_t i = 0; i != config.dlConf.vPlatformPriority.size(); i++)
+                        if (fileDetails->platform & config.dlConf.vPlatformPriority[i])
                             {
                                 fileDetails->score += i;
                                 break;
                             }
                 }
-            if (!config.vLanguagePriority.empty())
+            if (!config.dlConf.vLanguagePriority.empty())
                 {
-                    for (size_t i = 0; i != config.vLanguagePriority.size(); i++)
-                        if (fileDetails->language & config.vLanguagePriority[i])
+                    for (size_t i = 0; i != config.dlConf.vLanguagePriority.size(); i++)
+                        if (fileDetails->language & config.dlConf.vLanguagePriority[i])
                             {
                                 fileDetails->score += i;
                                 break;
@@ -71,7 +71,7 @@ void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const ga
         }
 }
 
-void gameDetails::makeFilepaths(const gameSpecificDirectoryConfig& config)
+void gameDetails::makeFilepaths(const DirectoryConfig& config)
 {
     std::string filepath;
     std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
@@ -147,6 +147,7 @@ Json::Value gameDetails::getDetailsAsJson()
     Json::Value json;
 
     json["gamename"] = this->gamename;
+    json["product_id"] = this->product_id;
     json["title"] = this->title;
     json["icon"] = this->icon;
     json["serials"] = this->serials;

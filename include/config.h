@@ -9,93 +9,262 @@
 
 #include <iostream>
 #include <curl/curl.h>
+#include <json/json.h>
+#include <mutex>
+#include <ctime>
 
 #include "blacklist.h"
+
+struct DirectoryConfig
+{
+    bool bSubDirectories;
+    std::string sDirectory;
+    std::string sGameSubdir;
+    std::string sInstallersSubdir;
+    std::string sExtrasSubdir;
+    std::string sPatchesSubdir;
+    std::string sLanguagePackSubdir;
+    std::string sDLCSubdir;
+};
+
+struct DownloadConfig
+{
+    unsigned int iInstallerPlatform;
+    unsigned int iInstallerLanguage;
+    std::vector<unsigned int> vPlatformPriority;
+    std::vector<unsigned int> vLanguagePriority;
+    unsigned int iInclude;
+
+    bool bRemoteXML;
+    bool bCover;
+    bool bSaveChangelogs;
+    bool bSaveSerials;
+    bool bAutomaticXMLCreation;
+
+    bool bInstallers;
+    bool bExtras;
+    bool bPatches;
+    bool bLanguagePacks;
+    bool bDLC;
+
+    bool bIgnoreDLCCount;
+    bool bDuplicateHandler;
+};
+
+struct gameSpecificConfig
+{
+    DownloadConfig dlConf;
+    DirectoryConfig dirConf;
+};
+
+class GalaxyConfig
+{
+    public:
+        bool isExpired()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            bool bExpired = false;
+            if (this->token_json.isMember("expires_at"))
+                bExpired = (time(NULL) > this->token_json["expires_at"].asUInt());
+            return bExpired;
+        }
+
+        std::string getAccessToken()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->token_json["access_token"].asString();
+        }
+
+        std::string getRefreshToken()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->token_json["refresh_token"].asString();
+        }
+
+        Json::Value getJSON()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->token_json;
+        }
+
+        void setJSON(Json::Value json)
+        {
+            std::unique_lock<std::mutex> lock(m);
+            if (!json.isMember("expires_at"))
+                json["expires_at"] = json["expires_in"].asUInt() + time(NULL);
+            this->token_json = json;
+        }
+
+        void setFilepath(const std::string& path)
+        {
+            std::unique_lock<std::mutex> lock(m);
+            this->filepath = path;
+        }
+
+        std::string getFilepath()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->filepath;
+        }
+
+        std::string getClientId()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->client_id;
+        }
+
+        std::string getClientSecret()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->client_secret;
+        }
+
+        std::string getRedirectUri()
+        {
+            std::unique_lock<std::mutex> lock(m);
+            return this->redirect_uri;
+        }
+
+        GalaxyConfig() = default;
+
+        GalaxyConfig(const GalaxyConfig& other)
+        {
+            std::lock_guard<std::mutex> guard(other.m);
+            client_id = other.client_id;
+            client_secret = other.client_secret;
+            redirect_uri = other.redirect_uri;
+            filepath = other.filepath;
+            token_json = other.token_json;
+        }
+
+        GalaxyConfig& operator= (GalaxyConfig& other)
+        {
+            if(&other == this)
+                return *this;
+
+            std::unique_lock<std::mutex> lock1(m, std::defer_lock);
+            std::unique_lock<std::mutex> lock2(other.m, std::defer_lock);
+            std::lock(lock1, lock2);
+            client_id = other.client_id;
+            client_secret = other.client_secret;
+            redirect_uri = other.redirect_uri;
+            filepath = other.filepath;
+            token_json = other.token_json;
+            return *this;
+        }
+    protected:
+    private:
+        std::string client_id = "46899977096215655";
+        std::string client_secret = "9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9";
+        std::string redirect_uri = "https://embed.gog.com/on_login_success?origin=client";
+        std::string filepath;
+        Json::Value token_json;
+        mutable std::mutex m;
+};
+
+struct CurlConfig
+{
+    bool bVerifyPeer;
+    bool bVerbose;
+    std::string sCACertPath;
+    std::string sCookiePath;
+    long int iTimeout;
+    curl_off_t iDownloadRate;
+};
+
+struct GogAPIConfig
+{
+    std::string sToken;
+    std::string sSecret;
+};
 
 class Config
 {
     public:
         Config() {};
         virtual ~Config() {};
-        bool bVerbose;
-        bool bRemoteXML;
-        bool bCover;
-        bool bUpdateCheck;
-        bool bDownload;
-        bool bList;
-        bool bListDetails;
+
+        // Booleans
         bool bLoginHTTP;
         bool bLoginAPI;
-        bool bRepair;
-        bool bInstallers;
-        bool bExtras;
-        bool bPatches;
-        bool bLanguagePacks;
-        bool bDLC;
-        bool bUnicode; // use Unicode in console output
-        bool bColor;   // use colors
-        bool bVerifyPeer;
-        bool bCheckStatus;
-        bool bDuplicateHandler;
         bool bSaveConfig;
         bool bResetConfig;
+
+        bool bDownload;
+        bool bRepair;
+        bool bUpdateCheck;
+        bool bList;
+        bool bListDetails;
+        bool bCheckStatus;
+        bool bShowWishlist;
+
+        bool bVerbose;
+        bool bUnicode; // use Unicode in console output
+        bool bColor;   // use colors
         bool bReport;
-        bool bSubDirectories;
+        bool bRespectUmask;
+        bool bPlatformDetection;
+
+        // Cache
         bool bUseCache;
         bool bUpdateCache;
-        bool bSaveSerials;
-        bool bPlatformDetection;
-        bool bShowWishlist;
-        bool bAutomaticXMLCreation;
-        bool bSaveChangelogs;
-        bool bRespectUmask;
-        std::string sGameRegex;
-        std::string sDirectory;
+        int iCacheValid;
+
+        // Download with file id options
+        std::string sFileIdString;
+        std::string sOutputFilename;
+
+        // Curl
+        CurlConfig curlConf;
+
+        // Download
+        DownloadConfig dlConf;
+
+        // Galaxy
+        //GalaxyConfig galaxyConf;
+
+        // Directories
+        DirectoryConfig dirConf;
         std::string sCacheDirectory;
-        std::string sXMLFile;
         std::string sXMLDirectory;
-        std::string sToken;
-        std::string sSecret;
-        std::string sVersionString;
-        std::string sVersionNumber;
         std::string sConfigDirectory;
-        std::string sCookiePath;
+
+        // File paths
         std::string sConfigFilePath;
         std::string sBlacklistFilePath;
         std::string sIgnorelistFilePath;
         std::string sGameHasDLCListFilePath;
-        std::string sOrphanRegex;
-        std::string sCoverList;
-        std::string sGameHasDLCList;
         std::string sReportFilePath;
-        std::string sInstallersSubdir;
-        std::string sExtrasSubdir;
-        std::string sPatchesSubdir;
-        std::string sLanguagePackSubdir;
-        std::string sDLCSubdir;
-        std::string sGameSubdir;
-        std::string sFileIdString;
-        std::string sOutputFilename;
-        std::string sLanguagePriority;
-        std::string sPlatformPriority;
-        std::string sIgnoreDLCCountRegex;
-        std::string sCACertPath;
-        std::vector<unsigned int> vLanguagePriority;
-        std::vector<unsigned int> vPlatformPriority;
 
-        unsigned int iInstallerPlatform;
-        unsigned int iInstallerLanguage;
-        unsigned int iInclude;
-        unsigned int iThreads;
-        int iRetries;
-        int iWait;
-        int iCacheValid;
-        size_t iChunkSize;
-        curl_off_t iDownloadRate;
-        long int iTimeout;
+        std::string sXMLFile;
+
+        // Regex
+        std::string sGameRegex;
+        std::string sOrphanRegex;
+        std::string sIgnoreDLCCountRegex;
+
+        // Priorities
+        std::string sPlatformPriority;
+        std::string sLanguagePriority;
+
+        // General strings
+        std::string sVersionString;
+        std::string sVersionNumber;
+
+        GogAPIConfig apiConf;
+
+        // Lists
         Blacklist blacklist;
         Blacklist ignorelist;
         Blacklist gamehasdlc;
+        std::string sCoverList;
+        std::string sGameHasDLCList;
+
+        // Integers
+        int iRetries;
+        unsigned int iThreads;
+        int iWait;
+        size_t iChunkSize;
 };
 
 #endif // CONFIG_H__

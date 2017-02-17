@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <json/json.h>
+#include <unistd.h>
 
 #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) >= 40900
 #   define _regex_namespace_ std
@@ -150,6 +151,8 @@ int API::login(const std::string& email, const std::string& password)
         return res;
     }
 
+    usleep(500); // Wait to avoid "429 Too Many Requests"
+
     // Authorize temporary token and get verifier
     url = this->config.oauth_authorize_temp_token + "?username=" + oauth_url_escape(email.c_str()) + "&password=" + oauth_url_escape(password.c_str());
     url = oauth_sign_url2(url.c_str(), NULL, OA_HMAC, NULL, CONSUMER_KEY.c_str(), CONSUMER_SECRET.c_str(), token.c_str(), secret.c_str());
@@ -166,6 +169,8 @@ int API::login(const std::string& email, const std::string& password)
     {
         return res;
     }
+
+    usleep(500); // Wait to avoid "429 Too Many Requests"
 
     // Get final token and secret
     url = this->config.oauth_get_token + "?oauth_verifier=" + verifier;

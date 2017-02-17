@@ -10,30 +10,29 @@
 #include <htmlcxx/html/ParserDom.h>
 #include <boost/algorithm/string/case_conv.hpp>
 
-Website::Website(Config &conf)
+Website::Website()
 {
-    this->config = conf;
     this->retries = 0;
 
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, config.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, config.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
-    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
+    curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, Globals::globalConfig.curlConf.sCookiePath.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, Globals::globalConfig.curlConf.sCookiePath.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
+    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
+    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, Globals::globalConfig.curlConf.iDownloadRate);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
-    if (!config.sCACertPath.empty())
-        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, config.sCACertPath.c_str());
+    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
+        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
 }
 
 Website::~Website()
@@ -61,13 +60,13 @@ std::string Website::getResponse(const std::string& url)
     CURLcode result;
     do
     {
-        if (config.iWait > 0)
-            usleep(config.iWait); // Delay the request by specified time
+        if (Globals::globalConfig.iWait > 0)
+            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
         result = curl_easy_perform(curlhandle);
         response = memory.str();
         memory.str(std::string());
     }
-    while ((result != CURLE_OK) && response.empty() && (this->retries++ < config.iRetries));
+    while ((result != CURLE_OK) && response.empty() && (this->retries++ < Globals::globalConfig.iRetries));
     this->retries = 0; // reset retries counter
 
     if (result != CURLE_OK)
@@ -198,31 +197,31 @@ std::vector<gameItem> Website::getGames()
                     platform |= GlobalConstants::PLATFORM_LINUX;
 
                 // Skip if platform doesn't match
-                if (config.bPlatformDetection && !(platform & config.iInstallerPlatform))
+                if (Globals::globalConfig.bPlatformDetection && !(platform & Globals::globalConfig.dlConf.iInstallerPlatform))
                     continue;
 
                 // Filter the game list
-                if (!config.sGameRegex.empty())
+                if (!Globals::globalConfig.sGameRegex.empty())
                 {
                     // GameRegex filter aliases
-                    if (config.sGameRegex == "all")
-                        config.sGameRegex = ".*";
+                    if (Globals::globalConfig.sGameRegex == "all")
+                        Globals::globalConfig.sGameRegex = ".*";
 
-                    boost::regex expression(config.sGameRegex);
+                    boost::regex expression(Globals::globalConfig.sGameRegex);
                     boost::match_results<std::string::const_iterator> what;
                     if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
                         continue;
                 }
 
-                if (config.bDLC)
+                if (Globals::globalConfig.dlConf.bDLC)
                 {
                     int dlcCount = product["dlcCount"].asInt();
 
                     bool bDownloadDLCInfo = (dlcCount != 0);
 
-                    if (!bDownloadDLCInfo && !config.sIgnoreDLCCountRegex.empty())
+                    if (!bDownloadDLCInfo && !Globals::globalConfig.sIgnoreDLCCountRegex.empty())
                     {
-                        boost::regex expression(config.sIgnoreDLCCountRegex);
+                        boost::regex expression(Globals::globalConfig.sIgnoreDLCCountRegex);
                         boost::match_results<std::string::const_iterator> what;
                         if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
                         {
@@ -230,25 +229,25 @@ std::vector<gameItem> Website::getGames()
                         }
                     }
 
-                    if (!bDownloadDLCInfo && !config.gamehasdlc.empty())
+                    if (!bDownloadDLCInfo && !Globals::globalConfig.gamehasdlc.empty())
                     {
-                        if (config.gamehasdlc.isBlacklisted(game.name))
+                        if (Globals::globalConfig.gamehasdlc.isBlacklisted(game.name))
                             bDownloadDLCInfo = true;
                     }
 
                     // Check game specific config
-                    if (!config.bUpdateCache) // Disable game specific config files for cache update
+                    if (!Globals::globalConfig.bUpdateCache) // Disable game specific config files for cache update
                     {
                         gameSpecificConfig conf;
-                        conf.bIgnoreDLCCount = bDownloadDLCInfo;
+                        conf.dlConf.bIgnoreDLCCount = bDownloadDLCInfo;
                         Util::getGameSpecificConfig(game.name, &conf);
-                        bDownloadDLCInfo = conf.bIgnoreDLCCount;
+                        bDownloadDLCInfo = conf.dlConf.bIgnoreDLCCount;
                     }
 
-                    if (bDownloadDLCInfo && !config.sGameRegex.empty())
+                    if (bDownloadDLCInfo && !Globals::globalConfig.sGameRegex.empty())
                     {
                         // don't download unnecessary info if user is only interested in a subset of his account
-                        boost::regex expression(config.sGameRegex);
+                        boost::regex expression(Globals::globalConfig.sGameRegex);
                         boost::match_results<std::string::const_iterator> what;
                         if (!boost::regex_search(game.name, what, expression))
                         {
@@ -317,96 +316,40 @@ int Website::Login(const std::string& email, const std::string& password)
     std::string postdata;
     std::ostringstream memory;
     std::string token;
-    std::string tagname_username;
-    std::string tagname_password;
-    std::string tagname_login;
+    std::string tagname_username = "login[username]";
+    std::string tagname_password = "login[password]";
+    std::string tagname_login = "login[login]";
     std::string tagname_token;
+    std::string auth_url = "https://auth.gog.com/auth?client_id=" + Globals::galaxyConf.getClientId() + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size()) + "&response_type=code&layout=default&brand=gog";
+    std::string auth_code;
 
-    // Get login token
-    std::string html = this->getResponse("https://www.gog.com/");
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    // Find auth_url
-    bool bFoundAuthUrl = false;
-    for (; it != end; ++it)
+    std::string login_form_html = this->getResponse(auth_url);
+    #ifdef DEBUG
+        std::cerr << "DEBUG INFO (Website::Login)" << std::endl;
+        std::cerr << login_form_html << std::endl;
+    #endif
+    if (login_form_html.find("google.com/recaptcha") != std::string::npos)
     {
-        if (it->tagName()=="script")
-        {
-            std::string auth_url;
-            for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
-            {
-                tree<htmlcxx::HTML::Node>::iterator script_it = dom.child(it, i);
-                if (!script_it->isTag() && !script_it->isComment())
-                {
-                    if (script_it->text().find("GalaxyAccounts") != std::string::npos)
-                    {
-                        boost::match_results<std::string::const_iterator> what;
-                        boost::regex expression(".*'(https://auth.gog.com/.*?)'.*");
-                        boost::regex_match(script_it->text(), what, expression);
-                        auth_url = what[1];
-                        break;
-                    }
-                }
-            }
-
-            if (!auth_url.empty())
-            {   // Found auth_url, get the necessary info for login
-                bFoundAuthUrl = true;
-                std::string login_form_html = this->getResponse(auth_url);
-                #ifdef DEBUG
-                    std::cerr << "DEBUG INFO (Website::Login)" << std::endl;
-                    std::cerr << login_form_html << std::endl;
-                #endif
-                if (login_form_html.find("google.com/recaptcha") != std::string::npos)
-                {
-                    std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
-                                << "Login with browser and export cookies to \"" << config.sCookiePath << "\"" << std::endl;
-                    return res = 0;
-                }
-
-                tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
-                tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
-                tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
-                for (; login_it != login_it_end; ++login_it)
-                {
-                    if (login_it->tagName()=="input")
-                    {
-                        login_it->parseAttributes();
-                        std::string id_login = login_it->attribute("id").second;
-                        if (id_login == "login_username")
-                        {
-                            tagname_username = login_it->attribute("name").second;
-                        }
-                        else if (id_login == "login_password")
-                        {
-                            tagname_password = login_it->attribute("name").second;
-                        }
-                        else if (id_login == "login__token")
-                        {
-                            token = login_it->attribute("value").second; // login token
-                            tagname_token = login_it->attribute("name").second;
-                        }
-                    }
-                    else if (login_it->tagName()=="button")
-                    {
-                        login_it->parseAttributes();
-                        std::string id_login = login_it->attribute("id").second;
-                        if (id_login == "login_login")
-                        {
-                            tagname_login = login_it->attribute("name").second;
-                        }
-                    }
-                }
-                break;
-            }
-        }
+        std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
+                    << "Login with browser and export cookies to \"" << Globals::globalConfig.curlConf.sCookiePath << "\"" << std::endl;
+        return res = 0;
     }
 
-    if (!bFoundAuthUrl)
+    htmlcxx::HTML::ParserDom parser;
+    tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
+    tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
+    tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
+    for (; login_it != login_it_end; ++login_it)
     {
-        std::cout << "Failed to find url for login form" << std::endl;
+        if (login_it->tagName()=="input")
+        {
+            login_it->parseAttributes();
+            if (login_it->attribute("id").second == "login__token")
+            {
+                token = login_it->attribute("value").second; // login token
+                tagname_token = login_it->attribute("name").second;
+            }
+        }
     }
 
     if (token.empty())
@@ -448,7 +391,14 @@ int Website::Login(const std::string& email, const std::string& password)
     // Handle two step authorization
     if (std::string(redirect_url).find("two_step") != std::string::npos)
     {
-        std::string security_code, tagname_two_step_send, tagname_two_step_auth_letter_1, tagname_two_step_auth_letter_2, tagname_two_step_auth_letter_3, tagname_two_step_auth_letter_4, tagname_two_step_token, token_two_step;
+        std::string security_code;
+        std::string tagname_two_step_send = "second_step_authentication[send]";
+        std::string tagname_two_step_auth_letter_1 = "second_step_authentication[token][letter_1]";
+        std::string tagname_two_step_auth_letter_2 = "second_step_authentication[token][letter_2]";
+        std::string tagname_two_step_auth_letter_3 = "second_step_authentication[token][letter_3]";
+        std::string tagname_two_step_auth_letter_4 = "second_step_authentication[token][letter_4]";
+        std::string tagname_two_step_token;
+        std::string token_two_step;
         std::string two_step_html = this->getResponse(redirect_url);
         redirect_url = NULL;
 
@@ -460,39 +410,14 @@ int Website::Login(const std::string& email, const std::string& password)
             if (two_step_it->tagName()=="input")
             {
                 two_step_it->parseAttributes();
-                std::string id_two_step = two_step_it->attribute("id").second;
-                if (id_two_step == "second_step_authentication_token_letter_1")
-                {
-                    tagname_two_step_auth_letter_1 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_2")
-                {
-                    tagname_two_step_auth_letter_2 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_3")
-                {
-                    tagname_two_step_auth_letter_3 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication_token_letter_4")
-                {
-                    tagname_two_step_auth_letter_4 = two_step_it->attribute("name").second;
-                }
-                else if (id_two_step == "second_step_authentication__token")
+                if (two_step_it->attribute("id").second == "second_step_authentication__token")
                 {
                     token_two_step = two_step_it->attribute("value").second; // two step token
                     tagname_two_step_token = two_step_it->attribute("name").second;
                 }
             }
-            else if (two_step_it->tagName()=="button")
-            {
-                two_step_it->parseAttributes();
-                std::string id_two_step = two_step_it->attribute("id").second;
-                if (id_two_step == "second_step_authentication_send")
-                {
-                    tagname_two_step_send = two_step_it->attribute("name").second;
-                }
-            }
         }
+
         std::cerr << "Security code: ";
         std::getline(std::cin,security_code);
         if (security_code.size() != 4)
@@ -500,6 +425,7 @@ int Website::Login(const std::string& email, const std::string& password)
             std::cerr << "Security code must be 4 characters long" << std::endl;
             exit(1);
         }
+
         postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
                 + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
                 + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
@@ -523,6 +449,31 @@ int Website::Login(const std::string& email, const std::string& password)
         curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
     }
 
+    if (!std::string(redirect_url).empty())
+    {
+        long response_code;
+        do
+        {
+            curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+            result = curl_easy_perform(curlhandle);
+            memory.str(std::string());
+
+            result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+            if ((response_code / 100) == 3)
+                curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+
+            std::string redir_url = std::string(redirect_url);
+            boost::regex re(".*code=(.*?)([\?&].*|$)", boost::regex_constants::icase);
+            boost::match_results<std::string::const_iterator> what;
+            if (boost::regex_search(redir_url, what, re))
+            {
+                auth_code = what[1];
+                if (!auth_code.empty())
+                    break;
+            }
+        } while (result == CURLE_OK && (response_code / 100) == 3);
+    }
+
     curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
     curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
     curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
@@ -544,10 +495,40 @@ int Website::Login(const std::string& email, const std::string& password)
             res = 1; // Login was successful
     }
 
+    if (auth_code.empty())
+        res = 0;
+
     if (res == 1)
     {
-        curl_easy_setopt(curlhandle, CURLOPT_COOKIELIST, "FLUSH"); // Write all known cookies to the file specified by CURLOPT_COOKIEJAR
+        std::string token_url = "https://auth.gog.com/token?client_id=" + Globals::galaxyConf.getClientId()
+                            + "&client_secret=" + Globals::galaxyConf.getClientSecret()
+                            + "&grant_type=authorization_code&code=" + auth_code
+                            + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size());
+
+        std::string json = this->getResponse(token_url);
+        if (json.empty())
+            res = 0;
+        else
+        {
+            Json::Value token_json;
+            Json::Reader *jsonparser = new Json::Reader;
+            if (jsonparser->parse(json, token_json))
+            {
+                Globals::galaxyConf.setJSON(token_json);
+                res = 1;
+            }
+            else
+            {
+                std::cerr << "Failed to parse json" << std::endl << json << std::endl;
+                std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
+                res = 0;
+            }
+            delete jsonparser;
+        }
     }
+
+    if (res == 1)
+        curl_easy_setopt(curlhandle, CURLOPT_COOKIELIST, "FLUSH"); // Write all known cookies to the file specified by CURLOPT_COOKIEJAR
 
     return res;
 }
@@ -677,7 +658,7 @@ std::vector<wishlistItem> Website::getWishlistItems()
                         item.platform |= GlobalConstants::PLATFORM_LINUX;
 
                     // Skip if platform doesn't match
-                    if (config.bPlatformDetection && !(item.platform & config.iInstallerPlatform))
+                    if (Globals::globalConfig.bPlatformDetection && !(item.platform & Globals::globalConfig.dlConf.iInstallerPlatform))
                         continue;
                 }
 
@@ -740,9 +721,4 @@ std::vector<wishlistItem> Website::getWishlistItems()
     delete jsonparser;
 
     return wishlistItems;
-}
-
-void Website::setConfig(Config &conf)
-{
-    this->config = conf;
 }

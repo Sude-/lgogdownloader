@@ -8,6 +8,7 @@
 #define GAMEDETAILS_H
 
 #include "globalconstants.h"
+#include "globals.h"
 #include "gamefile.h"
 #include "config.h"
 #include "util.h"
@@ -26,12 +27,13 @@ class gameDetails
         std::vector<gameFile> languagepacks;
         std::vector<gameDetails> dlcs;
         std::string gamename;
+        std::string product_id;
         std::string title;
         std::string icon;
         std::string serials;
         std::string changelog;
         void filterWithPriorities(const gameSpecificConfig& config);
-        void makeFilepaths(const gameSpecificDirectoryConfig& config);
+        void makeFilepaths(const DirectoryConfig& config);
         std::string getSerialsFilepath();
         std::string getChangelogFilepath();
         Json::Value getDetailsAsJson();

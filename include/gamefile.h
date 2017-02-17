@@ -8,6 +8,7 @@
 #define GAMEFILE_H
 
 #include "globalconstants.h"
+#include "globals.h"
 
 #include <iostream>
 #include <vector>

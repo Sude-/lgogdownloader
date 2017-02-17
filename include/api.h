@@ -9,6 +9,7 @@
 
 #include "globalconstants.h"
 #include "gamedetails.h"
+#include "globals.h"
 
 #include <iostream>
 #include <vector>

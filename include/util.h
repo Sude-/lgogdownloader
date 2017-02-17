@@ -8,6 +8,8 @@
 #define UTIL_H
 
 #include "globalconstants.h"
+#include "config.h"
+#include "globals.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -20,29 +22,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
 #include <json/json.h>
-
-struct gameSpecificDirectoryConfig
-{
-    bool bSubDirectories;
-    std::string sDirectory;
-    std::string sGameSubdir;
-    std::string sInstallersSubdir;
-    std::string sExtrasSubdir;
-    std::string sPatchesSubdir;
-    std::string sLanguagePackSubdir;
-    std::string sDLCSubdir;
-};
-
-struct gameSpecificConfig
-{
-    unsigned int iInstallerPlatform;
-    unsigned int iInstallerLanguage;
-    bool bDLC;
-    bool bIgnoreDLCCount;
-    gameSpecificDirectoryConfig dirConf;
-    std::vector<unsigned int> vLanguagePriority;
-    std::vector<unsigned int> vPlatformPriority;
-};
 
 struct gameItem
 {

@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "util.h"
+#include "globals.h"
 #include <curl/curl.h>
 #include <json/json.h>
 #include <fstream>
@@ -16,7 +17,7 @@
 class Website
 {
     public:
-        Website(Config &conf);
+        Website();
         int Login(const std::string& email, const std::string& password);
         std::string getResponse(const std::string& url);
         Json::Value getGameDetailsJSON(const std::string& gameid);
@@ -24,7 +25,6 @@ class Website
         std::vector<gameItem> getFreeGames();
         std::vector<wishlistItem> getWishlistItems();
         bool IsLoggedIn();
-        void setConfig(Config &conf);
         virtual ~Website();
     protected:
     private:

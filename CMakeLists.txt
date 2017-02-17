@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project (lgogdownloader LANGUAGES C CXX VERSION 3.1)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1")
 set(LINK_LIBCRYPTO 0)
 
 find_program(READELF readelf DOC "Location of the readelf program")
@@ -14,6 +13,7 @@ find_package(Boost
   regex
   program_options
   date_time
+  iostreams
   )
 find_package(CURL 7.32.0 REQUIRED)
 if(CURL_FOUND)
@@ -46,6 +46,7 @@ file(GLOB SRC_FILES
   src/blacklist.cpp
   src/gamefile.cpp
   src/gamedetails.cpp
+  src/galaxyapi.cpp
   )
 
 set(GIT_CHECKOUT FALSE)

@@ -6,7 +6,7 @@
 
 #include "downloader.h"
 #include "util.h"
-#include "globalconstants.h"
+#include "globals.h"
 #include "downloadinfo.h"
 #include "message.h"
 
@@ -30,6 +30,11 @@
 #include <thread>
 #include <mutex>
 
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+
 namespace bptime = boost::posix_time;
 
 std::vector<DownloadInfo> vDownloadInfo;
@@ -40,12 +45,36 @@ ThreadSafeQueue<gameItem> gameItemQueue;
 ThreadSafeQueue<gameDetails> gameDetailsQueue;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 
-Downloader::Downloader(Config &conf)
+static curl_off_t WriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp)
 {
-    this->config = conf;
-    if (config.bLoginHTTP && boost::filesystem::exists(config.sCookiePath))
-        if (!boost::filesystem::remove(config.sCookiePath))
-            std::cerr << "Failed to delete " << config.sCookiePath << std::endl;
+    curl_off_t realsize = size * nmemb;
+    struct ChunkMemoryStruct *mem = (struct ChunkMemoryStruct *)userp;
+
+    mem->memory = (char *) realloc(mem->memory, mem->size + realsize + 1);
+    if(mem->memory == NULL)
+    {
+        std::cout << "Not enough memory (realloc returned NULL)" << std::endl;
+        return 0;
+    }
+
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+
+    return realsize;
+}
+
+Downloader::Downloader()
+{
+    if (Globals::globalConfig.bLoginHTTP)
+    {
+        if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
+            if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
+                std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
+        if (boost::filesystem::exists(Globals::galaxyConf.getFilepath()))
+            if (!boost::filesystem::remove(Globals::galaxyConf.getFilepath()))
+                std::cerr << "Failed to delete " << Globals::galaxyConf.getFilepath() << std::endl;
+    }
 
     this->resume_position = 0;
     this->retries = 0;
@@ -53,16 +82,16 @@ Downloader::Downloader(Config &conf)
     // Initialize curl and set curl options
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, config.sVersionString.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.sVersionString.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, config.iTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, config.bVerbose);
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
+    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, config.iDownloadRate);
+    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, Globals::globalConfig.curlConf.iDownloadRate);
     curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
     curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
 
@@ -70,37 +99,68 @@ Downloader::Downloader(Config &conf)
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
-    if (!config.sCACertPath.empty())
-        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, config.sCACertPath.c_str());
+    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
+        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
 
     // Create new GOG website handle
-    gogWebsite = new Website(config);
+    gogWebsite = new Website();
 
     // Create new API handle and set curl options for the API
-    gogAPI = new API(config.sToken, config.sSecret);
-    gogAPI->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
-    gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-    gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
-    if (!config.sCACertPath.empty())
-        gogAPI->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
+    gogAPI = new API(Globals::globalConfig.apiConf.sToken, Globals::globalConfig.apiConf.sSecret);
+    gogAPI->curlSetOpt(CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
+    gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
+    gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
+    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
+        gogAPI->curlSetOpt(CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
 
     gogAPI->init();
 
-    progressbar = new ProgressBar(config.bUnicode, config.bColor);
+    progressbar = new ProgressBar(Globals::globalConfig.bUnicode, Globals::globalConfig.bColor);
+
+    if (boost::filesystem::exists(Globals::galaxyConf.getFilepath()))
+    {
+        std::ifstream ifs(Globals::galaxyConf.getFilepath(), std::ifstream::binary);
+        Json::Value json;
+        Json::Reader *jsonparser = new Json::Reader;
+        if (jsonparser->parse(ifs, json))
+        {
+            if (!json.isMember("expires_at"))
+            {
+                std::time_t last_modified = boost::filesystem::last_write_time(Globals::galaxyConf.getFilepath());
+                json["expires_at"] = json["expires_in"].asUInt() + last_modified;
+            }
+
+            Globals::galaxyConf.setJSON(json);
+        }
+        else
+        {
+            std::cerr << "Failed to parse " << Globals::galaxyConf.getFilepath() << std::endl;
+            std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
+        }
+        delete jsonparser;
+
+        if (ifs)
+            ifs.close();
+    }
+
+    gogGalaxy = new galaxyAPI(Globals::globalConfig.curlConf);
 }
 
 Downloader::~Downloader()
 {
-    if (config.bReport)
+    if (Globals::globalConfig.bReport)
         if (this->report_ofs)
             this->report_ofs.close();
     delete progressbar;
+    delete gogGalaxy;
     delete gogAPI;
     delete gogWebsite;
     curl_easy_cleanup(curlhandle);
     // Make sure that cookie file is only readable/writable by owner
-    if (!config.bRespectUmask)
-        Util::setFilePermissions(config.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+    if (!Globals::globalConfig.bRespectUmask)
+    {
+        Util::setFilePermissions(Globals::globalConfig.curlConf.sCookiePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
+    }
 }
 
 /* Login check
@@ -110,16 +170,16 @@ Downloader::~Downloader()
 bool Downloader::isLoggedIn()
 {
     bool bIsLoggedIn = false;
-    config.bLoginAPI = false;
-    config.bLoginHTTP = false;
+    Globals::globalConfig.bLoginAPI = false;
+    Globals::globalConfig.bLoginHTTP = false;
 
     bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
     if (!bWebsiteIsLoggedIn)
-        config.bLoginHTTP = true;
+        Globals::globalConfig.bLoginHTTP = true;
 
     bool bIsLoggedInAPI = gogAPI->isLoggedIn();
     if (!bIsLoggedInAPI)
-        config.bLoginAPI = true;
+        Globals::globalConfig.bLoginAPI = true;
 
     if (bIsLoggedInAPI && bWebsiteIsLoggedIn)
         bIsLoggedIn = true;
@@ -133,24 +193,45 @@ bool Downloader::isLoggedIn()
 */
 int Downloader::init()
 {
-    if (!config.sGameHasDLCList.empty())
+    if (!Globals::globalConfig.sGameHasDLCList.empty())
     {
-        if (config.gamehasdlc.empty())
+        if (Globals::globalConfig.gamehasdlc.empty())
         {
-            std::string game_has_dlc_list = this->getResponse(config.sGameHasDLCList);
+            std::string game_has_dlc_list = this->getResponse(Globals::globalConfig.sGameHasDLCList);
             if (!game_has_dlc_list.empty())
-                config.gamehasdlc.initialize(Util::tokenize(game_has_dlc_list, "\n"));
+                Globals::globalConfig.gamehasdlc.initialize(Util::tokenize(game_has_dlc_list, "\n"));
         }
     }
-    gogWebsite->setConfig(config); // Update config for website handle
 
-    if (config.bReport && (config.bDownload || config.bRepair))
+    if (!gogGalaxy->init())
     {
-        this->report_ofs.open(config.sReportFilePath);
+        if (gogGalaxy->refreshLogin())
+        {
+            this->saveGalaxyJSON();
+        }
+        else
+            return 0;
+    }
+
+    if (!Globals::galaxyConf.getJSON().empty())
+    {
+        if (Globals::galaxyConf.isExpired())
+        {
+            // Access token has expired, refresh
+            if (gogGalaxy->refreshLogin())
+            {
+                this->saveGalaxyJSON();
+            }
+        }
+    }
+
+    if (Globals::globalConfig.bReport && (Globals::globalConfig.bDownload || Globals::globalConfig.bRepair))
+    {
+        this->report_ofs.open(Globals::globalConfig.sReportFilePath);
         if (!this->report_ofs)
         {
-            config.bReport = false;
-            std::cerr << "Failed to create " << config.sReportFilePath << std::endl;
+            Globals::globalConfig.bReport = false;
+            std::cerr << "Failed to create " << Globals::globalConfig.sReportFilePath << std::endl;
             return 0;
         }
     }
@@ -191,13 +272,14 @@ int Downloader::login()
     else
     {
         // Login to website
-        if (config.bLoginHTTP)
+        if (Globals::globalConfig.bLoginHTTP)
         {
             // Delete old cookies
-            if (boost::filesystem::exists(config.sCookiePath))
-                if (!boost::filesystem::remove(config.sCookiePath))
-                    std::cerr << "Failed to delete " << config.sCookiePath << std::endl;
+            if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
+                if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
+                    std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
 
+            //if (!gogWebsite->Login(email, password))
             if (!gogWebsite->Login(email, password))
             {
                 std::cerr << "HTTP: Login failed" << std::endl;
@@ -206,12 +288,18 @@ int Downloader::login()
             else
             {
                 std::cerr << "HTTP: Login successful" << std::endl;
-                if (!config.bLoginAPI)
+
+                if (!Globals::galaxyConf.getJSON().empty())
+                {
+                    this->saveGalaxyJSON();
+                }
+
+                if (!Globals::globalConfig.bLoginAPI)
                     return 1;
             }
         }
         // Login to API
-        if (config.bLoginAPI)
+        if (Globals::globalConfig.bLoginAPI)
         {
             if (!gogAPI->login(email, password))
             {
@@ -221,8 +309,8 @@ int Downloader::login()
             else
             {
                 std::cerr << "API: Login successful" << std::endl;
-                config.sToken = gogAPI->getToken();
-                config.sSecret = gogAPI->getSecret();
+                Globals::globalConfig.apiConf.sToken = gogAPI->getToken();
+                Globals::globalConfig.apiConf.sSecret = gogAPI->getSecret();
                 return 1;
             }
         }
@@ -238,14 +326,13 @@ void Downloader::updateCheck()
 
     if (gogAPI->user.notifications_games)
     {
-        config.sGameRegex = ".*"; // Always check all games
-        gogWebsite->setConfig(config); // Make sure that website handle has updated config
-        if (config.bList || config.bListDetails || config.bDownload)
+        Globals::globalConfig.sGameRegex = ".*"; // Always check all games
+        if (Globals::globalConfig.bList || Globals::globalConfig.bListDetails || Globals::globalConfig.bDownload)
         {
-            if (config.bList)
-                config.bListDetails = true; // Always list details
+            if (Globals::globalConfig.bList)
+                Globals::globalConfig.bListDetails = true; // Always list details
             this->getGameList();
-            if (config.bDownload)
+            if (Globals::globalConfig.bDownload)
                 this->download();
             else
                 this->listGames();
@@ -255,7 +342,7 @@ void Downloader::updateCheck()
 
 void Downloader::getGameList()
 {
-    if (config.sGameRegex == "free")
+    if (Globals::globalConfig.sGameRegex == "free")
     {
         gameItems = gogWebsite->getFreeGames();
     }
@@ -272,22 +359,14 @@ void Downloader::getGameList()
 int Downloader::getGameDetails()
 {
     // Set default game specific directory options to values from config
-    gameSpecificDirectoryConfig dirConfDefault;
-    dirConfDefault.sDirectory = config.sDirectory;
-    dirConfDefault.bSubDirectories = config.bSubDirectories;
-    dirConfDefault.sGameSubdir = config.sGameSubdir;
-    dirConfDefault.sInstallersSubdir = config.sInstallersSubdir;
-    dirConfDefault.sExtrasSubdir = config.sExtrasSubdir;
-    dirConfDefault.sLanguagePackSubdir = config.sLanguagePackSubdir;
-    dirConfDefault.sDLCSubdir = config.sDLCSubdir;
-    dirConfDefault.sPatchesSubdir = config.sPatchesSubdir;
+    DirectoryConfig dirConfDefault = Globals::globalConfig.dirConf;
 
-    if (config.bUseCache && !config.bUpdateCache)
+    if (Globals::globalConfig.bUseCache && !Globals::globalConfig.bUpdateCache)
     {
         // GameRegex filter alias for all games
-        if (config.sGameRegex == "all")
-            config.sGameRegex = ".*";
-        else if (config.sGameRegex == "free")
+        if (Globals::globalConfig.sGameRegex == "all")
+            Globals::globalConfig.sGameRegex = ".*";
+        else if (Globals::globalConfig.sGameRegex == "free")
             std::cerr << "Warning: regex alias \"free\" doesn't work with cached details" << std::endl;
 
         int result = this->loadGameDetailsCache();
@@ -334,14 +413,14 @@ int Downloader::getGameDetails()
         }
 
         // Create threads
-        unsigned int threads = std::min(config.iThreads, static_cast<unsigned int>(gameItemQueue.size()));
+        unsigned int threads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(gameItemQueue.size()));
         std::vector<std::thread> vThreads;
         for (unsigned int i = 0; i < threads; ++i)
         {
             DownloadInfo dlInfo;
             dlInfo.setStatus(DLSTATUS_NOTSTARTED);
             vDownloadInfo.push_back(dlInfo);
-            vThreads.push_back(std::thread(Downloader::getGameDetailsThread, this->config, i));
+            vThreads.push_back(std::thread(Downloader::getGameDetailsThread, Globals::globalConfig, i));
         }
 
         unsigned int dl_status = DLSTATUS_NOTSTARTED;
@@ -357,8 +436,8 @@ int Downloader::getGameDetails()
             Message msg;
             while (msgQueue.try_pop(msg))
             {
-                std::cerr << msg.getFormattedString(config.bColor, true) << std::endl;
-                if (config.bReport)
+                std::cerr << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+                if (Globals::globalConfig.bReport)
                 {
                     this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
                 }
@@ -398,7 +477,7 @@ int Downloader::getGameDetails()
 
 int Downloader::listGames()
 {
-    if (config.bListDetails) // Detailed list
+    if (Globals::globalConfig.bListDetails) // Detailed list
     {
         if (this->games.empty()) {
             int res = this->getGameDetails();
@@ -409,23 +488,24 @@ int Downloader::listGames()
         for (unsigned int i = 0; i < games.size(); ++i)
         {
             std::cout   << "gamename: " << games[i].gamename << std::endl
+                        << "product id: " << games[i].product_id << std::endl
                         << "title: " << games[i].title << std::endl
                         << "icon: " << "http://static.gog.com" << games[i].icon << std::endl;
             if (!games[i].serials.empty())
                 std::cout << "serials:" << std::endl << games[i].serials << std::endl;
 
             // List installers
-            if (config.bInstallers)
+            if (Globals::globalConfig.dlConf.bInstallers)
             {
                 std::cout << "installers: " << std::endl;
                 for (unsigned int j = 0; j < games[i].installers.size(); ++j)
                 {
-                    if (!config.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
+                    if (!Globals::globalConfig.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
                     {
                         std::string filepath = games[i].installers[j].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath))
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                         {
-                            if (config.bVerbose)
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -443,15 +523,15 @@ int Downloader::listGames()
                 }
             }
             // List extras
-            if (config.bExtras && !config.bUpdateCheck && !games[i].extras.empty())
+            if (Globals::globalConfig.dlConf.bExtras && !Globals::globalConfig.bUpdateCheck && !games[i].extras.empty())
             {
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
                 {
                     std::string filepath = games[i].extras[j].getFilepath();
-                    if (config.blacklist.isBlacklisted(filepath))
+                    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (config.bVerbose)
+                        if (Globals::globalConfig.bVerbose)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -464,15 +544,15 @@ int Downloader::listGames()
                 }
             }
             // List patches
-            if (config.bPatches && !config.bUpdateCheck && !games[i].patches.empty())
+            if (Globals::globalConfig.dlConf.bPatches && !Globals::globalConfig.bUpdateCheck && !games[i].patches.empty())
             {
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
                 {
                     std::string filepath = games[i].patches[j].getFilepath();
-                    if (config.blacklist.isBlacklisted(filepath))
+                    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (config.bVerbose)
+                        if (Globals::globalConfig.bVerbose)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -489,15 +569,15 @@ int Downloader::listGames()
                 }
             }
             // List language packs
-            if (config.bLanguagePacks && !config.bUpdateCheck && !games[i].languagepacks.empty())
+            if (Globals::globalConfig.dlConf.bLanguagePacks && !Globals::globalConfig.bUpdateCheck && !games[i].languagepacks.empty())
             {
                 std::cout << "language packs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
                 {
                     std::string filepath = games[i].languagepacks[j].getFilepath();
-                    if (config.blacklist.isBlacklisted(filepath))
+                    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (config.bVerbose)
+                        if (Globals::globalConfig.bVerbose)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -509,7 +589,7 @@ int Downloader::listGames()
                                 << std::endl;
                 }
             }
-            if (config.bDLC && !games[i].dlcs.empty())
+            if (Globals::globalConfig.dlConf.bDLC && !games[i].dlcs.empty())
             {
                 std::cout << "DLCs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
@@ -523,9 +603,9 @@ int Downloader::listGames()
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath))
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                         {
-                            if (config.bVerbose)
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -541,8 +621,8 @@ int Downloader::listGames()
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -557,8 +637,8 @@ int Downloader::listGames()
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -573,8 +653,8 @@ int Downloader::listGames()
                     for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -601,7 +681,7 @@ int Downloader::listGames()
             if (gameItems[i].updates > 0)
             {
                 gamename += " [" + std::to_string(gameItems[i].updates) + "]";
-                if (config.bColor)
+                if (Globals::globalConfig.bColor)
                     gamename = "\033[32m" + gamename + "\033[0m";
             }
             std::cout << gamename << std::endl;
@@ -621,21 +701,21 @@ void Downloader::repair()
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         // Installers (use remote or local file)
-        if (config.bInstallers)
+        if (Globals::globalConfig.dlConf.bInstallers)
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
                 std::string filepath = games[i].installers[j].getFilepath();
-                if (config.blacklist.isBlacklisted(filepath))
+                if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                 {
-                    if (config.bVerbose)
+                    if (Globals::globalConfig.bVerbose)
                         std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
                 // Get XML data
                 std::string XML = "";
-                if (config.bRemoteXML)
+                if (Globals::globalConfig.dlConf.bRemoteXML)
                 {
                     XML = gogAPI->getXML(games[i].gamename, games[i].installers[j].id);
                     if (gogAPI->getError())
@@ -647,7 +727,7 @@ void Downloader::repair()
                 }
 
                 // Repair
-                bool bUseLocalXML = !config.bRemoteXML;
+                bool bUseLocalXML = !Globals::globalConfig.dlConf.bRemoteXML;
                 if (!XML.empty() || bUseLocalXML)
                 {
                     std::string url = gogAPI->getInstallerLink(games[i].gamename, games[i].installers[j].id);
@@ -665,14 +745,14 @@ void Downloader::repair()
         }
 
         // Extras (GOG doesn't provide XML data for extras, use local file)
-        if (config.bExtras)
+        if (Globals::globalConfig.dlConf.bExtras)
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
                 std::string filepath = games[i].extras[j].getFilepath();
-                if (config.blacklist.isBlacklisted(filepath))
+                if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                 {
-                    if (config.bVerbose)
+                    if (Globals::globalConfig.bVerbose)
                         std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
@@ -691,21 +771,21 @@ void Downloader::repair()
         }
 
         // Patches (use remote or local file)
-        if (config.bPatches)
+        if (Globals::globalConfig.dlConf.bPatches)
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
                 std::string filepath = games[i].patches[j].getFilepath();
-                if (config.blacklist.isBlacklisted(filepath))
+                if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                 {
-                    if (config.bVerbose)
+                    if (Globals::globalConfig.bVerbose)
                         std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
 
                 // Get XML data
                 std::string XML = "";
-                if (config.bRemoteXML)
+                if (Globals::globalConfig.dlConf.bRemoteXML)
                 {
                     XML = gogAPI->getXML(games[i].gamename, games[i].patches[j].id);
                     if (gogAPI->getError())
@@ -729,14 +809,14 @@ void Downloader::repair()
         }
 
         // Language packs (GOG doesn't provide XML data for language packs, use local file)
-        if (config.bLanguagePacks)
+        if (Globals::globalConfig.dlConf.bLanguagePacks)
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
                 std::string filepath = games[i].languagepacks[j].getFilepath();
-                if (config.blacklist.isBlacklisted(filepath))
+                if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                 {
-                    if (config.bVerbose)
+                    if (Globals::globalConfig.bVerbose)
                         std::cerr << "skipped blacklisted file " << filepath << std::endl;
                     continue;
                 }
@@ -753,25 +833,25 @@ void Downloader::repair()
                 std::cout << std::endl;
             }
         }
-        if (config.bDLC && !games[i].dlcs.empty())
+        if (Globals::globalConfig.dlConf.bDLC && !games[i].dlcs.empty())
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
             {
-                if (config.bInstallers)
+                if (Globals::globalConfig.dlConf.bInstallers)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath))
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                         {
-                            if (config.bVerbose)
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
                         // Get XML data
                         std::string XML = "";
-                        if (config.bRemoteXML)
+                        if (Globals::globalConfig.dlConf.bRemoteXML)
                         {
                             XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
                             if (gogAPI->getError())
@@ -783,7 +863,7 @@ void Downloader::repair()
                         }
 
                         // Repair
-                        bool bUseLocalXML = !config.bRemoteXML;
+                        bool bUseLocalXML = !Globals::globalConfig.dlConf.bRemoteXML;
                         if (!XML.empty() || bUseLocalXML)
                         {
                             std::string url = gogAPI->getInstallerLink(games[i].dlcs[j].gamename, games[i].dlcs[j].installers[k].id);
@@ -799,20 +879,20 @@ void Downloader::repair()
                         }
                     }
                 }
-                if (config.bPatches)
+                if (Globals::globalConfig.dlConf.bPatches)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
                         // Get XML data
                         std::string XML = "";
-                        if (config.bRemoteXML)
+                        if (Globals::globalConfig.dlConf.bRemoteXML)
                         {
                             XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].patches[k].id);
                             if (gogAPI->getError())
@@ -834,13 +914,13 @@ void Downloader::repair()
                         std::cout << std::endl;
                     }
                 }
-                if (config.bExtras)
+                if (Globals::globalConfig.dlConf.bExtras)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -857,20 +937,20 @@ void Downloader::repair()
                         std::cout << std::endl;
                     }
                 }
-                if (config.bLanguagePacks)
+                if (Globals::globalConfig.dlConf.bLanguagePacks)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
                     {
                         std::string filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
-                        if (config.blacklist.isBlacklisted(filepath)) {
-                            if (config.bVerbose)
+                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
+                            if (Globals::globalConfig.bVerbose)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
 
                         // Get XML data
                         std::string XML = "";
-                        if (config.bRemoteXML)
+                        if (Globals::globalConfig.dlConf.bRemoteXML)
                         {
                             XML = gogAPI->getXML(games[i].dlcs[j].gamename, games[i].dlcs[j].languagepacks[k].id);
                             if (gogAPI->getError())
@@ -902,25 +982,25 @@ void Downloader::download()
     if (this->games.empty())
         this->getGameDetails();
 
-    if (config.bCover && !config.bUpdateCheck)
-        coverXML = this->getResponse(config.sCoverList);
+    if (Globals::globalConfig.dlConf.bCover && !Globals::globalConfig.bUpdateCheck)
+        coverXML = this->getResponse(Globals::globalConfig.sCoverList);
 
     for (unsigned int i = 0; i < games.size(); ++i)
     {
-        if (config.bSaveSerials && !games[i].serials.empty())
+        if (Globals::globalConfig.dlConf.bSaveSerials && !games[i].serials.empty())
         {
             std::string filepath = games[i].getSerialsFilepath();
             this->saveSerials(games[i].serials, filepath);
         }
 
-        if (config.bSaveChangelogs && !games[i].changelog.empty())
+        if (Globals::globalConfig.dlConf.bSaveChangelogs && !games[i].changelog.empty())
         {
             std::string filepath = games[i].getChangelogFilepath();
             this->saveChangelog(games[i].changelog, filepath);
         }
 
         // Download covers
-        if (config.bCover && !config.bUpdateCheck)
+        if (Globals::globalConfig.dlConf.bCover && !Globals::globalConfig.bUpdateCheck)
         {
             if (!games[i].installers.empty())
             {
@@ -934,71 +1014,71 @@ void Downloader::download()
             }
         }
 
-        if (config.bInstallers)
+        if (Globals::globalConfig.dlConf.bInstallers)
         {
             for (unsigned int j = 0; j < games[i].installers.size(); ++j)
             {
                 dlQueue.push(games[i].installers[j]);
             }
         }
-        if (config.bPatches)
+        if (Globals::globalConfig.dlConf.bPatches)
         {
             for (unsigned int j = 0; j < games[i].patches.size(); ++j)
             {
                 dlQueue.push(games[i].patches[j]);
             }
         }
-        if (config.bExtras)
+        if (Globals::globalConfig.dlConf.bExtras)
         {
             for (unsigned int j = 0; j < games[i].extras.size(); ++j)
             {
                 dlQueue.push(games[i].extras[j]);
             }
         }
-        if (config.bLanguagePacks)
+        if (Globals::globalConfig.dlConf.bLanguagePacks)
         {
             for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
             {
                 dlQueue.push(games[i].languagepacks[j]);
             }
         }
-        if (config.bDLC && !games[i].dlcs.empty())
+        if (Globals::globalConfig.dlConf.bDLC && !games[i].dlcs.empty())
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
             {
-                if (config.bSaveSerials && !games[i].dlcs[j].serials.empty())
+                if (Globals::globalConfig.dlConf.bSaveSerials && !games[i].dlcs[j].serials.empty())
                 {
                     std::string filepath = games[i].dlcs[j].getSerialsFilepath();
                     this->saveSerials(games[i].dlcs[j].serials, filepath);
                 }
-                if (config.bSaveChangelogs && !games[i].dlcs[j].changelog.empty())
+                if (Globals::globalConfig.dlConf.bSaveChangelogs && !games[i].dlcs[j].changelog.empty())
                 {
                     std::string filepath = games[i].dlcs[j].getChangelogFilepath();
                     this->saveChangelog(games[i].dlcs[j].changelog, filepath);
                 }
 
-                if (config.bInstallers)
+                if (Globals::globalConfig.dlConf.bInstallers)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
                     {
                         dlQueue.push(games[i].dlcs[j].installers[k]);
                     }
                 }
-                if (config.bPatches)
+                if (Globals::globalConfig.dlConf.bPatches)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
                     {
                         dlQueue.push(games[i].dlcs[j].patches[k]);
                     }
                 }
-                if (config.bExtras)
+                if (Globals::globalConfig.dlConf.bExtras)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
                     {
                         dlQueue.push(games[i].dlcs[j].extras[k]);
                     }
                 }
-                if (config.bLanguagePacks)
+                if (Globals::globalConfig.dlConf.bLanguagePacks)
                 {
                     for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
                     {
@@ -1012,7 +1092,7 @@ void Downloader::download()
     if (!dlQueue.empty())
     {
         // Limit thread count to number of items in download queue
-        unsigned int iThreads = std::min(config.iThreads, static_cast<unsigned int>(dlQueue.size()));
+        unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlQueue.size()));
 
         // Create download threads
         std::vector<std::thread> vThreads;
@@ -1021,7 +1101,7 @@ void Downloader::download()
             DownloadInfo dlInfo;
             dlInfo.setStatus(DLSTATUS_NOTSTARTED);
             vDownloadInfo.push_back(dlInfo);
-            vThreads.push_back(std::thread(Downloader::processDownloadQueue, this->config, i));
+            vThreads.push_back(std::thread(Downloader::processDownloadQueue, Globals::globalConfig, i));
         }
 
         this->printProgress();
@@ -1041,8 +1121,8 @@ void Downloader::download()
         gameFile gf;
         while (createXMLQueue.try_pop(gf))
         {
-            std::string xml_directory = config.sXMLDirectory + "/" + gf.gamename;
-            Util::createXML(gf.getFilepath(), config.iChunkSize, xml_directory);
+            std::string xml_directory = Globals::globalConfig.sXMLDirectory + "/" + gf.gamename;
+            Util::createXML(gf.getFilepath(), Globals::globalConfig.iChunkSize, xml_directory);
         }
     }
 }
@@ -1062,9 +1142,9 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     std::string filenameXML = pathname.filename().string() + ".xml";
     std::string xml_directory;
     if (!gamename.empty())
-        xml_directory = config.sXMLDirectory + "/" + gamename;
+        xml_directory = Globals::globalConfig.sXMLDirectory + "/" + gamename;
     else
-        xml_directory = config.sXMLDirectory;
+        xml_directory = Globals::globalConfig.sXMLDirectory;
 
     // Using local XML data for version check before resuming
     boost::filesystem::path local_xml_file;
@@ -1179,7 +1259,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     // Save remote XML
     if (!xml_data.empty())
     {
-        if ((bLocalXMLExists && (!bSameVersion || config.bRepair)) || !bLocalXMLExists)
+        if ((bLocalXMLExists && (!bSameVersion || Globals::globalConfig.bRepair)) || !bLocalXMLExists)
         {
             // Check that directory exists and create subdirectories
             boost::filesystem::path path = xml_directory;
@@ -1225,7 +1305,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                 std::cerr << "Failed to delete " << path << std::endl;
     }
 
-    if (config.bReport)
+    if (Globals::globalConfig.bReport)
     {
         std::string status = static_cast<std::string>(curl_easy_strerror(res));
         if (bResume && res == CURLE_RANGE_ERROR) // CURLE_RANGE_ERROR on resume attempts is not an error that user needs to know about
@@ -1236,11 +1316,11 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     // Retry partially downloaded file
     // Retry if we aborted the transfer due to low speed limit
-    if ((res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT) && (this->retries < config.iRetries) )
+    if ((res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT) && (this->retries < Globals::globalConfig.iRetries) )
     {
         this->retries++;
 
-        std::cerr << std::endl << "Retry " << this->retries << "/" << config.iRetries;
+        std::cerr << std::endl << "Retry " << this->retries << "/" << Globals::globalConfig.iRetries;
         if (res == CURLE_PARTIAL_FILE)
             std::cerr << " (partial download)";
         else if (res == CURLE_OPERATION_TIMEDOUT)
@@ -1274,9 +1354,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     std::string filename = pathname.filename().string();
     std::string xml_directory;
     if (!gamename.empty())
-        xml_directory = config.sXMLDirectory + "/" + gamename;
+        xml_directory = Globals::globalConfig.sXMLDirectory + "/" + gamename;
     else
-        xml_directory = config.sXMLDirectory;
+        xml_directory = Globals::globalConfig.sXMLDirectory;
     std::string xml_file = xml_directory + "/" + filename + ".xml";
     bool bFileExists = boost::filesystem::exists(pathname);
     bool bLocalXMLExists = boost::filesystem::exists(xml_file);
@@ -1300,7 +1380,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     if (!fileElem)
     {   // File node doesn't exist
         std::cout << "XML: Parsing failed / not valid XML" << std::endl;
-        if (config.bDownload)
+        if (Globals::globalConfig.bDownload)
             bParsingFailed = true;
         else
             return res;
@@ -1335,7 +1415,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     // No local XML file and parsing failed.
     if (bParsingFailed && !bLocalXMLExists)
     {
-        if (this->config.bDownload)
+        if (Globals::globalConfig.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
@@ -1347,10 +1427,10 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             {
                 bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
 
-                if (config.bAutomaticXMLCreation && !bLocalXMLExists)
+                if (Globals::globalConfig.dlConf.bAutomaticXMLCreation && !bLocalXMLExists)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
-                    Util::createXML(filepath, config.iChunkSize, xml_directory);
+                    Util::createXML(filepath, Globals::globalConfig.iChunkSize, xml_directory);
                 }
                 res = 1;
             }
@@ -1381,17 +1461,17 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     else
     {
         std::cout << "File doesn't exist " << filepath << std::endl;
-        if (this->config.bDownload)
+        if (Globals::globalConfig.bDownload)
         {
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
             std::cout << std::endl;
             if (result == CURLE_OK)
             {
-                if (config.bAutomaticXMLCreation && bParsingFailed)
+                if (Globals::globalConfig.dlConf.bAutomaticXMLCreation && bParsingFailed)
                 {
                     std::cout << "Starting automatic XML creation" << std::endl;
-                    Util::createXML(filepath, config.iChunkSize, xml_directory);
+                    Util::createXML(filepath, Globals::globalConfig.iChunkSize, xml_directory);
                 }
                 res = 1;
             }
@@ -1405,7 +1485,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::cout   << "Filesizes don't match" << std::endl
                     << "Incomplete download or different version" << std::endl;
         fclose(outfile);
-        if (this->config.bDownload)
+        if (Globals::globalConfig.bDownload)
         {
             std::cout << "Redownloading file" << std::endl;
 
@@ -1440,7 +1520,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
                     if (!bLocalXMLExists)
                     {
                         std::cout << "Starting automatic XML creation" << std::endl;
-                        Util::createXML(filepath, config.iChunkSize, xml_directory);
+                        Util::createXML(filepath, Globals::globalConfig.iChunkSize, xml_directory);
                     }
                     res = 1;
                 }
@@ -1491,7 +1571,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
             this->beginDownload(); //begin chunk download
             std::cout << std::endl;
-            if (config.bReport)
+            if (Globals::globalConfig.bReport)
                 iChunksRepaired++;
             i--; //verify downloaded chunk
         }
@@ -1505,7 +1585,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     std::cout << std::endl;
     fclose(outfile);
 
-    if (config.bReport)
+    if (Globals::globalConfig.bReport)
     {
         std::string report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
         this->report_ofs << report_line << std::endl;
@@ -1622,13 +1702,13 @@ std::string Downloader::getResponse(const std::string& url)
     CURLcode result;
     do
     {
-        if (config.iWait > 0)
-            usleep(config.iWait); // Delay the request by specified time
+        if (Globals::globalConfig.iWait > 0)
+            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
         result = curl_easy_perform(curlhandle);
         response = memory.str();
         memory.str(std::string());
     }
-    while ((result != CURLE_OK) && response.empty() && (this->retries++ < config.iRetries));
+    while ((result != CURLE_OK) && response.empty() && (this->retries++ < Globals::globalConfig.iRetries));
     this->retries = 0; // reset retries counter
 
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
@@ -1797,12 +1877,12 @@ std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, con
     std::vector<gameFile> extras;
 
     // Create new API handle and set curl options for the API
-    API* api = new API(config.sToken, config.sSecret);
-    api->curlSetOpt(CURLOPT_VERBOSE, config.bVerbose);
-    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
-    if (!config.sCACertPath.empty())
-        api->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
+    API* api = new API(config.apiConf.sToken, config.apiConf.sSecret);
+    api->curlSetOpt(CURLOPT_VERBOSE, config.curlConf.bVerbose);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.curlConf.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.curlConf.iTimeout);
+    if (!config.curlConf.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, config.curlConf.sCACertPath.c_str());
 
     if (!api->init())
     {
@@ -1960,10 +2040,11 @@ static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path&
 void Downloader::checkOrphans()
 {
     // Always check everything when checking for orphaned files
-    config.bInstallers = true;
-    config.bExtras = true;
-    config.bPatches = true;
-    config.bLanguagePacks = true;
+    Config config = Globals::globalConfig;
+    config.dlConf.bInstallers = true;
+    config.dlConf.bExtras = true;
+    config.dlConf.bPatches = true;
+    config.dlConf.bLanguagePacks = true;
 
     if (this->games.empty())
         this->getGameDetails();
@@ -1985,7 +2066,7 @@ void Downloader::checkOrphans()
             }
             for (unsigned int j = 0; j < platformIds.size(); ++j)
             {
-                std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
+                std::string directory = config.dirConf.sDirectory + "/" + config.dirConf.sGameSubdir + "/";
                 Util::filepathReplaceReservedStrings(directory, games[i].gamename, platformIds[j]);
                 boost::filesystem::path path (directory);
                 if (boost::filesystem::exists(path))
@@ -2006,7 +2087,7 @@ void Downloader::checkOrphans()
 
             for (unsigned int j = 0; j < paths.size(); ++j)
             {
-                std::size_t pathlen = config.sDirectory.length();
+                std::size_t pathlen = config.dirConf.sDirectory.length();
                 if (boost::filesystem::exists(paths[j]))
                 {
                     if (boost::filesystem::is_directory(paths[j]))
@@ -2102,20 +2183,20 @@ void Downloader::checkStatus()
     for (unsigned int i = 0; i < vGameFiles.size(); ++i)
     {
         unsigned int type = vGameFiles[i].type;
-        if (!config.bDLC && (type & GFTYPE_DLC))
+        if (!Globals::globalConfig.dlConf.bDLC && (type & GFTYPE_DLC))
             continue;
-        if (!config.bInstallers && (type & GFTYPE_INSTALLER))
+        if (!Globals::globalConfig.dlConf.bInstallers && (type & GFTYPE_INSTALLER))
             continue;
-        if (!config.bExtras && (type & GFTYPE_EXTRA))
+        if (!Globals::globalConfig.dlConf.bExtras && (type & GFTYPE_EXTRA))
             continue;
-        if (!config.bPatches && (type & GFTYPE_PATCH))
+        if (!Globals::globalConfig.dlConf.bPatches && (type & GFTYPE_PATCH))
             continue;
-        if (!config.bLanguagePacks && (type & GFTYPE_LANGPACK))
+        if (!Globals::globalConfig.dlConf.bLanguagePacks && (type & GFTYPE_LANGPACK))
             continue;
 
         boost::filesystem::path filepath = vGameFiles[i].getFilepath();
 
-        if (config.blacklist.isBlacklisted(filepath.native()))
+        if (Globals::globalConfig.blacklist.isBlacklisted(filepath.native()))
             continue;
 
         std::string gamename = vGameFiles[i].gamename;
@@ -2144,9 +2225,9 @@ void Downloader::checkStatus()
                     boost::filesystem::path path = filepath;
                     boost::filesystem::path local_xml_file;
                     if (!gamename.empty())
-                        local_xml_file = config.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
+                        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
                     else
-                        local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+                        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + path.filename().string() + ".xml";
 
                     if (boost::filesystem::exists(local_xml_file))
                     {
@@ -2185,17 +2266,17 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
     boost::filesystem::path path = filepath;
     boost::filesystem::path local_xml_file;
     if (!gamename.empty())
-        local_xml_file = config.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
+        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
     else
-        local_xml_file = config.sXMLDirectory + "/" + path.filename().string() + ".xml";
+        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + path.filename().string() + ".xml";
 
-    if (config.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file) && boost::filesystem::exists(path))
+    if (Globals::globalConfig.dlConf.bAutomaticXMLCreation && !boost::filesystem::exists(local_xml_file) && boost::filesystem::exists(path))
     {
-        std::string xml_directory = config.sXMLDirectory + "/" + gamename;
-        Util::createXML(filepath, config.iChunkSize, xml_directory);
+        std::string xml_directory = Globals::globalConfig.sXMLDirectory + "/" + gamename;
+        Util::createXML(filepath, Globals::globalConfig.iChunkSize, xml_directory);
     }
 
-    localHash = Util::getLocalFileHash(config.sXMLDirectory, filepath, gamename);
+    localHash = Util::getLocalFileHash(Globals::globalConfig.sXMLDirectory, filepath, gamename);
 
     return localHash;
 }
@@ -2233,7 +2314,7 @@ std::string Downloader::getRemoteFileHash(const std::string& gamename, const std
 int Downloader::loadGameDetailsCache()
 {
     int res = 0;
-    std::string cachepath = config.sCacheDirectory + "/gamedetails.json";
+    std::string cachepath = Globals::globalConfig.sCacheDirectory + "/gamedetails.json";
 
     // Make sure file exists
     boost::filesystem::path path = cachepath;
@@ -2252,7 +2333,7 @@ int Downloader::loadGameDetailsCache()
         if (root.isMember("date"))
         {
             cachedate = bptime::from_iso_string(root["date"].asString());
-            if ((now - cachedate) > bptime::minutes(config.iCacheValid))
+            if ((now - cachedate) > bptime::minutes(Globals::globalConfig.iCacheValid))
             {
                 // cache is too old
                 delete jsonparser;
@@ -2308,13 +2389,13 @@ int Downloader::saveGameDetailsCache()
         return 1;
     }
 
-    std::string cachepath = config.sCacheDirectory + "/gamedetails.json";
+    std::string cachepath = Globals::globalConfig.sCacheDirectory + "/gamedetails.json";
 
     Json::Value json;
 
     json["gamedetails-cache-version"] = GlobalConstants::GAMEDETAILS_CACHE_VERSION;
-    json["version-string"] = config.sVersionString;
-    json["version-number"] = config.sVersionNumber;
+    json["version-string"] = Globals::globalConfig.sVersionString;
+    json["version-number"] = Globals::globalConfig.sVersionNumber;
     json["date"] = bptime::to_iso_string(bptime::second_clock::local_time());
 
     for (unsigned int i = 0; i < this->games.size(); ++i)
@@ -2348,7 +2429,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         // DLCs are handled as part of the game so make sure that filtering is done with base game name
         if (recursion_level == 0) // recursion level is 0 when handling base game
         {
-            boost::regex expression(config.sGameRegex);
+            boost::regex expression(Globals::globalConfig.sGameRegex);
             boost::match_results<std::string::const_iterator> what;
             if (!boost::regex_search(game.gamename, what, expression)) // Check if name matches the specified regex
                 continue;
@@ -2357,6 +2438,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         game.icon = gameDetailsNode["icon"].asString();
         game.serials = gameDetailsNode["serials"].asString();
         game.changelog = gameDetailsNode["changelog"].asString();
+        game.product_id = gameDetailsNode["product_id"].asString();
 
         // Make a vector of valid node names to make things easier
         std::vector<std::string> nodes;
@@ -2367,13 +2449,9 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         nodes.push_back("dlcs");
 
         gameSpecificConfig conf;
-        conf.bDLC = config.bDLC;
-        conf.iInstallerLanguage = config.iInstallerLanguage;
-        conf.iInstallerPlatform = config.iInstallerPlatform;
-        conf.vLanguagePriority = config.vLanguagePriority;
-        conf.vPlatformPriority = config.vPlatformPriority;
+        conf.dlConf = Globals::globalConfig.dlConf;
         if (Util::getGameSpecificConfig(game.gamename, &conf) > 0)
-            std::cerr << game.gamename << " - Language: " << conf.iInstallerLanguage << ", Platform: " << conf.iInstallerPlatform << ", DLC: " << (conf.bDLC ? "true" : "false") << std::endl;
+            std::cerr << game.gamename << " - Language: " << conf.dlConf.iInstallerLanguage << ", Platform: " << conf.dlConf.iInstallerPlatform << ", DLC: " << (conf.dlConf.bDLC ? "true" : "false") << std::endl;
 
         for (unsigned int j = 0; j < nodes.size(); ++j)
         {
@@ -2399,21 +2477,21 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                         fileDetails.gamename = fileDetailsNode["gamename"].asString();
                         fileDetails.type = fileDetailsNode["type"].asUInt();
 
-                        if (nodeName != "extras" && !(fileDetails.platform & conf.iInstallerPlatform))
+                        if (nodeName != "extras" && !(fileDetails.platform & conf.dlConf.iInstallerPlatform))
                             continue;
-                        if (nodeName != "extras" && !(fileDetails.language & conf.iInstallerLanguage))
+                        if (nodeName != "extras" && !(fileDetails.language & conf.dlConf.iInstallerLanguage))
                             continue;
                     }
 
-                    if (nodeName == "extras" && config.bExtras)
+                    if (nodeName == "extras" && conf.dlConf.bExtras)
                         game.extras.push_back(fileDetails);
-                    else if (nodeName == "installers" && config.bInstallers)
+                    else if (nodeName == "installers" && conf.dlConf.bInstallers)
                         game.installers.push_back(fileDetails);
-                    else if (nodeName == "patches" && config.bPatches)
+                    else if (nodeName == "patches" && conf.dlConf.bPatches)
                         game.patches.push_back(fileDetails);
-                    else if (nodeName == "languagepacks" && config.bLanguagePacks)
+                    else if (nodeName == "languagepacks" && conf.dlConf.bLanguagePacks)
                         game.languagepacks.push_back(fileDetails);
-                    else if (nodeName == "dlcs" && conf.bDLC)
+                    else if (nodeName == "dlcs" && conf.dlConf.bDLC)
                     {
                         std::vector<gameDetails> dlcs = this->getGameDetailsFromJsonNode(fileDetailsNode, recursion_level + 1);
                         game.dlcs.insert(game.dlcs.end(), dlcs.begin(), dlcs.end());
@@ -2433,18 +2511,17 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
 void Downloader::updateCache()
 {
     // Make sure that all details get cached
-    config.bExtras = true;
-    config.bInstallers = true;
-    config.bPatches = true;
-    config.bLanguagePacks = true;
-    config.bDLC = true;
-    config.sGameRegex = ".*";
-    config.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
-    config.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
-    config.vLanguagePriority.clear();
-    config.vPlatformPriority.clear();
-    config.sIgnoreDLCCountRegex = ".*"; // Ignore DLC count for all games because GOG doesn't report DLC count correctly
-    gogWebsite->setConfig(config); // Make sure that website handle has updated config
+    Globals::globalConfig.dlConf.bExtras = true;
+    Globals::globalConfig.dlConf.bInstallers = true;
+    Globals::globalConfig.dlConf.bPatches = true;
+    Globals::globalConfig.dlConf.bLanguagePacks = true;
+    Globals::globalConfig.dlConf.bDLC = true;
+    Globals::globalConfig.sGameRegex = ".*";
+    Globals::globalConfig.dlConf.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
+    Globals::globalConfig.dlConf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
+    Globals::globalConfig.dlConf.vLanguagePriority.clear();
+    Globals::globalConfig.dlConf.vPlatformPriority.clear();
+    Globals::globalConfig.sIgnoreDLCCountRegex = ".*"; // Ignore DLC count for all games because GOG doesn't report DLC count correctly
 
     this->getGameList();
     this->getGameDetails();
@@ -2573,7 +2650,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
             std::string filename, filepath;
             filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
             if (output_filepath.empty())
-                filepath = Util::makeFilepath(config.sDirectory, filename, gamename);
+                filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gamename);
             else
                 filepath = output_filepath;
             std::cout << "Downloading: " << filepath << std::endl;
@@ -2631,11 +2708,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
-    API* api = new API(conf.sToken, conf.sSecret);
-    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
-    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
-    if (!conf.sCACertPath.empty())
-        api->curlSetOpt(CURLOPT_CAINFO, conf.sCACertPath.c_str());
+    API* api = new API(conf.apiConf.sToken, conf.apiConf.sSecret);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
+    if (!conf.curlConf.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
 
     if (!api->init())
     {
@@ -2651,20 +2728,20 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
 
-    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
+    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
     curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
-    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.bVerbose);
+    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
+    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.curlConf.bVerbose);
     curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.iDownloadRate);
+    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
     curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, 30);
     curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
 
-    if (!conf.sCACertPath.empty())
-        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.sCACertPath.c_str());
+    if (!conf.curlConf.sCACertPath.empty())
+        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
 
     xferInfo xferinfo;
     xferinfo.tid = tid;
@@ -2734,7 +2811,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
 
         std::string xml;
-        if (gf.type & (GFTYPE_INSTALLER | GFTYPE_PATCH) && conf.bRemoteXML)
+        if (gf.type & (GFTYPE_INSTALLER | GFTYPE_PATCH) && conf.dlConf.bRemoteXML)
         {
             xml = api->getXML(gf.gamename, gf.id);
             if (api->getError())
@@ -2935,11 +3012,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
 
         // Automatic xml creation
-        if (conf.bAutomaticXMLCreation)
+        if (conf.dlConf.bAutomaticXMLCreation)
         {
             if (result == CURLE_OK)
             {
-                if ((gf.type & GFTYPE_EXTRA) || (conf.bRemoteXML && !bLocalXMLExists && xml.empty()))
+                if ((gf.type & GFTYPE_EXTRA) || (conf.dlConf.bRemoteXML && !bLocalXMLExists && xml.empty()))
                     createXMLQueue.push(gf);
             }
         }
@@ -3008,7 +3085,7 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
 void Downloader::printProgress()
 {
     // Print progress information until all threads have finished their tasks
-    ProgressBar bar(config.bUnicode, config.bColor);
+    ProgressBar bar(Globals::globalConfig.bUnicode, Globals::globalConfig.bColor);
     unsigned int dl_status = DLSTATUS_NOTSTARTED;
     while (dl_status != DLSTATUS_FINISHED)
     {
@@ -3022,8 +3099,8 @@ void Downloader::printProgress()
         Message msg;
         while (msgQueue.try_pop(msg))
         {
-            std::cout << msg.getFormattedString(config.bColor, true) << std::endl;
-            if (config.bReport)
+            std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+            if (Globals::globalConfig.bReport)
             {
                 this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
             }
@@ -3119,7 +3196,7 @@ void Downloader::printProgress()
         if (dl_status != DLSTATUS_FINISHED)
         {
             std::ostringstream ss;
-            if (config.iThreads > 1)
+            if (Globals::globalConfig.iThreads > 1)
             {
                 std::string rate_unit;
                 if (total_rate > 1048576) // 1 MB
@@ -3156,11 +3233,11 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
-    API* api = new API(config.sToken, config.sSecret);
-    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.bVerifyPeer);
-    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.iTimeout);
-    if (!config.sCACertPath.empty())
-        api->curlSetOpt(CURLOPT_CAINFO, config.sCACertPath.c_str());
+    API* api = new API(config.apiConf.sToken, config.apiConf.sSecret);
+    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.curlConf.bVerifyPeer);
+    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.curlConf.iTimeout);
+    if (!config.curlConf.sCACertPath.empty())
+        api->curlSetOpt(CURLOPT_CAINFO, config.curlConf.sCACertPath.c_str());
 
     if (!api->init())
     {
@@ -3171,7 +3248,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
     }
 
     // Create new GOG website handle
-    Website* website = new Website(config);
+    Website* website = new Website();
     if (!website->IsLoggedIn())
     {
         delete api;
@@ -3182,15 +3259,8 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
     }
 
     // Set default game specific directory options to values from config
-    gameSpecificDirectoryConfig dirConfDefault;
-    dirConfDefault.sDirectory = config.sDirectory;
-    dirConfDefault.bSubDirectories = config.bSubDirectories;
-    dirConfDefault.sGameSubdir = config.sGameSubdir;
-    dirConfDefault.sInstallersSubdir = config.sInstallersSubdir;
-    dirConfDefault.sExtrasSubdir = config.sExtrasSubdir;
-    dirConfDefault.sLanguagePackSubdir = config.sLanguagePackSubdir;
-    dirConfDefault.sDLCSubdir = config.sDLCSubdir;
-    dirConfDefault.sPatchesSubdir = config.sPatchesSubdir;
+    DirectoryConfig dirConfDefault;
+    dirConfDefault = config.dirConf;
 
     gameItem game_item;
     while (gameItemQueue.try_pop(game_item))
@@ -3199,13 +3269,10 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         bool bHasDLC = !game_item.dlcnames.empty();
 
         gameSpecificConfig conf;
-        conf.bDLC = config.bDLC;
-        conf.bIgnoreDLCCount = false;
-        conf.iInstallerLanguage = config.iInstallerLanguage;
-        conf.iInstallerPlatform = config.iInstallerPlatform;
+        conf.dlConf = config.dlConf;
         conf.dirConf = dirConfDefault;
-        conf.vLanguagePriority = config.vLanguagePriority;
-        conf.vPlatformPriority = config.vPlatformPriority;
+        conf.dlConf.bIgnoreDLCCount = false;
+
         if (!config.bUpdateCache) // Disable game specific config files for cache update
         {
             int iOptionsOverridden = Util::getGameSpecificConfig(game_item.name, &conf);
@@ -3215,28 +3282,28 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                 ss << game_item.name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
                 if (config.bVerbose)
                 {
-                    if (conf.bIgnoreDLCCount)
+                    if (conf.dlConf.bIgnoreDLCCount)
                         ss << "\tIgnore DLC count" << std::endl;
-                    if (conf.bDLC != config.bDLC)
-                        ss << "\tDLC: " << (conf.bDLC ? "true" : "false") << std::endl;
-                    if (conf.iInstallerLanguage != config.iInstallerLanguage)
-                        ss << "\tLanguage: " << Util::getOptionNameString(conf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
-                    if (conf.vLanguagePriority != config.vLanguagePriority)
+                    if (conf.dlConf.bDLC != config.dlConf.bDLC)
+                        ss << "\tDLC: " << (conf.dlConf.bDLC ? "true" : "false") << std::endl;
+                    if (conf.dlConf.iInstallerLanguage != config.dlConf.iInstallerLanguage)
+                        ss << "\tLanguage: " << Util::getOptionNameString(conf.dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
+                    if (conf.dlConf.vLanguagePriority != config.dlConf.vLanguagePriority)
                     {
                         ss << "\tLanguage priority:" << std::endl;
-                        for (unsigned int j = 0; j < conf.vLanguagePriority.size(); ++j)
+                        for (unsigned int j = 0; j < conf.dlConf.vLanguagePriority.size(); ++j)
                         {
-                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
+                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
                         }
                     }
-                    if (conf.iInstallerPlatform != config.iInstallerPlatform)
-                        ss << "\tPlatform: " << Util::getOptionNameString(conf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
-                    if (conf.vPlatformPriority != config.vPlatformPriority)
+                    if (conf.dlConf.iInstallerPlatform != config.dlConf.iInstallerPlatform)
+                        ss << "\tPlatform: " << Util::getOptionNameString(conf.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
+                    if (conf.dlConf.vPlatformPriority != config.dlConf.vPlatformPriority)
                     {
                         ss << "\tPlatform priority:" << std::endl;
-                        for (unsigned int j = 0; j < conf.vPlatformPriority.size(); ++j)
+                        for (unsigned int j = 0; j < conf.dlConf.vPlatformPriority.size(); ++j)
                         {
-                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
+                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
                         }
                     }
                 }
@@ -3244,7 +3311,8 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             }
         }
 
-        game = api->getGameDetails(game_item.name, conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
+        game = api->getGameDetails(game_item.name, conf.dlConf.iInstallerPlatform, conf.dlConf.iInstallerLanguage, conf.dlConf.bDuplicateHandler);
+        game.product_id = game_item.id;
         if (!api->getError())
         {
             game.filterWithPriorities(conf);
@@ -3253,19 +3321,19 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             if (!game_item.gamedetailsjson.empty())
                 gameDetailsJSON = game_item.gamedetailsjson;
 
-            if (game.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
+            if (game.extras.empty() && conf.dlConf.bExtras) // Try to get extras from account page if API didn't return any extras
             {
                 if (gameDetailsJSON.empty())
                     gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
                 game.extras = Downloader::getExtrasFromJSON(gameDetailsJSON, game_item.name, config);
             }
-            if (config.bSaveSerials)
+            if (conf.dlConf.bSaveSerials)
             {
                 if (gameDetailsJSON.empty())
                     gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
                 game.serials = Downloader::getSerialsFromJSON(gameDetailsJSON);
             }
-            if (config.bSaveChangelogs)
+            if (conf.dlConf.bSaveChangelogs)
             {
                 if (gameDetailsJSON.empty())
                     gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
@@ -3273,7 +3341,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             }
 
             // Ignore DLC count and try to get DLCs from JSON
-            if (game.dlcs.empty() && !bHasDLC && conf.bDLC && conf.bIgnoreDLCCount)
+            if (game.dlcs.empty() && !bHasDLC && conf.dlConf.bDLC && conf.dlConf.bIgnoreDLCCount)
             {
                 if (gameDetailsJSON.empty())
                     gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
@@ -3282,14 +3350,14 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                 bHasDLC = !game_item.dlcnames.empty();
             }
 
-            if (game.dlcs.empty() && bHasDLC && conf.bDLC)
+            if (game.dlcs.empty() && bHasDLC && conf.dlConf.bDLC)
             {
                 for (unsigned int j = 0; j < game_item.dlcnames.size(); ++j)
                 {
                     gameDetails dlc;
-                    dlc = api->getGameDetails(game_item.dlcnames[j], conf.iInstallerPlatform, conf.iInstallerLanguage, config.bDuplicateHandler);
+                    dlc = api->getGameDetails(game_item.dlcnames[j], conf.dlConf.iInstallerPlatform, conf.dlConf.iInstallerLanguage, conf.dlConf.bDuplicateHandler);
                     dlc.filterWithPriorities(conf);
-                    if (dlc.extras.empty() && config.bExtras) // Try to get extras from account page if API didn't return any extras
+                    if (dlc.extras.empty() && conf.dlConf.bExtras) // Try to get extras from account page if API didn't return any extras
                     {
                         if (gameDetailsJSON.empty())
                             gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
@@ -3311,7 +3379,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                         }
                     }
 
-                    if (config.bSaveSerials)
+                    if (conf.dlConf.bSaveSerials)
                     {
                         if (gameDetailsJSON.empty())
                             gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
@@ -3336,7 +3404,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                         }
                     }
 
-                    if (config.bSaveChangelogs)
+                    if (conf.dlConf.bSaveChangelogs)
                     {
                         if (gameDetailsJSON.empty())
                             gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
@@ -3402,4 +3470,202 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
     delete api;
     delete website;
     return;
+}
+
+void Downloader::saveGalaxyJSON()
+{
+    if (!Globals::galaxyConf.getJSON().empty())
+    {
+        std::ofstream ofs(Globals::galaxyConf.getFilepath());
+        if (!ofs)
+        {
+            std::cerr << "Failed to write " << Globals::galaxyConf.getFilepath() << std::endl;
+        }
+        else
+        {
+            Json::StyledStreamWriter jsonwriter;
+            jsonwriter.write(ofs, Globals::galaxyConf.getJSON());
+            ofs.close();
+        }
+        if (!Globals::globalConfig.bRespectUmask)
+            Util::setFilePermissions(Globals::galaxyConf.getFilepath(), boost::filesystem::owner_read | boost::filesystem::owner_write);
+    }
+}
+
+void Downloader::galaxyInstallGame(const std::string& product_id, int build_index)
+{
+    if (build_index < 0)
+        build_index = 0;
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+    if (json["items"][build_index]["generation"].asInt() != 2)
+    {
+        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+    std::string buildHash;
+    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+
+    json = gogGalaxy->getManifestV2(buildHash);
+    std::string game_title = json["products"][0]["name"].asString();
+
+    std::vector<galaxyDepotItem> items;
+    for (unsigned int i = 0; i < json["depots"].size(); ++i)
+    {
+        bool bSupportedLanguage = false;
+        for (unsigned int j = 0; j < json["depots"][i]["languages"].size(); ++j)
+        {
+            std::string language = json["depots"][i]["languages"][j].asString();
+            if (language == "*" || language == "en")
+                bSupportedLanguage = true;
+        }
+
+        if (!bSupportedLanguage)
+            continue;
+
+        std::string depotHash = json["depots"][i]["manifest"].asString();
+        std::vector<galaxyDepotItem> vec = gogGalaxy->getDepotItemsVector(depotHash);
+        items.insert(std::end(items), std::begin(vec), std::end(vec));
+    }
+
+    off_t totalSize = 0;
+    for (unsigned int i = 0; i < items.size(); ++i)
+    {
+        if (Globals::globalConfig.bVerbose)
+        {
+            std::cout << items[i].path << std::endl;
+            std::cout << "\tChunks: " << items[i].chunks.size() << std::endl;
+            std::cout << "\tmd5: " << items[i].md5 << std::endl;
+        }
+        totalSize += items[i].totalSizeUncompressed;
+    }
+
+    double totalSizeMB = static_cast<double>(totalSize)/1024/1024;
+    std::cout << game_title << std::endl;
+    std::cout << "Files: " << items.size() - 1  << std::endl;
+    std::cout << "Total size installed: " << totalSizeMB << " MB" << std::endl;
+
+    for (unsigned int i = 0; i < items.size(); ++i)
+    {
+        boost::filesystem::path path = Globals::globalConfig.dirConf.sDirectory + items[i].path;
+
+        // Check that directory exists and create it
+        boost::filesystem::path directory = path.parent_path();
+        if (boost::filesystem::exists(directory))
+        {
+            if (!boost::filesystem::is_directory(directory))
+            {
+                std::cerr << directory << " is not directory" << std::endl;
+                return;
+            }
+        }
+        else
+        {
+            if (!boost::filesystem::create_directories(directory))
+            {
+                std::cerr << "Failed to create directory: " << directory << std::endl;
+                return;
+            }
+        }
+
+        if (boost::filesystem::exists(path))
+        {
+            std::cout << "File already exists: " << path.string() << std::endl;
+            if (Util::getFileHash(path.string(), RHASH_MD5) == items[i].md5)
+                std::cout << "\tOK" << std::endl;
+            else
+                std::cout << "\tMD5 mismatch" << std::endl;
+            continue;
+        }
+
+        for (unsigned int j = 0; j < items[i].chunks.size(); ++j)
+        {
+            ChunkMemoryStruct chunk;
+            chunk.memory = (char *) malloc(1);
+            chunk.size = 0;
+
+            json = gogGalaxy->getSecureLink(product_id, gogGalaxy->hashToGalaxyPath(items[i].chunks[j].md5_compressed));
+            std::string url = json["urls"][0]["parameters"]["base_url"].asString() + "/" + json["urls"][0]["parameters"]["path"].asString() + "?" +  json["urls"][0]["parameters"]["token"].asString();
+
+            curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, WriteChunkMemoryCallback);
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &chunk);
+            curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
+            curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
+
+            std::cout << path.string() << " (chunk " << (j + 1) << "/" << items[i].chunks.size() << ")" << std::endl;
+
+
+            if (Globals::globalConfig.iWait > 0)
+                usleep(Globals::globalConfig.iWait); // Delay the request by specified time
+
+            this->TimeAndSize.clear();
+            this->timer.reset();
+            CURLcode result = curl_easy_perform(curlhandle);
+
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
+
+            if (result != CURLE_OK)
+            {
+                std::cout << "\033[K" << curl_easy_strerror(result) << std::endl;
+                if (result == CURLE_HTTP_RETURNED_ERROR)
+                {
+                    long int response_code = 0;
+                    result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                    std::cout << "HTTP ERROR: ";
+                    if (result == CURLE_OK)
+                        std::cout << response_code << " (" << url << ")" << std::endl;
+                    else
+                        std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << url << ")" << std::endl;
+                }
+            }
+            std::cout << std::endl;
+
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
+
+            std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary | std::ofstream::app);
+            if (ofs)
+            {
+                boost::iostreams::filtering_streambuf<boost::iostreams::output> output;
+                output.push(boost::iostreams::zlib_decompressor(GlobalConstants::ZLIB_WINDOW_SIZE));
+                output.push(ofs);
+                boost::iostreams::write(output, chunk.memory, chunk.size);
+            }
+            if (ofs)
+                ofs.close();
+
+            free(chunk.memory);
+        }
+    }
+}
+
+void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index)
+{
+    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+    if (build_index < 0)
+    {
+        for (unsigned int i = 0; i < json["items"].size(); ++i)
+        {
+            std::cout << i << ": " << "Version " << json["items"][i]["version_name"].asString() << " - " << json["items"][i]["date_published"].asString() << std::endl;
+        }
+        return;
+    }
+
+    if (json["items"][build_index]["generation"].asInt() != 2)
+    {
+        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+    std::string buildHash;
+    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+    json = gogGalaxy->getManifestV2(buildHash);
+
+    std::cout << json << std::endl;
 }
