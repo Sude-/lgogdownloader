@@ -127,7 +127,8 @@ Downloader::Downloader()
             if (!json.isMember("expires_at"))
             {
                 std::time_t last_modified = boost::filesystem::last_write_time(Globals::galaxyConf.getFilepath());
-                json["expires_at"] = json["expires_in"].asUInt() + last_modified;
+                Json::Value::LargestInt expires_in = json["expires_in"].asLargestInt();
+                json["expires_at"] = expires_in + last_modified;
             }
 
             Globals::galaxyConf.setJSON(json);

@@ -64,8 +64,9 @@ class GalaxyConfig
         {
             std::unique_lock<std::mutex> lock(m);
             bool bExpired = false;
+            intmax_t time_now = time(NULL);
             if (this->token_json.isMember("expires_at"))
-                bExpired = (time(NULL) > this->token_json["expires_at"].asUInt());
+                bExpired = (time_now > this->token_json["expires_at"].asLargestInt());
             return bExpired;
         }
 
@@ -91,7 +92,16 @@ class GalaxyConfig
         {
             std::unique_lock<std::mutex> lock(m);
             if (!json.isMember("expires_at"))
-                json["expires_at"] = json["expires_in"].asUInt() + time(NULL);
+            {
+                intmax_t time_now = time(NULL);
+                Json::Value::LargestInt expires_in = 3600;
+                if (json.isMember("expires_in"))
+                    if (!json["expires_in"].isNull())
+                        expires_in = json["expires_in"].asLargestInt();
+
+                Json::Value::LargestInt expires_at = time_now + expires_in;
+                json["expires_at"] = expires_at;
+            }
             this->token_json = json;
         }
 
