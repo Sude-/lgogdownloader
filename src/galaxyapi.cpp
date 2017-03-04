@@ -235,6 +235,9 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
                 chunk.size_compressed = json["depot"]["items"][i]["chunks"][j]["compressedSize"].asLargestUInt();
                 chunk.size_uncompressed = json["depot"]["items"][i]["chunks"][j]["size"].asLargestUInt();
 
+                chunk.offset_compressed = item.totalSizeCompressed;
+                chunk.offset_uncompressed = item.totalSizeUncompressed;
+
                 item.totalSizeCompressed += chunk.size_compressed;
                 item.totalSizeUncompressed += chunk.size_uncompressed;
                 item.chunks.push_back(chunk);

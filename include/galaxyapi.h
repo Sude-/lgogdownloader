@@ -22,8 +22,10 @@ struct galaxyDepotItemChunk
 {
     std::string md5_compressed;
     std::string md5_uncompressed;
-    off_t size_compressed;
-    off_t size_uncompressed;
+    uintmax_t size_compressed;
+    uintmax_t size_uncompressed;
+    uintmax_t offset_compressed;
+    uintmax_t offset_uncompressed;
 
 };
 
@@ -31,8 +33,8 @@ struct galaxyDepotItem
 {
     std::string path;
     std::vector<galaxyDepotItemChunk> chunks;
-    off_t totalSizeCompressed;
-    off_t totalSizeUncompressed;
+    uintmax_t totalSizeCompressed;
+    uintmax_t totalSizeUncompressed;
     std::string md5;
 };
 

@@ -3571,17 +3571,117 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             }
         }
 
+        unsigned int start_chunk = 0;
         if (boost::filesystem::exists(path))
         {
             std::cout << "File already exists: " << path.string() << std::endl;
-            if (Util::getFileHash(path.string(), RHASH_MD5) == items[i].md5)
-                std::cout << "\tOK" << std::endl;
+
+            unsigned int resume_chunk = 0;
+            uintmax_t filesize = boost::filesystem::file_size(path);
+            if (filesize == items[i].totalSizeUncompressed)
+            {
+                // File is same size
+                if (Util::getFileHash(path.string(), RHASH_MD5) == items[i].md5)
+                {
+                    std::cout << "\tOK" << std::endl;
+                    continue;
+                }
+                else
+                {
+                    std::cout << "\tMD5 mismatch" << std::endl;
+                    if (!boost::filesystem::remove(path))
+                    {
+                        std::cerr << "\tFailed to delete " << path << std::endl;
+                        continue;
+                    }
+                }
+            }
+            else if (filesize > items[i].totalSizeUncompressed)
+            {
+                // File is bigger than on server, delete old file and start from beginning
+                std::cout << "\tFile is bigger than expected. Deleting old file and starting from beginning." << std::endl;
+                if (!boost::filesystem::remove(path))
+                {
+                    std::cerr << "\tFailed to delete " << path << std::endl;
+                    continue;
+                }
+            }
             else
-                std::cout << "\tMD5 mismatch" << std::endl;
-            continue;
+            {
+                // File is smaller than on server, resume
+                for (unsigned int j = 0; j < items[i].chunks.size(); ++j)
+                {
+                    if (items[i].chunks[j].offset_uncompressed == filesize)
+                    {
+                        resume_chunk = j;
+                        break;
+                    }
+                }
+
+                if (resume_chunk > 0)
+                {
+                    std::cout << "\tResume from chunk " << resume_chunk << std::endl;
+                    // Get chunk hash for previous chunk
+                    FILE* f = fopen(path.string().c_str(), "r");
+                    if (!f)
+                    {
+                        std::cerr << "\tFailed to open: " << path << std::endl;
+                        continue;
+                    }
+
+                    unsigned int previous_chunk = resume_chunk - 1;
+                    uintmax_t chunk_size = items[i].chunks[previous_chunk].size_uncompressed;
+                    // use fseeko to support large files on 32 bit platforms
+                    fseeko(f, items[i].chunks[previous_chunk].offset_uncompressed, SEEK_SET);
+                    unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+                    if (chunk == NULL)
+                    {
+                        std::cerr << "Memory error" << std::endl;
+                        fclose(f);
+                        continue;
+                    }
+
+                    uintmax_t fread_size = fread(chunk, 1, chunk_size, f);
+                    fclose(f);
+
+                    if (fread_size != chunk_size)
+                    {
+                        std::cerr << "Read error" << std::endl;
+                        free(chunk);
+                        continue;
+                    }
+                    std::string chunk_hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
+                    free(chunk);
+
+                    if (chunk_hash == items[i].chunks[previous_chunk].md5_uncompressed)
+                    {
+                        // Hash for previous chunk matches, resume at this position
+                        start_chunk = resume_chunk;
+                    }
+                    else
+                    {
+                        // Hash for previous chunk is different, delete old file and start from beginning
+                        std::cout << "\tChunk hash is different. Deleting old file and starting from beginning." << std::endl;
+                        if (!boost::filesystem::remove(path))
+                        {
+                            std::cerr << "\tFailed to delete " << path << std::endl;
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    std::cout << "\tFailed to find valid resume position. Deleting old file and starting from beginning." << std::endl;
+                    if (!boost::filesystem::remove(path))
+                    {
+                        std::cerr << "\tFailed to delete " << path << std::endl;
+                        continue;
+                    }
+                }
+            }
         }
 
-        for (unsigned int j = 0; j < items[i].chunks.size(); ++j)
+        for (unsigned int j = start_chunk; j < items[i].chunks.size(); ++j)
         {
             ChunkMemoryStruct chunk;
             chunk.memory = (char *) malloc(1);
