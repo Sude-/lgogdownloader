@@ -3688,7 +3688,32 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             chunk.size = 0;
 
             json = gogGalaxy->getSecureLink(product_id, gogGalaxy->hashToGalaxyPath(items[i].chunks[j].md5_compressed));
-            std::string url = json["urls"][0]["parameters"]["base_url"].asString() + "/" + json["urls"][0]["parameters"]["path"].asString() + "?" +  json["urls"][0]["parameters"]["token"].asString();
+
+            // Prefer edgecast urls
+            bool bPreferEdgecast = true;
+            unsigned int idx = 0;
+            for (unsigned int k = 0; k < json["urls"].size(); ++k)
+            {
+                std::string endpoint_name = json["urls"][k]["endpoint_name"].asString();
+                if (bPreferEdgecast)
+                {
+                    if (endpoint_name == "edgecast")
+                    {
+                        idx = k;
+                        break;
+                    }
+                }
+            }
+
+            // Build url according to url_format
+            std::string link_base_url = json["urls"][idx]["parameters"]["base_url"].asString();
+            std::string link_path = json["urls"][idx]["parameters"]["path"].asString();
+            std::string link_token = json["urls"][idx]["parameters"]["token"].asString();
+            std::string url = json["urls"][idx]["url_format"].asString();
+
+            while(Util::replaceString(url, "{base_url}", link_base_url));
+            while(Util::replaceString(url, "{path}", link_path));
+            while(Util::replaceString(url, "{token}", link_token));
 
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
