@@ -3498,7 +3498,24 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     if (build_index < 0)
         build_index = 0;
 
-    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+
+    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
+    {
+        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+        return;
+    }
+
     if (json["items"][build_index]["generation"].asInt() != 2)
     {
         std::cout << "Only generation 2 builds are supported currently" << std::endl;
@@ -3775,7 +3792,24 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
 void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index)
 {
-    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+
+    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
+    {
+        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+        return;
+    }
+
     if (build_index < 0)
     {
         for (unsigned int i = 0; i < json["items"].size(); ++i)

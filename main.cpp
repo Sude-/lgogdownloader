@@ -74,6 +74,13 @@ int main(int argc, char *argv[])
     platform_text += "\n\n" + priority_help_text;
     platform_text += "\nExample: Linux if available otherwise Windows and Mac: l,w+m";
 
+    // Create help text for --galaxy-platform option
+    std::string galaxy_platform_text = "Select platform\n";
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    {
+        galaxy_platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "|" + std::to_string(GlobalConstants::PLATFORMS[i].id) + "\n";
+    }
+
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
     unsigned int language_all = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
@@ -129,6 +136,7 @@ int main(int argc, char *argv[])
         std::string sInstallerLanguage;
         std::string sIncludeOptions;
         std::string sExcludeOptions;
+        std::string sGalaxyPlatform;
         Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -202,6 +210,7 @@ int main(int argc, char *argv[])
         options_cli_no_cfg_hidden.add_options()
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id")
+            ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
@@ -401,6 +410,8 @@ int main(int argc, char *argv[])
 
         Util::parseOptionString(sInstallerLanguage, Globals::globalConfig.dlConf.vLanguagePriority, Globals::globalConfig.dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
         Util::parseOptionString(sInstallerPlatform, Globals::globalConfig.dlConf.vPlatformPriority, Globals::globalConfig.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
+
+        Globals::globalConfig.dlConf.iGalaxyPlatform = Util::getOptionValue(sGalaxyPlatform, GlobalConstants::PLATFORMS);
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;
