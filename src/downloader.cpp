@@ -3511,6 +3511,9 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
     json = gogGalaxy->getManifestV2(buildHash);
     std::string game_title = json["products"][0]["name"].asString();
+    std::string install_directory = json["installDirectory"].asString();
+    if (install_directory.empty())
+        install_directory = product_id;
 
     std::vector<galaxyDepotItem> items;
     for (unsigned int i = 0; i < json["depots"].size(); ++i)
@@ -3550,7 +3553,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
     for (unsigned int i = 0; i < items.size(); ++i)
     {
-        boost::filesystem::path path = Globals::globalConfig.dirConf.sDirectory + items[i].path;
+        boost::filesystem::path path = Globals::globalConfig.dirConf.sDirectory + install_directory + "/" + items[i].path;
 
         // Check that directory exists and create it
         boost::filesystem::path directory = path.parent_path();
