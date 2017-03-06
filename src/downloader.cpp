@@ -247,23 +247,32 @@ int Downloader::init()
 int Downloader::login()
 {
     std::string email;
-    if (!isatty(STDIN_FILENO)) {
-        std::cerr << "Unable to read email and password" << std::endl;
-        return 0;
-    }
-    std::cerr << "Email: ";
-    std::getline(std::cin,email);
-
     std::string password;
-    std::cerr << "Password: ";
-    struct termios termios_old, termios_new;
-    tcgetattr(STDIN_FILENO, &termios_old); // Get current terminal attributes
-    termios_new = termios_old;
-    termios_new.c_lflag &= ~ECHO; // Set ECHO off
-    tcsetattr(STDIN_FILENO, TCSANOW, &termios_new); // Set terminal attributes
-    std::getline(std::cin, password);
-    tcsetattr(STDIN_FILENO, TCSANOW, &termios_old); // Restore old terminal attributes
-    std::cerr << std::endl;
+
+    if (!Globals::globalConfig.sEmail.empty() && !Globals::globalConfig.sPassword.empty())
+    {
+        email = Globals::globalConfig.sEmail;
+        password = Globals::globalConfig.sPassword;
+    }
+    else
+    {
+        if (!isatty(STDIN_FILENO)) {
+            std::cerr << "Unable to read email and password" << std::endl;
+            return 0;
+        }
+        std::cerr << "Email: ";
+        std::getline(std::cin,email);
+
+        std::cerr << "Password: ";
+        struct termios termios_old, termios_new;
+        tcgetattr(STDIN_FILENO, &termios_old); // Get current terminal attributes
+        termios_new = termios_old;
+        termios_new.c_lflag &= ~ECHO; // Set ECHO off
+        tcsetattr(STDIN_FILENO, TCSANOW, &termios_new); // Set terminal attributes
+        std::getline(std::cin, password);
+        tcsetattr(STDIN_FILENO, TCSANOW, &termios_old); // Restore old terminal attributes
+        std::cerr << std::endl;
+    }
 
     if (email.empty() || password.empty())
     {

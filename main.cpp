@@ -211,6 +211,8 @@ int main(int argc, char *argv[])
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id")
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
+            ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
+            ("login-password", bpo::value<std::string>(&Globals::globalConfig.sPassword)->default_value(""), "login password")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
@@ -345,6 +347,32 @@ int main(int argc, char *argv[])
                         lines.push_back(std::move(line));
                     }
                     Globals::globalConfig.gamehasdlc.initialize(lines);
+                }
+            }
+        }
+
+        if (bLogin || Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP)
+        {
+            std::string login_conf = Globals::globalConfig.sConfigDirectory + "/login.txt";
+            if (boost::filesystem::exists(login_conf))
+            {
+                std::ifstream ifs(login_conf);
+                if (!ifs)
+                {
+                    std::cerr << "Could not open login conf: " << login_conf << std::endl;
+                    return 1;
+                }
+                else
+                {
+                    std::string line;
+                    std::vector<std::string> lines;
+                    while (!ifs.eof())
+                    {
+                        std::getline(ifs, line);
+                        lines.push_back(std::move(line));
+                    }
+                    Globals::globalConfig.sEmail = lines[0];
+                    Globals::globalConfig.sPassword = lines[1];
                 }
             }
         }

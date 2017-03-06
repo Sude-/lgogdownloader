@@ -231,9 +231,6 @@ class Config
         // Download
         DownloadConfig dlConf;
 
-        // Galaxy
-        //GalaxyConfig galaxyConf;
-
         // Directories
         DirectoryConfig dirConf;
         std::string sCacheDirectory;
@@ -261,6 +258,8 @@ class Config
         // General strings
         std::string sVersionString;
         std::string sVersionNumber;
+        std::string sEmail;
+        std::string sPassword;
 
         GogAPIConfig apiConf;
 
