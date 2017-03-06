@@ -3556,11 +3556,21 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             continue;
 
         std::string depotHash = json["depots"][i]["manifest"].asString();
+        std::string depot_product_id = json["depots"][i]["productId"].asString();
+
+        if (depot_product_id.empty())
+            depot_product_id = product_id;
+
         std::vector<galaxyDepotItem> vec = gogGalaxy->getDepotItemsVector(depotHash);
+
+        // Set product id for items
+        for (auto it = vec.begin(); it != vec.end(); ++it)
+            it->product_id = depot_product_id;
+
         items.insert(std::end(items), std::begin(vec), std::end(vec));
     }
 
-    off_t totalSize = 0;
+    uintmax_t totalSize = 0;
     for (unsigned int i = 0; i < items.size(); ++i)
     {
         if (Globals::globalConfig.bVerbose)
@@ -3716,7 +3726,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             chunk.memory = (char *) malloc(1);
             chunk.size = 0;
 
-            json = gogGalaxy->getSecureLink(product_id, gogGalaxy->hashToGalaxyPath(items[i].chunks[j].md5_compressed));
+            json = gogGalaxy->getSecureLink(items[i].product_id, gogGalaxy->hashToGalaxyPath(items[i].chunks[j].md5_compressed));
 
             // Prefer edgecast urls
             bool bPreferEdgecast = true;

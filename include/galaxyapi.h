@@ -26,7 +26,6 @@ struct galaxyDepotItemChunk
     uintmax_t size_uncompressed;
     uintmax_t offset_compressed;
     uintmax_t offset_uncompressed;
-
 };
 
 struct galaxyDepotItem
@@ -36,6 +35,7 @@ struct galaxyDepotItem
     uintmax_t totalSizeCompressed;
     uintmax_t totalSizeUncompressed;
     std::string md5;
+    std::string product_id;
 };
 
 class galaxyAPI
