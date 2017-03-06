@@ -35,6 +35,7 @@ struct DownloadConfig
     std::vector<unsigned int> vLanguagePriority;
     unsigned int iInclude;
     unsigned int iGalaxyPlatform;
+    unsigned int iGalaxyLanguage;
 
     bool bRemoteXML;
     bool bCover;

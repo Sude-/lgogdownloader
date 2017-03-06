@@ -3516,6 +3516,17 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     else
         sPlatform = "windows";
 
+    std::string sLanguage = "en";
+    unsigned int iLanguage = Globals::globalConfig.dlConf.iGalaxyLanguage;
+    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    {
+        if (GlobalConstants::LANGUAGES[i].id == iLanguage)
+        {
+            sLanguage = GlobalConstants::LANGUAGES[i].code;
+            break;
+        }
+    }
+
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
 
     // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
@@ -3544,15 +3555,15 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     std::vector<galaxyDepotItem> items;
     for (unsigned int i = 0; i < json["depots"].size(); ++i)
     {
-        bool bSupportedLanguage = false;
+        bool bSelectedLanguage = false;
         for (unsigned int j = 0; j < json["depots"][i]["languages"].size(); ++j)
         {
             std::string language = json["depots"][i]["languages"][j].asString();
-            if (language == "*" || language == "en")
-                bSupportedLanguage = true;
+            if (language == "*" || language == sLanguage)
+                bSelectedLanguage = true;
         }
 
-        if (!bSupportedLanguage)
+        if (!bSelectedLanguage)
             continue;
 
         std::string depotHash = json["depots"][i]["manifest"].asString();

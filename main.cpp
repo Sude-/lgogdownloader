@@ -93,6 +93,13 @@ int main(int argc, char *argv[])
     language_text += "\n\n" + priority_help_text;
     language_text += "\nExample: German if available otherwise English and French: de,en+fr";
 
+    // Create help text for --galaxy-language option
+    std::string galaxy_language_text = "Select language\n";
+    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    {
+        galaxy_language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "|" + std::to_string(GlobalConstants::LANGUAGES[i].id) + "\n";
+    }
+
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh)$"; // Limit to files with these extensions (".old" is for renamed older version files)
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
@@ -137,6 +144,7 @@ int main(int argc, char *argv[])
         std::string sIncludeOptions;
         std::string sExcludeOptions;
         std::string sGalaxyPlatform;
+        std::string sGalaxyLanguage;
         Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -211,6 +219,7 @@ int main(int argc, char *argv[])
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id")
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
+            ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
             ("login-password", bpo::value<std::string>(&Globals::globalConfig.sPassword)->default_value(""), "login password")
         ;
@@ -440,6 +449,7 @@ int main(int argc, char *argv[])
         Util::parseOptionString(sInstallerPlatform, Globals::globalConfig.dlConf.vPlatformPriority, Globals::globalConfig.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
 
         Globals::globalConfig.dlConf.iGalaxyPlatform = Util::getOptionValue(sGalaxyPlatform, GlobalConstants::PLATFORMS);
+        Globals::globalConfig.dlConf.iGalaxyLanguage = Util::getOptionValue(sGalaxyLanguage, GlobalConstants::LANGUAGES);
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;
