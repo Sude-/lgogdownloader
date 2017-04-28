@@ -545,7 +545,7 @@ bool Website::IsLoggedIn()
 bool Website::IsLoggedInComplex(const std::string& email)
 {
     bool bIsLoggedIn = false;
-    std::string html = this->getResponse("https://www.gog.com/account/settings/personal");
+    std::string html = this->getResponse("https://www.gog.com/account/settings/security");
     std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
 
     htmlcxx::HTML::ParserDom parser;
