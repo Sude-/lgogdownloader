@@ -482,7 +482,7 @@ std::vector<std::string> Util::tokenize(const std::string& str, const std::strin
     return tokens;
 }
 
-unsigned int Util::getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options)
+unsigned int Util::getOptionValue(const std::string& str, const std::vector<GlobalConstants::optionsStruct>& options, const bool& bAllowStringToIntConversion)
 {
     unsigned int value = 0;
     boost::regex expression("^[+-]?\\d+$", boost::regex::perl);
@@ -491,7 +491,7 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
     {
         value = (1 << options.size()) - 1;
     }
-    else if (boost::regex_search(str, what, expression))
+    else if (boost::regex_search(str, what, expression) && bAllowStringToIntConversion)
     {
         value = std::stoi(str);
     }

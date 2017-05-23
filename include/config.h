@@ -36,6 +36,7 @@ struct DownloadConfig
     unsigned int iInclude;
     unsigned int iGalaxyPlatform;
     unsigned int iGalaxyLanguage;
+    unsigned int iGalaxyArch;
 
     bool bRemoteXML;
     bool bCover;

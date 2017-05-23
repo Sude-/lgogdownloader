@@ -83,6 +83,16 @@ namespace GlobalConstants
         { PLATFORM_MAC,     "mac",   "Mac"     , "m|mac|osx"     },
         { PLATFORM_LINUX,   "linux", "Linux"   , "l|lin|linux"   }
     };
+
+    // Galaxy platform arch
+    const unsigned int ARCH_X86 = 1 << 0;
+    const unsigned int ARCH_X64 = 1 << 1;
+
+    const std::vector<optionsStruct> GALAXY_ARCHS =
+    {
+        { ARCH_X86, "32", "32-bit", "32|x86|32bit|32-bit" },
+        { ARCH_X64, "64", "64-bit", "64|x64|64bit|64-bit" }
+    };
 }
 
 #endif // GLOBALCONSTANTS_H_INCLUDED

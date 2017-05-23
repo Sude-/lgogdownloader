@@ -3502,7 +3502,7 @@ void Downloader::saveGalaxyJSON()
     }
 }
 
-void Downloader::galaxyInstallGame(const std::string& product_id, int build_index)
+void Downloader::galaxyInstallGame(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
 {
     if (build_index < 0)
         build_index = 0;
@@ -3523,6 +3523,16 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
         if (GlobalConstants::LANGUAGES[i].id == iLanguage)
         {
             sLanguage = GlobalConstants::LANGUAGES[i].code;
+            break;
+        }
+    }
+
+    std::string sGalaxyArch = "64";
+    for (unsigned int i = 0; i < GlobalConstants::GALAXY_ARCHS.size(); ++i)
+    {
+        if (GlobalConstants::GALAXY_ARCHS[i].id == iGalaxyArch)
+        {
+            sGalaxyArch = GlobalConstants::GALAXY_ARCHS[i].code;
             break;
         }
     }
@@ -3552,10 +3562,13 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     if (install_directory.empty())
         install_directory = product_id;
 
+    std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
+
     std::vector<galaxyDepotItem> items;
     for (unsigned int i = 0; i < json["depots"].size(); ++i)
     {
         bool bSelectedLanguage = false;
+        bool bSelectedArch = false;
         for (unsigned int j = 0; j < json["depots"][i]["languages"].size(); ++j)
         {
             std::string language = json["depots"][i]["languages"][j].asString();
@@ -3563,7 +3576,22 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
                 bSelectedLanguage = true;
         }
 
-        if (!bSelectedLanguage)
+        if (json["depots"][i].isMember("osBitness"))
+        {
+            for (unsigned int j = 0; j < json["depots"][i]["osBitness"].size(); ++j)
+            {
+                std::string osBitness = json["depots"][i]["osBitness"][j].asString();
+                if (osBitness == "*" || osBitness == sGalaxyArch)
+                    bSelectedArch = true;
+            }
+        }
+        else
+        {
+            // No osBitness found, assume that we want to download this depot
+            bSelectedArch = true;
+        }
+
+        if (!bSelectedLanguage || !bSelectedArch)
             continue;
 
         std::string depotHash = json["depots"][i]["manifest"].asString();
@@ -3595,12 +3623,12 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
     double totalSizeMB = static_cast<double>(totalSize)/1024/1024;
     std::cout << game_title << std::endl;
-    std::cout << "Files: " << items.size() - 1  << std::endl;
+    std::cout << "Files: " << items.size() << std::endl;
     std::cout << "Total size installed: " << totalSizeMB << " MB" << std::endl;
 
     for (unsigned int i = 0; i < items.size(); ++i)
     {
-        boost::filesystem::path path = Globals::globalConfig.dirConf.sDirectory + install_directory + "/" + items[i].path;
+        boost::filesystem::path path = install_path + "/" + items[i].path;
 
         // Check that directory exists and create it
         boost::filesystem::path directory = path.parent_path();

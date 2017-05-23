@@ -90,7 +90,7 @@ class Downloader
         std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
         void saveGalaxyJSON();
 
-        void galaxyInstallGame(const std::string& product_id, int build_index = -1);
+        void galaxyInstallGame(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
         void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
     protected:
     private:
