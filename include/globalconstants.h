@@ -42,6 +42,7 @@ namespace GlobalConstants
     const unsigned int LANGUAGE_SK = 1 << 20;
     const unsigned int LANGUAGE_BL = 1 << 21;
     const unsigned int LANGUAGE_UK = 1 << 22;
+    const unsigned int LANGUAGE_ES_419 = 1 << 23;
 
     const std::vector<optionsStruct> LANGUAGES =
     {
@@ -67,7 +68,8 @@ namespace GlobalConstants
         { LANGUAGE_PT_BR, "br", "Brazilian Portuguese", "br|pt_br|pt-br|ptbr|brazilian_portuguese" },
         { LANGUAGE_SK, "sk", "Slovak"    , "sk|slk|slo|slovak"     },
         { LANGUAGE_BL, "bl", "Bulgarian" , "bl|bg|bul|bulgarian"   },
-        { LANGUAGE_UK, "uk", "Ukrainian" , "uk|ukr|ukrainian"      }
+        { LANGUAGE_UK, "uk", "Ukrainian" , "uk|ukr|ukrainian"      },
+        { LANGUAGE_ES_419, "es_mx", "Spanish (Latin American)", "es_mx|es-mx|esmx|es-419|spanish_latin_american" }
     };
 
     // Platform constants
