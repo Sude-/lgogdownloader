@@ -122,6 +122,8 @@ class Downloader
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
+        std::vector<std::string> galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path);
+
         Website *gogWebsite;
         API *gogAPI;
         galaxyAPI *gogGalaxy;

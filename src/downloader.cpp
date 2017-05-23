@@ -3846,6 +3846,12 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             free(chunk.memory);
         }
     }
+
+    std::cout << "Checking for orphaned files" << std::endl;
+    std::vector<std::string> orphans = this->galaxyGetOrphanedFiles(items, install_path);
+    std::cout << "\t" << orphans.size() << " orphaned files" << std::endl;
+    for (unsigned int i = 0; i < orphans.size(); ++i)
+        std::cout << "\t" << orphans[i] << std::endl;
 }
 
 void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index)
@@ -3889,4 +3895,78 @@ void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index
     json = gogGalaxy->getManifestV2(buildHash);
 
     std::cout << json << std::endl;
+}
+
+std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path)
+{
+    std::vector<std::string> orphans;
+    std::vector<std::string> item_paths;
+    for (unsigned int i = 0; i < items.size(); ++i)
+        item_paths.push_back(install_path + "/" + items[i].path);
+
+    std::vector<boost::filesystem::path> filepath_vector;
+    try
+    {
+        std::size_t pathlen = Globals::globalConfig.dirConf.sDirectory.length();
+        if (boost::filesystem::exists(install_path))
+        {
+            if (boost::filesystem::is_directory(install_path))
+            {
+                // Recursively iterate over files in directory
+                boost::filesystem::recursive_directory_iterator end_iter;
+                boost::filesystem::recursive_directory_iterator dir_iter(install_path);
+                while (dir_iter != end_iter)
+                {
+                    if (boost::filesystem::is_regular_file(dir_iter->status()))
+                    {
+                        std::string filepath = dir_iter->path().string();
+                        if (Globals::globalConfig.ignorelist.isBlacklisted(filepath.substr(pathlen)))
+                        {
+                            if (Globals::globalConfig.bVerbose)
+                                std::cerr << "skipped ignorelisted file " << filepath << std::endl;
+                        }
+                        else
+                        {
+                            filepath_vector.push_back(dir_iter->path());
+                        }
+                    }
+                    dir_iter++;
+                }
+            }
+        }
+        else
+            std::cerr << install_path << " does not exist" << std::endl;
+    }
+    catch (const boost::filesystem::filesystem_error& ex)
+    {
+        std::cout << ex.what() << std::endl;
+    }
+
+    std::sort(item_paths.begin(), item_paths.end());
+    std::sort(filepath_vector.begin(), filepath_vector.end());
+
+    if (!filepath_vector.empty())
+    {
+        for (unsigned int i = 0; i < filepath_vector.size(); ++i)
+        {
+            bool bFileIsOrphaned = true;
+            for (std::vector<std::string>::iterator it = item_paths.begin(); it != item_paths.end(); it++)
+            {
+                boost::filesystem::path item_path = *it;
+                boost::filesystem::path file_path = filepath_vector[i].native();
+
+                if (item_path == file_path)
+                {
+                    bFileIsOrphaned = false;
+                    item_paths.erase(it);
+                    break;
+                }
+            }
+
+            if (bFileIsOrphaned)
+                orphans.push_back(filepath_vector[i].string());
+        }
+    }
+
+    return orphans;
 }
