@@ -1302,6 +1302,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
     res = this->beginDownload();
 
     fclose(outfile);
@@ -1342,7 +1343,16 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     else
     {
         this->retries = 0; // Reset retries counter
+        // Set timestamp for downloaded file to same value as file on server
+        long filetime = -1;
+        CURLcode result = curl_easy_getinfo(curlhandle, CURLINFO_FILETIME, &filetime);
+        if (result == CURLE_OK && filetime >= 0)
+        {
+            std::time_t timestamp = (std::time_t)filetime;
+            boost::filesystem::last_write_time(filepath, timestamp);
+        }
     }
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
 
     return res;
 }
@@ -1579,6 +1589,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
             curl_easy_setopt(curlhandle, CURLOPT_RANGE, range.c_str()); //download range
+            curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
             this->beginDownload(); //begin chunk download
             std::cout << std::endl;
             if (Globals::globalConfig.bReport)
@@ -1600,6 +1611,16 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::string report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
         this->report_ofs << report_line << std::endl;
     }
+
+    // Set timestamp for downloaded file to same value as file on server
+    long filetime = -1;
+    CURLcode result = curl_easy_getinfo(curlhandle, CURLINFO_FILETIME, &filetime);
+    if (result == CURLE_OK && filetime >= 0)
+    {
+        std::time_t timestamp = (std::time_t)filetime;
+        boost::filesystem::last_write_time(filepath, timestamp);
+    }
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
 
     return res;
 }
@@ -2745,6 +2766,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
     curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
+    curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
     curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, 30);
@@ -2988,6 +3010,15 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
         if (result == CURLE_OK || result == CURLE_RANGE_ERROR || (result == CURLE_HTTP_RETURNED_ERROR && response_code == 416))
         {
+            // Set timestamp for downloaded file to same value as file on server
+            long filetime = -1;
+            CURLcode res = curl_easy_getinfo(dlhandle, CURLINFO_FILETIME, &filetime);
+            if (res == CURLE_OK && filetime >= 0)
+            {
+                std::time_t timestamp = (std::time_t)filetime;
+                boost::filesystem::last_write_time(filepath, timestamp);
+            }
+
             // Average download speed
             std::ostringstream dlrate_avg;
             std::string rate_unit;
@@ -3759,6 +3790,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             }
         }
 
+        std::time_t timestamp = -1;
         for (unsigned int j = start_chunk; j < items[i].chunks.size(); ++j)
         {
             ChunkMemoryStruct chunk;
@@ -3799,6 +3831,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &chunk);
             curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
             curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
+            curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
 
             std::cout << path.string() << " (chunk " << (j + 1) << "/" << items[i].chunks.size() << ")" << std::endl;
 
@@ -3812,6 +3845,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
             curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
             curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
+            curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
 
             if (result != CURLE_OK)
             {
@@ -3827,10 +3861,15 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
                         std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << url << ")" << std::endl;
                 }
             }
+            else
+            {
+                // Get timestamp for downloaded file
+                long filetime = -1;
+                result = curl_easy_getinfo(curlhandle, CURLINFO_FILETIME, &filetime);
+                if (result == CURLE_OK && filetime >= 0)
+                    timestamp = (std::time_t)filetime;
+            }
             std::cout << std::endl;
-
-            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
 
             std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary | std::ofstream::app);
             if (ofs)
@@ -3845,6 +3884,10 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
             free(chunk.memory);
         }
+
+        // Set timestamp for downloaded file to same value as file on server
+        if (boost::filesystem::exists(path) && timestamp >= 0)
+            boost::filesystem::last_write_time(path, timestamp);
     }
 
     std::cout << "Checking for orphaned files" << std::endl;
