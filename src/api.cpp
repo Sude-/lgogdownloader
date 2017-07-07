@@ -356,6 +356,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 {
                     Json::Value installer = installers[i].jsonNode[index];
                     unsigned int language = installers[i].language;
+                    std::string path = installer["link"].asString();
+                    path = (std::string)curl_easy_unescape(curlhandle, path.c_str(), path.size(), NULL);
 
                     // Check for duplicate installers in different languages and add languageId of duplicate installer to the original installer
                     // https://secure.gog.com/forum/general/introducing_the_beta_release_of_the_new_gogcom_downloader/post1483
@@ -364,7 +366,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                         bool bDuplicate = false;
                         for (unsigned int j = 0; j < game.installers.size(); ++j)
                         {
-                            if (game.installers[j].path == installer["link"].asString())
+                            if (game.installers[j].path == path)
                             {
                                 game.installers[j].language |= language; // Add language code to installer
                                 bDuplicate = true;
@@ -381,7 +383,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                     gf.updated = installer["notificated"].isInt() ? installer["notificated"].asInt() : std::stoi(installer["notificated"].asString());
                     gf.id = installer["id"].isInt() ? std::to_string(installer["id"].asInt()) : installer["id"].asString();
                     gf.name = installer["name"].asString();
-                    gf.path = installer["link"].asString();
+                    gf.path = path;
                     gf.size = installer["size"].asString();
                     gf.language = language;
                     gf.platform = installers[i].platform;
@@ -404,6 +406,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                 gf.id = extra["id"].isInt() ? std::to_string(extra["id"].asInt()) : extra["id"].asString();
                 gf.name = extra["name"].asString();
                 gf.path = extra["link"].asString();
+                gf.path = (std::string)curl_easy_unescape(curlhandle, gf.path.c_str(), gf.path.size(), NULL);
                 gf.size = extra["size_mb"].asString();
 
                 game.extras.push_back(gf);
@@ -446,6 +449,8 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                 for ( unsigned int index = 0; index < patchnode.size(); ++index )
                                 {
                                     Json::Value patch = patchnode[index];
+                                    std::string path = patch["link"].asString();
+                                    path = (std::string)curl_easy_unescape(curlhandle, path.c_str(), path.size(), NULL);
 
                                     // Check for duplicate patches in different languages and add languageId of duplicate patch to the original patch
                                     if (useDuplicateHandler)
@@ -453,7 +458,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                         bool bDuplicate = false;
                                         for (unsigned int j = 0; j < game.patches.size(); ++j)
                                         {
-                                            if (game.patches[j].path == patch["link"].asString())
+                                            if (game.patches[j].path == path)
                                             {
                                                 game.patches[j].language |= GlobalConstants::LANGUAGES[i].id; // Add language code to patch
                                                 bDuplicate = true;
@@ -470,7 +475,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                     gf.updated = patch["notificated"].isInt() ? patch["notificated"].asInt() : std::stoi(patch["notificated"].asString());
                                     gf.id = patch["id"].isInt() ? std::to_string(patch["id"].asInt()) : patch["id"].asString();
                                     gf.name = patch["name"].asString();
-                                    gf.path = patch["link"].asString();
+                                    gf.path = path;
                                     gf.size = patch["size"].asString();
                                     gf.language = GlobalConstants::LANGUAGES[i].id;
                                     gf.platform = patches[j].platform;
@@ -480,13 +485,16 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             }
                             else // Patch is a single file
                             {
+                                std::string path = patchnode["link"].asString();
+                                path = (std::string)curl_easy_unescape(curlhandle, path.c_str(), path.size(), NULL);
+
                                 // Check for duplicate patches in different languages and add languageId of duplicate patch to the original patch
                                 if (useDuplicateHandler)
                                 {
                                     bool bDuplicate = false;
                                     for (unsigned int k = 0; k < game.patches.size(); ++k)
                                     {
-                                        if (game.patches[k].path == patchnode["link"].asString())
+                                        if (game.patches[k].path == path)
                                         {
                                             game.patches[k].language |= GlobalConstants::LANGUAGES[i].id; // Add language code to patch
                                             bDuplicate = true;
@@ -503,7 +511,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                                 gf.updated = patchnode["notificated"].isInt() ? patchnode["notificated"].asInt() : std::stoi(patchnode["notificated"].asString());
                                 gf.id = patchnode["id"].isInt() ? std::to_string(patchnode["id"].asInt()) : patchnode["id"].asString();
                                 gf.name = patchnode["name"].asString();
-                                gf.path = patchnode["link"].asString();
+                                gf.path = path;
                                 gf.size = patchnode["size"].asString();
                                 gf.language = GlobalConstants::LANGUAGES[i].id;
                                 gf.platform = patches[j].platform;
@@ -542,6 +550,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
                             gf.id = langpack["id"].isInt() ? std::to_string(langpack["id"].asInt()) : langpack["id"].asString();
                             gf.name = langpack["name"].asString();
                             gf.path = langpack["link"].asString();
+                            gf.path = (std::string)curl_easy_unescape(curlhandle, gf.path.c_str(), gf.path.size(), NULL);
                             gf.size = langpack["size"].asString();
                             gf.language = GlobalConstants::LANGUAGES[i].id;
 
