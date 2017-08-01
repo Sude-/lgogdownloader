@@ -16,7 +16,7 @@ Website::Website()
 
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.sVersionString.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.curlConf.sUserAgent.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);

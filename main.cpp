@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
             ("login-website", bpo::value<bool>(&Globals::globalConfig.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
             ("cacert", bpo::value<std::string>(&Globals::globalConfig.curlConf.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
             ("respect-umask", bpo::value<bool>(&Globals::globalConfig.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
+            ("user-agent", bpo::value<std::string>(&Globals::globalConfig.curlConf.sUserAgent)->default_value(Globals::globalConfig.sVersionString), "Set user agent")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()

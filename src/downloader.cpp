@@ -82,7 +82,7 @@ Downloader::Downloader()
     // Initialize curl and set curl options
     curlhandle = curl_easy_init();
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.sVersionString.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.curlConf.sUserAgent.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
@@ -2755,7 +2755,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
     CURL* dlhandle = curl_easy_init();
     curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.sVersionString.c_str());
+    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
 

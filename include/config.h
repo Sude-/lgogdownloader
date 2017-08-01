@@ -181,6 +181,7 @@ struct CurlConfig
     bool bVerbose;
     std::string sCACertPath;
     std::string sCookiePath;
+    std::string sUserAgent;
     long int iTimeout;
     curl_off_t iDownloadRate;
 };
