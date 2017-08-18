@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
     std::string galaxy_arch_text = "Select architecture\n";
     for (unsigned int i = 0; i < GlobalConstants::GALAXY_ARCHS.size(); ++i)
     {
-        galaxy_arch_text +=  GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "|" + std::to_string(GlobalConstants::GALAXY_ARCHS[i].id) + "\n";
+        galaxy_arch_text +=  GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
     }
 
     // Create help text for --check-orphans
@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
     bpo::options_description options_cli_no_cfg;
     bpo::options_description options_cli_no_cfg_hidden;
     bpo::options_description options_cli_all_include_hidden;
+    bpo::options_description options_cli_experimental("Experimental");
     bpo::options_description options_cli_cfg;
     bpo::options_description options_cfg_only;
     bpo::options_description options_cfg_all("Configuration");
@@ -225,16 +226,19 @@ int main(int argc, char *argv[])
         ;
 
         options_cli_no_cfg_hidden.add_options()
+            ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
+            ("login-password", bpo::value<std::string>(&Globals::globalConfig.sPassword)->default_value(""), "login password")
+        ;
+
+        options_cli_experimental.add_options()
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id")
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
             ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
-            ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
-            ("login-password", bpo::value<std::string>(&Globals::globalConfig.sPassword)->default_value(""), "login password")
         ;
 
-        options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg);
+        options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);
         options_cfg_all.add(options_cfg_only).add(options_cli_cfg);
         options_cli_all_include_hidden.add(options_cli_all).add(options_cli_no_cfg_hidden);
 
