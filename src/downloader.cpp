@@ -3133,7 +3133,7 @@ void Downloader::printProgress()
         dl_status = DLSTATUS_NOTSTARTED;
 
         // Print progress information once per 100ms
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(Globals::globalConfig.iProgressInterval));
         std::cout << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
 
         // Print messages from message queue first

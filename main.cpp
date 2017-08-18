@@ -218,6 +218,7 @@ int main(int argc, char *argv[])
             ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
             ("dlc-list", bpo::value<std::string>(&Globals::globalConfig.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
+            ("progress-interval", bpo::value<int>(&Globals::globalConfig.iProgressInterval)->default_value(100), "Set interval for progress bar update (milliseconds)\nValue must be between 1 and 10000")
         ;
         // Options read from config file
         options_cfg_only.add_options()
@@ -415,6 +416,11 @@ int main(int argc, char *argv[])
 
         if (Globals::globalConfig.iWait > 0)
             Globals::globalConfig.iWait *= 1000;
+
+        if (Globals::globalConfig.iProgressInterval < 1)
+            Globals::globalConfig.iProgressInterval = 1;
+        else if (Globals::globalConfig.iProgressInterval > 10000)
+            Globals::globalConfig.iProgressInterval = 10000;
 
         if (Globals::globalConfig.iThreads < 1)
         {

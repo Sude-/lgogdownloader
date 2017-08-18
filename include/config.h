@@ -278,6 +278,7 @@ class Config
         unsigned int iThreads;
         int iWait;
         size_t iChunkSize;
+        int iProgressInterval;
 };
 
 #endif // CONFIG_H__
