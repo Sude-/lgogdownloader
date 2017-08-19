@@ -6,8 +6,6 @@
 An open-source GOG.com downloader for Linux users which uses the same API as the official GOGDownloader.
 .PP
 LGOGDownloader can download purchased games, query GOG.com to see if game files have changed, as well as downloading extras such as artwork and manuals. It is capable of downloading language-specific installers for games where they exist.
-.PP
-These games are currently offered only for the Microsoft Windows\[rg] and Apple OS X\[rg] operating systems. To play these games under GNU/Linux will require a compatibility layer such as Wine. Usage of such a program is outside the scope of this document.
 
 /--update-check/
 .nf
