@@ -289,7 +289,6 @@ int Downloader::login()
                 if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
                     std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
 
-            //if (!gogWebsite->Login(email, password))
             if (!gogWebsite->Login(email, password))
             {
                 std::cerr << "HTTP: Login failed" << std::endl;
@@ -1555,6 +1554,9 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 
     // Check all chunks
     int iChunksRepaired = 0;
+    int iChunkRetryCount = 0;
+    int iChunkRetryLimit = 3;
+    bool bChunkRetryLimitReached = false;
     for (int i=0; i<chunks; i++)
     {
         off_t chunk_begin = chunk_from.at(i);
@@ -1583,7 +1585,18 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::string hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
         if (hash != chunk_hash.at(i))
         {
-            std::cout << "Failed - downloading chunk" << std::endl;
+            if (bChunkRetryLimitReached)
+            {
+                std::cout << "Failed - chunk retry limit reached\r" << std::flush;
+                free(chunk);
+                res = 0;
+                break;
+            }
+
+            if (iChunkRetryCount < 1)
+                std::cout << "Failed - downloading chunk" << std::endl;
+            else
+                std::cout << "Failed - retrying chunk download" << std::endl;
             // use fseeko to support large files on 32 bit platforms
             fseeko(outfile, chunk_begin, SEEK_SET);
             curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
@@ -1595,10 +1608,17 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             if (Globals::globalConfig.bReport)
                 iChunksRepaired++;
             i--; //verify downloaded chunk
+
+            iChunkRetryCount++;
+            if (iChunkRetryCount >= iChunkRetryLimit)
+            {
+                bChunkRetryLimitReached = true;
+            }
         }
         else
         {
             std::cout << "OK\r" << std::flush;
+            iChunkRetryCount = 0; // reset retry count
         }
         free(chunk);
         res = 1;
@@ -1608,9 +1628,16 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
 
     if (Globals::globalConfig.bReport)
     {
-        std::string report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
+        std::string report_line;
+        if (bChunkRetryLimitReached)
+            report_line = "Repair failed: " + filepath;
+        else
+            report_line = "Repaired [" + std::to_string(iChunksRepaired) + "/" + std::to_string(chunks) + "] " + filepath;
         this->report_ofs << report_line << std::endl;
     }
+
+    if (bChunkRetryLimitReached)
+        return res;
 
     // Set timestamp for downloaded file to same value as file on server
     long filetime = -1;
