@@ -1619,6 +1619,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         {
             std::cout << "OK\r" << std::flush;
             iChunkRetryCount = 0; // reset retry count
+            bChunkRetryLimitReached = false;
         }
         free(chunk);
         res = 1;
