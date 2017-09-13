@@ -24,6 +24,12 @@ void gameDetails::filterWithPriorities(const gameSpecificConfig& config)
     filterListWithPriorities(installers, config);
     filterListWithPriorities(patches, config);
     filterListWithPriorities(languagepacks, config);
+    for (unsigned int i = 0; i < dlcs.size(); ++i)
+    {
+        filterListWithPriorities(dlcs[i].installers, config);
+        filterListWithPriorities(dlcs[i].patches, config);
+        filterListWithPriorities(dlcs[i].languagepacks, config);
+    }
 }
 
 void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config)

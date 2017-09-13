@@ -31,6 +31,7 @@ class gameFile
         std::string name;
         std::string path;
         std::string size;
+        std::string galaxy_downlink_json_url;
         unsigned int platform;
         unsigned int language;
         unsigned int type;

@@ -11,6 +11,7 @@
 #include "globals.h"
 #include "config.h"
 #include "util.h"
+#include "gamedetails.h"
 
 #include <iostream>
 #include <vector>
@@ -53,11 +54,17 @@ class galaxyAPI
         std::string getResponse(const std::string& url, const bool& zlib_decompress = false);
         std::string hashToGalaxyPath(const std::string& hash);
         std::vector<galaxyDepotItem> getDepotItemsVector(const std::string& hash);
+        Json::Value getProductInfo(const std::string& product_id);
+        gameDetails productInfoJsonToGameDetails(const Json::Value& json, const DownloadConfig& dlConf);
     protected:
     private:
         CurlConfig curlConf;
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         CURL* curlhandle;
+        std::vector<gameFile> installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
+        std::vector<gameFile> patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
+        std::vector<gameFile> languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
+        std::vector<gameFile> extraJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json);
 };
 
 #endif // GALAXYAPI_H

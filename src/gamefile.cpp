@@ -43,6 +43,7 @@ Json::Value gameFile::getAsJson()
     json["silent"] = this->silent;
     json["gamename"] = this->gamename;
     json["type"] = this->type;
+    json["galaxy_downlink_json_url"] = this->galaxy_downlink_json_url;
 
     return json;
 }
