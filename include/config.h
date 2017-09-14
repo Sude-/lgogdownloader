@@ -75,14 +75,20 @@ class GalaxyConfig
 
         std::string getAccessToken()
         {
+            std:: string access_token;
             std::unique_lock<std::mutex> lock(m);
-            return this->token_json["access_token"].asString();
+            if (this->token_json.isMember("access_token"))
+                access_token = this->token_json["access_token"].asString();
+            return access_token;
         }
 
         std::string getRefreshToken()
         {
+            std::string refresh_token;
             std::unique_lock<std::mutex> lock(m);
-            return this->token_json["refresh_token"].asString();
+            if (this->token_json.isMember("refresh_token"))
+                refresh_token = this->token_json["refresh_token"].asString();
+            return refresh_token;
         }
 
         Json::Value getJSON()
