@@ -327,7 +327,9 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
                 for (unsigned int j = 0; j < dlc_gamedetails.languagepacks.size(); ++j)
                     dlc_gamedetails.languagepacks[j].type |= GFTYPE_DLC;
 
-                gamedetails.dlcs.push_back(dlc_gamedetails);
+                // Add DLC only if it has any files
+                if (!dlc_gamedetails.installers.empty() || !dlc_gamedetails.extras.empty() || !dlc_gamedetails.patches.empty() || !dlc_gamedetails.languagepacks.empty())
+                    gamedetails.dlcs.push_back(dlc_gamedetails);
             }
         }
     }
