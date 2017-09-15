@@ -751,6 +751,16 @@ void Downloader::repair()
             continue;
         }
 
+        // Refresh Galaxy login if token is expired
+        if (gogGalaxy->isTokenExpired())
+        {
+            if (!gogGalaxy->refreshLogin())
+            {
+                std::cerr << "Galaxy API failed to refresh login" << std::endl;
+                break;
+            }
+        }
+
         Json::Value downlinkJson;
         std::string response = gogGalaxy->getResponse(vGameFiles[i].galaxy_downlink_json_url);
 
@@ -2695,6 +2705,19 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         bool bSameVersion = true; // assume same version
         bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
 
+        // Refresh Galaxy login if token is expired
+        if (galaxy->isTokenExpired())
+        {
+            if (!galaxy->refreshLogin())
+            {
+                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+                vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+                delete jsonparser;
+                delete galaxy;
+                return;
+            }
+        }
+
         // Get downlink JSON from Galaxy API
         Json::Value downlinkJson;
         std::string response = galaxy->getResponse(gf.galaxy_downlink_json_url);
@@ -3201,6 +3224,16 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             }
         }
 
+        // Refresh Galaxy login if token is expired
+        if (galaxy->isTokenExpired())
+        {
+            if (!galaxy->refreshLogin())
+            {
+                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+                break;
+            }
+        }
+
         Json::Value product_info = galaxy->getProductInfo(game_item.id);
         game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
         game.filterWithPriorities(conf);
@@ -3531,6 +3564,17 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             ChunkMemoryStruct chunk;
             chunk.memory = (char *) malloc(1);
             chunk.size = 0;
+
+            // Refresh Galaxy login if token is expired
+            if (gogGalaxy->isTokenExpired())
+            {
+                if (!gogGalaxy->refreshLogin())
+                {
+                    std::cerr << "Galaxy API failed to refresh login" << std::endl;
+                    free(chunk.memory);
+                    return;
+                }
+            }
 
             json = gogGalaxy->getSecureLink(items[i].product_id, gogGalaxy->hashToGalaxyPath(items[i].chunks[j].md5_compressed));
 
