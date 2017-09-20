@@ -152,6 +152,10 @@ Downloader::~Downloader()
     if (Globals::globalConfig.bReport)
         if (this->report_ofs)
             this->report_ofs.close();
+
+    if (!gogGalaxy->isTokenExpired())
+        this->saveGalaxyJSON();
+
     delete progressbar;
     delete gogGalaxy;
     delete gogAPI;
