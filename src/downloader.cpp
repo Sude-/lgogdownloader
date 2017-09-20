@@ -293,7 +293,8 @@ int Downloader::login()
                 if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
                     std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
 
-            if (!gogWebsite->Login(email, password))
+            int iWebsiteLoginResult = gogWebsite->Login(email, password);
+            if (iWebsiteLoginResult < 1)
             {
                 std::cerr << "HTTP: Login failed" << std::endl;
                 return 0;
@@ -301,6 +302,16 @@ int Downloader::login()
             else
             {
                 std::cerr << "HTTP: Login successful" << std::endl;
+            }
+
+            if (iWebsiteLoginResult < 2)
+            {
+                std::cerr << "Galaxy: Login failed" << std::endl;
+                return 0;
+            }
+            else
+            {
+                std::cerr << "Galaxy: Login successful" << std::endl;
 
                 if (!Globals::galaxyConf.getJSON().empty())
                 {

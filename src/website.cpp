@@ -331,7 +331,7 @@ int Website::Login(const std::string& email, const std::string& password)
     if (login_form_html.find("google.com/recaptcha") != std::string::npos)
     {
         std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
-                    << "Login with browser and export cookies to \"" << Globals::globalConfig.curlConf.sCookiePath << "\"" << std::endl;
+                    << "Try to login later" << std::endl;
         return res = 0;
     }
 
@@ -495,10 +495,7 @@ int Website::Login(const std::string& email, const std::string& password)
             res = 1; // Login was successful
     }
 
-    if (auth_code.empty())
-        res = 0;
-
-    if (res == 1)
+    if (res == 1 && !auth_code.empty())
     {
         std::string token_url = "https://auth.gog.com/token?client_id=" + Globals::galaxyConf.getClientId()
                             + "&client_secret=" + Globals::galaxyConf.getClientSecret()
@@ -506,28 +503,25 @@ int Website::Login(const std::string& email, const std::string& password)
                             + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size());
 
         std::string json = this->getResponse(token_url);
-        if (json.empty())
-            res = 0;
-        else
+        if (!json.empty())
         {
             Json::Value token_json;
             Json::Reader *jsonparser = new Json::Reader;
             if (jsonparser->parse(json, token_json))
             {
                 Globals::galaxyConf.setJSON(token_json);
-                res = 1;
+                res = 2;
             }
             else
             {
                 std::cerr << "Failed to parse json" << std::endl << json << std::endl;
                 std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
-                res = 0;
             }
             delete jsonparser;
         }
     }
 
-    if (res == 1)
+    if (res >= 1)
         curl_easy_setopt(curlhandle, CURLOPT_COOKIELIST, "FLUSH"); // Write all known cookies to the file specified by CURLOPT_COOKIEJAR
 
     return res;
