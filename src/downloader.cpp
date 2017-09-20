@@ -178,15 +178,24 @@ bool Downloader::isLoggedIn()
     if (!bWebsiteIsLoggedIn)
         Globals::globalConfig.bLoginHTTP = true;
 
+    bool bGalaxyIsLoggedIn = !gogGalaxy->isTokenExpired();
+    if (!bGalaxyIsLoggedIn)
+    {
+        if (gogGalaxy->refreshLogin())
+            bGalaxyIsLoggedIn = true;
+        else
+            Globals::globalConfig.bLoginHTTP = true;
+    }
+
     bool bIsLoggedInAPI = gogAPI->isLoggedIn();
     if (!bIsLoggedInAPI)
         Globals::globalConfig.bLoginAPI = true;
 
-    /* Only check that website is logged in.
+    /* Check that website and Galaxy API are logged in.
         Allows users to use most of the functionality without having valid API login credentials.
         Globals::globalConfig.bLoginAPI can still be set to true at this point which means that if website is not logged in we still try to login to API.
     */
-    if (bWebsiteIsLoggedIn)
+    if (bWebsiteIsLoggedIn && bGalaxyIsLoggedIn)
         bIsLoggedIn = true;
 
     return bIsLoggedIn;

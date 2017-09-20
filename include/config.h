@@ -66,7 +66,7 @@ class GalaxyConfig
         bool isExpired()
         {
             std::unique_lock<std::mutex> lock(m);
-            bool bExpired = false;
+            bool bExpired = true; // assume that token is expired
             intmax_t time_now = time(NULL);
             if (this->token_json.isMember("expires_at"))
                 bExpired = (time_now > this->token_json["expires_at"].asLargestInt());
