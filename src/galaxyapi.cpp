@@ -382,14 +382,15 @@ std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::st
             delete jsonparser;
 
             std::string downlink_url = downlinkJson["downlink"].asString();
+            std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
             std::string path;
-            if (downlink_url.find("/" + gamename + "/") != std::string::npos)
+            if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
             {
-                path.assign(downlink_url.begin()+downlink_url.find("/" + gamename + "/"), downlink_url.begin()+downlink_url.find_first_of("?"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
             }
             else
             {
-                path.assign(downlink_url.begin()+downlink_url.find_last_of("/")+1, downlink_url.begin()+downlink_url.find_first_of("?"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
                 path = "/" + gamename + "/" + path;
             }
 
@@ -462,12 +463,15 @@ std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string
             delete jsonparser;
 
             std::string downlink_url = downlinkJson["downlink"].asString();
+            std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
             std::string path;
-            if (downlink_url.find("/" + gamename + "/") != std::string::npos)
-                path.assign(downlink_url.begin()+downlink_url.find("/" + gamename + "/"), downlink_url.begin()+downlink_url.find_first_of("?"));
+            if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
+            {
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
+            }
             else
             {
-                path.assign(downlink_url.begin()+downlink_url.find_last_of("/")+1, downlink_url.begin()+downlink_url.find_first_of("?"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
                 path = "/" + gamename + "/extras/" + path;
             }
 
