@@ -384,13 +384,22 @@ std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::st
             std::string downlink_url = downlinkJson["downlink"].asString();
             std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
             std::string path;
+
+            // GOG has changed the url formatting few times between 2 different formats.
+            // Try to get proper file name in both cases.
+            size_t filename_end_pos;
+            if (downlink_url_unescaped.find("?path=") != std::string::npos)
+                filename_end_pos = downlink_url_unescaped.find_first_of("&");
+            else
+                filename_end_pos = downlink_url_unescaped.find_first_of("?");
+
             if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
             {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
             }
             else
             {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
                 path = "/" + gamename + "/" + path;
             }
 
@@ -465,13 +474,22 @@ std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string
             std::string downlink_url = downlinkJson["downlink"].asString();
             std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
             std::string path;
+
+            // GOG has changed the url formatting few times between 2 different formats.
+            // Try to get proper file name in both cases.
+            size_t filename_end_pos;
+            if (downlink_url_unescaped.find("?path=") != std::string::npos)
+                filename_end_pos = downlink_url_unescaped.find_first_of("&");
+            else
+                filename_end_pos = downlink_url_unescaped.find_first_of("?");
+
             if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
             {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
             }
             else
             {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+downlink_url_unescaped.find_first_of("&"));
+                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
                 path = "/" + gamename + "/extras/" + path;
             }
 
