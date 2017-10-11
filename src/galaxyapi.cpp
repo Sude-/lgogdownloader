@@ -410,7 +410,7 @@ std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::st
             gf.language = iLanguage;
             gf.name = name;
             gf.path = path;
-            gf.size = fileNode["size"].asString();
+            gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);
             gf.updated = 0; // assume not updated
             gf.galaxy_downlink_json_url = downlink;
 
@@ -499,7 +499,7 @@ std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string
             gf.id = fileNode["id"].asString();
             gf.name = name;
             gf.path = path;
-            gf.size = fileNode["size"].asString();
+            gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);
             gf.updated = 0; // assume not updated
             gf.galaxy_downlink_json_url = downlink;
 

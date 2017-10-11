@@ -590,3 +590,26 @@ void Util::shortenStringToTerminalWidth(std::string& str)
         str.replace(str.begin()+pos1, str.begin()+pos2, "...");
     }
 }
+
+std::string Util::getJsonUIntValueAsString(const Json::Value& json_value)
+{
+    std::string value;
+    try
+    {
+        value = json_value.asString();
+    }
+    catch (...)
+    {
+        try
+        {
+            uintmax_t value_uint = json_value.asLargestUInt();
+            value = std::to_string(value_uint);
+        }
+        catch (...)
+        {
+            value = "";
+        }
+    }
+
+    return value;
+}
