@@ -259,7 +259,7 @@ Json::Value galaxyAPI::getProductInfo(const std::string& product_id)
 {
     Json::Value json;
 
-    std::string url = "https://api.gog.com/products/" + product_id + "?expand=downloads,expanded_dlcs,description,screenshots,videos,related_products,changelog";
+    std::string url = "https://api.gog.com/products/" + product_id + "?expand=downloads,expanded_dlcs,description,screenshots,videos,related_products,changelog&locale=en-US";
     std::string response = this->getResponse(url);
 
     Json::Reader *jsonparser = new Json::Reader;
