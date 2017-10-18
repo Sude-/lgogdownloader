@@ -410,6 +410,16 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 path = "/" + gamename + "/" + path;
             }
 
+            // Workaround for filename issue caused by different (currently unknown) url formatting scheme
+            // https://github.com/Sude-/lgogdownloader/issues/126
+            if (path.find("?") != std::string::npos)
+            {
+                if (path.find_last_of("?") > path.find_last_of("/"))
+                {
+                    path.assign(path.begin(), path.begin()+path.find_last_of("?"));
+                }
+            }
+
             gameFile gf;
             gf.gamename = gamename;
             gf.type = type;
