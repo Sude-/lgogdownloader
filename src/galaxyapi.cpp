@@ -283,30 +283,22 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
 
     if (dlConf.bInstallers)
     {
-        gamedetails.installers = this->installerJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-        for (unsigned int i = 0; i < gamedetails.installers.size(); ++i)
-            gamedetails.installers[i].type |= GFTYPE_INSTALLER;
+        gamedetails.installers = this->installerJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], dlConf);
     }
 
     if (dlConf.bExtras)
     {
         gamedetails.extras = this->extraJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"]);
-        for (unsigned int i = 0; i < gamedetails.extras.size(); ++i)
-            gamedetails.extras[i].type |= GFTYPE_EXTRA;
     }
 
     if (dlConf.bPatches)
     {
-        gamedetails.patches = this->patchJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-        for (unsigned int i = 0; i < gamedetails.patches.size(); ++i)
-            gamedetails.patches[i].type |= GFTYPE_PATCH;
+        gamedetails.patches = this->patchJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], dlConf);
     }
 
     if (dlConf.bLanguagePacks)
     {
-        gamedetails.languagepacks = this->languagepackJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-        for (unsigned int i = 0; i < gamedetails.languagepacks.size(); ++i)
-            gamedetails.languagepacks[i].type |= GFTYPE_LANGPACK;
+        gamedetails.languagepacks = this->languagepackJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], dlConf);
     }
 
     if (dlConf.bDLC)
@@ -337,7 +329,27 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     return gamedetails;
 }
 
-std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform, const unsigned int& lang, const bool& useDuplicateHandler)
+std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
+{
+    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_INSTALLER, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
+}
+
+std::vector<gameFile> galaxyAPI::patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
+{
+    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_PATCH, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
+}
+
+std::vector<gameFile> galaxyAPI::languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
+{
+    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_LANGPACK, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
+}
+
+std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json)
+{
+    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_EXTRA);
+}
+
+std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const unsigned int& platform, const unsigned int& lang, const bool& useDuplicateHandler)
 {
     std::vector<gameFile> gamefiles;
     unsigned int iInfoNodes = json.size();
@@ -345,26 +357,21 @@ std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::st
     {
         Json::Value infoNode = json[i];
         unsigned int iFiles = infoNode["files"].size();
-        std::string os = infoNode["os"].asString();
-        std::string language = infoNode["language"].asString();
         std::string name = infoNode["name"].asString();
 
         unsigned int iPlatform = GlobalConstants::PLATFORM_WINDOWS;
-        if (os == "windows")
-            iPlatform = GlobalConstants::PLATFORM_WINDOWS;
-        else if (os == "linux")
-            iPlatform = GlobalConstants::PLATFORM_LINUX;
-        else if (os == "mac")
-            iPlatform = GlobalConstants::PLATFORM_MAC;
-
-        if (!(iPlatform & platform))
-            continue;
-
         unsigned int iLanguage = GlobalConstants::LANGUAGE_EN;
-        iLanguage = Util::getOptionValue(language, GlobalConstants::LANGUAGES);
+        if (!(type & GFTYPE_EXTRA))
+        {
+            iPlatform = Util::getOptionValue(infoNode["os"].asString(), GlobalConstants::PLATFORMS);
+            iLanguage = Util::getOptionValue(infoNode["language"].asString(), GlobalConstants::LANGUAGES);
 
-        if (!(iLanguage & lang))
-            continue;
+            if (!(iPlatform & platform))
+                continue;
+
+            if (!(iLanguage & lang))
+                continue;
+        }
 
         for (unsigned int j = 0; j < iFiles; ++j)
         {
@@ -405,103 +412,35 @@ std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::st
 
             gameFile gf;
             gf.gamename = gamename;
+            gf.type = type;
             gf.id = fileNode["id"].asString();
-            gf.platform = iPlatform;
-            gf.language = iLanguage;
             gf.name = name;
             gf.path = path;
             gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);
             gf.updated = 0; // assume not updated
             gf.galaxy_downlink_json_url = downlink;
 
-            if (useDuplicateHandler)
+            if (!(type & GFTYPE_EXTRA))
             {
-                bool bDuplicate = false;
-                for (unsigned int k = 0; k < gamefiles.size(); ++k)
+                gf.platform = iPlatform;
+                gf.language = iLanguage;
+
+                if (useDuplicateHandler)
                 {
-                    if (gamefiles[k].path == gf.path)
+                    bool bDuplicate = false;
+                    for (unsigned int k = 0; k < gamefiles.size(); ++k)
                     {
-                        gamefiles[k].language |= gf.language; // Add language code to installer
-                        bDuplicate = true;
-                        break;
+                        if (gamefiles[k].path == gf.path)
+                        {
+                            gamefiles[k].language |= gf.language; // Add language code to installer
+                            bDuplicate = true;
+                            break;
+                        }
                     }
+                    if (bDuplicate)
+                        continue;
                 }
-                if (bDuplicate)
-                    continue;
             }
-            gamefiles.push_back(gf);
-        }
-    }
-
-    return gamefiles;
-}
-
-std::vector<gameFile> galaxyAPI::patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform, const unsigned int& lang, const bool& useDuplicateHandler)
-{
-    return this->installerJsonNodeToGameFileVector(gamename, json, platform, lang, useDuplicateHandler);
-}
-
-std::vector<gameFile> galaxyAPI::languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform, const unsigned int& lang, const bool& useDuplicateHandler)
-{
-    return this->installerJsonNodeToGameFileVector(gamename, json, platform, lang, useDuplicateHandler);
-}
-
-std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json)
-{
-    std::vector<gameFile> gamefiles;
-    unsigned int iInfoNodes = json.size();
-    for (unsigned int i = 0; i < iInfoNodes; ++i)
-    {
-        Json::Value infoNode = json[i];
-        unsigned int iFiles = infoNode["files"].size();
-        std::string name = infoNode["name"].asString();
-
-        for (unsigned int j = 0; j < iFiles; ++j)
-        {
-            Json::Value fileNode = infoNode["files"][j];
-            std::string downlink = fileNode["downlink"].asString();
-
-            std::string downlinkResponse = this->getResponse(downlink);
-
-            if (downlinkResponse.empty())
-                continue;
-
-            Json::Value downlinkJson;
-            Json::Reader *jsonparser = new Json::Reader;
-            jsonparser->parse(downlinkResponse, downlinkJson);
-            delete jsonparser;
-
-            std::string downlink_url = downlinkJson["downlink"].asString();
-            std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
-            std::string path;
-
-            // GOG has changed the url formatting few times between 2 different formats.
-            // Try to get proper file name in both cases.
-            size_t filename_end_pos;
-            if (downlink_url_unescaped.find("?path=") != std::string::npos)
-                filename_end_pos = downlink_url_unescaped.find_first_of("&");
-            else
-                filename_end_pos = downlink_url_unescaped.find_first_of("?");
-
-            if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
-            {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
-            }
-            else
-            {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
-                path = "/" + gamename + "/extras/" + path;
-            }
-
-            gameFile gf;
-            gf.gamename = gamename;
-            gf.type = GFTYPE_EXTRA;
-            gf.id = fileNode["id"].asString();
-            gf.name = name;
-            gf.path = path;
-            gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);
-            gf.updated = 0; // assume not updated
-            gf.galaxy_downlink_json_url = downlink;
 
             gamefiles.push_back(gf);
         }

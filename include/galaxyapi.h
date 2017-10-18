@@ -61,10 +61,11 @@ class galaxyAPI
         CurlConfig curlConf;
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         CURL* curlhandle;
-        std::vector<gameFile> installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
-        std::vector<gameFile> patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
-        std::vector<gameFile> languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
+        std::vector<gameFile> installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf);
+        std::vector<gameFile> patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf);
+        std::vector<gameFile> languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf);
         std::vector<gameFile> extraJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json);
+        std::vector<gameFile> fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type = GFTYPE_INSTALLER, const unsigned int& platform = (GlobalConstants::PLATFORM_WINDOWS | GlobalConstants::PLATFORM_LINUX), const unsigned int& lang = GlobalConstants::LANGUAGE_EN, const bool& useDuplicateHandler = false);
 };
 
 #endif // GALAXYAPI_H
