@@ -190,6 +190,8 @@ struct CurlConfig
     std::string sUserAgent;
     long int iTimeout;
     curl_off_t iDownloadRate;
+    long int iLowSpeedTimeout;
+    long int iLowSpeedTimeoutRate;
 };
 
 struct GogAPIConfig

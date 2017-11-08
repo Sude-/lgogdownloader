@@ -96,8 +96,8 @@ Downloader::Downloader()
     curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, Globals::globalConfig.curlConf.iLowSpeedTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, Globals::globalConfig.curlConf.iLowSpeedTimeoutRate);
 
     if (!Globals::globalConfig.curlConf.sCACertPath.empty())
         curl_easy_setopt(curlhandle, CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
@@ -2656,8 +2656,8 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, 30);
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
+    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, conf.curlConf.iLowSpeedTimeout);
+    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.curlConf.iLowSpeedTimeoutRate);
 
     if (!conf.curlConf.sCACertPath.empty())
         curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());

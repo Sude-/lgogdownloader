@@ -39,8 +39,8 @@ galaxyAPI::galaxyAPI(CurlConfig& conf)
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, curlConf.iDownloadRate);
 
     // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, curlConf.iLowSpeedTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, curlConf.iLowSpeedTimeoutRate);
 
     if (!curlConf.sCACertPath.empty())
         curl_easy_setopt(curlhandle, CURLOPT_CAINFO, curlConf.sCACertPath.c_str());
