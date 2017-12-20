@@ -121,9 +121,8 @@ Downloader::Downloader()
     {
         std::ifstream ifs(Globals::galaxyConf.getFilepath(), std::ifstream::binary);
         Json::Value json;
-        Json::Reader *jsonparser = new Json::Reader;
-        if (jsonparser->parse(ifs, json))
-        {
+		try {
+			ifs >> json;
             if (!json.isMember("expires_at"))
             {
                 std::time_t last_modified = boost::filesystem::last_write_time(Globals::galaxyConf.getFilepath());
@@ -132,13 +131,10 @@ Downloader::Downloader()
             }
 
             Globals::galaxyConf.setJSON(json);
-        }
-        else
-        {
+		} catch (const Json::Exception& exc) {
             std::cerr << "Failed to parse " << Globals::galaxyConf.getFilepath() << std::endl;
-            std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
-        }
-        delete jsonparser;
+            std::cerr << exc.what() << std::endl;			
+		}
 
         if (ifs)
             ifs.close();
@@ -739,8 +735,6 @@ void Downloader::repair()
     if (this->games.empty())
         this->getGameDetails();
 
-    Json::Reader *jsonparser = new Json::Reader;
-
     // Create a vector containing all game files
     std::vector<gameFile> vGameFiles;
     for (unsigned int i = 0; i < games.size(); ++i)
@@ -793,8 +787,14 @@ void Downloader::repair()
             std::cerr << "Found nothing in " << vGameFiles[i].galaxy_downlink_json_url << ", skipping file" << std::endl;
             continue;
         }
-        jsonparser->parse(response, downlinkJson);
-
+        try {
+            std::istringstream iss(response);
+            iss >> downlinkJson;
+        } catch (const Json::Exception& exc) {
+            std::cerr << "Could not parse JSON response, skipping file" << std::endl;
+            continue;
+        }
+            
         if (!downlinkJson.isMember("downlink"))
         {
             std::cerr << "Invalid JSON response, skipping file" << std::endl;
@@ -827,8 +827,6 @@ void Downloader::repair()
             std::cout << std::endl;
         }
     }
-
-    delete jsonparser;
 }
 
 void Downloader::download()
@@ -2237,53 +2235,40 @@ int Downloader::loadGameDetailsCache()
 
     std::ifstream json(cachepath, std::ifstream::binary);
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    if (jsonparser->parse(json, root))
-    {
-        if (root.isMember("date"))
-        {
-            cachedate = bptime::from_iso_string(root["date"].asString());
-            if ((now - cachedate) > bptime::minutes(Globals::globalConfig.iCacheValid))
-            {
-                // cache is too old
-                delete jsonparser;
-                json.close();
-                return res = 3;
-            }
-        }
-
-        int iCacheVersion = 0;
-        if (root.isMember("gamedetails-cache-version"))
-            iCacheVersion = root["gamedetails-cache-version"].asInt();
-
-        if (iCacheVersion != GlobalConstants::GAMEDETAILS_CACHE_VERSION)
-        {
-                res = 5;
-        }
-        else
-        {
-            if (root.isMember("games"))
-            {
-                this->games = getGameDetailsFromJsonNode(root["games"]);
-                res = 0;
-            }
-            else
-            {
-                res = 4;
-            }
-        }
-    }
-    else
-    {
-        res = 2;
+    try {
+        json >> root;
+    } catch (const Json::Exception& exc) {
         std::cout << "Failed to parse cache" << std::endl;
-        std::cout << jsonparser->getFormattedErrorMessages() << std::endl;
+        std::cout << exc.what() << std::endl;
+        return 2;                                    
     }
-    delete jsonparser;
-    if (json)
-        json.close();
 
-    return res;
+    if (root.isMember("date"))
+    {
+        cachedate = bptime::from_iso_string(root["date"].asString());
+        if ((now - cachedate) > bptime::minutes(Globals::globalConfig.iCacheValid))
+        {
+            // cache is too old
+            return 3;
+        }
+    }
+
+    int iCacheVersion = 0;
+    if (root.isMember("gamedetails-cache-version"))
+        iCacheVersion = root["gamedetails-cache-version"].asInt();
+
+    if (iCacheVersion != GlobalConstants::GAMEDETAILS_CACHE_VERSION)
+    {
+        return 5;
+    }
+
+    if (root.isMember("games"))
+    {
+        this->games = getGameDetailsFromJsonNode(root["games"]);
+        return 0;
+    }
+
+    return 4;
 }
 /* Save game details to cache file
     returns 0 if successful
@@ -2638,8 +2623,6 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
     }
 
-    Json::Reader *jsonparser = new Json::Reader;
-
     CURL* dlhandle = curl_easy_init();
     curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
@@ -2736,7 +2719,6 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             {
                 msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-                delete jsonparser;
                 delete galaxy;
                 return;
             }
@@ -2751,7 +2733,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             msgQueue.push(Message("Found nothing in " + gf.galaxy_downlink_json_url + ", skipping file", MSGTYPE_WARNING, msg_prefix));
             continue;
         }
-        jsonparser->parse(response, downlinkJson);
+
+        try {
+            std::istringstream iss(response);
+            iss >> downlinkJson;
+        } catch (const Json::Exception& exc) {
+            msgQueue.push(Message("Could not parse JSON response, skipping file", MSGTYPE_WARNING, msg_prefix));
+            continue;
+        }
 
         if (!downlinkJson.isMember("downlink"))
         {
@@ -2962,7 +2951,6 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     }
 
     curl_easy_cleanup(dlhandle);
-    delete jsonparser;
     delete galaxy;
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
