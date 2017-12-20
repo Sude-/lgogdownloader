@@ -2303,8 +2303,7 @@ int Downloader::saveGameDetailsCache()
     }
     else
     {
-        Json::StyledStreamWriter jsonwriter;
-        jsonwriter.write(ofs, json);
+        ofs << json << std::endl;
         ofs.close();
     }
     return res;
@@ -3304,8 +3303,7 @@ void Downloader::saveGalaxyJSON()
         }
         else
         {
-            Json::StyledStreamWriter jsonwriter;
-            jsonwriter.write(ofs, Globals::galaxyConf.getJSON());
+            ofs << Globals::galaxyConf.getJSON() << std::endl;
             ofs.close();
         }
         if (!Globals::globalConfig.bRespectUmask)
