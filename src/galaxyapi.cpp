@@ -72,7 +72,6 @@ int galaxyAPI::init()
 
 bool galaxyAPI::refreshLogin()
 {
-    bool res = false;
     std::string refresh_url = "https://auth.gog.com/token?client_id=" + Globals::galaxyConf.getClientId()
                             + "&client_secret=" + Globals::galaxyConf.getClientSecret()
                             + "&grant_type=refresh_token"
