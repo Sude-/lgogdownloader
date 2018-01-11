@@ -235,89 +235,84 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
 
     std::ifstream json(filepath, std::ifstream::binary);
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    if (jsonparser->parse(json, root))
-    {
-        if (root.isMember("language"))
-        {
-            if (root["language"].isInt())
-                conf->dlConf.iInstallerLanguage = root["language"].asUInt();
-            else
-            {
-                Util::parseOptionString(root["language"].asString(), conf->dlConf.vLanguagePriority, conf->dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
-            }
-            res++;
-        }
-        if (root.isMember("platform"))
-        {
-            if (root["platform"].isInt())
-                conf->dlConf.iInstallerPlatform = root["platform"].asUInt();
-            else
-            {
-                Util::parseOptionString(root["platform"].asString(), conf->dlConf.vPlatformPriority, conf->dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
-            }
-            res++;
-        }
-        if (root.isMember("dlc"))
-        {
-            conf->dlConf.bDLC = root["dlc"].asBool();
-            res++;
-        }
-        if (root.isMember("ignore-dlc-count"))
-        {
-            conf->dlConf.bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
-            res++;
-        }
-        if (root.isMember("subdirectories"))
-        {
-            conf->dirConf.bSubDirectories = root["subdirectories"].asBool();
-            res++;
-        }
-        if (root.isMember("directory"))
-        {
-            conf->dirConf.sDirectory = root["directory"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-game"))
-        {
-            conf->dirConf.sGameSubdir = root["subdir-game"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-installers"))
-        {
-            conf->dirConf.sInstallersSubdir = root["subdir-installers"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-extras"))
-        {
-            conf->dirConf.sExtrasSubdir = root["subdir-extras"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-patches"))
-        {
-            conf->dirConf.sPatchesSubdir = root["subdir-patches"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-language-packs"))
-        {
-            conf->dirConf.sLanguagePackSubdir = root["subdir-language-packs"].asString();
-            res++;
-        }
-        if (root.isMember("subdir-dlc"))
-        {
-            conf->dirConf.sDLCSubdir = root["subdir-dlc"].asString();
-            res++;
-        }
-    }
-    else
-    {
+    try {
+        json >> root;
+    } catch (const Json::Exception& exc) {
         std::cerr << "Failed to parse game specific config " << filepath << std::endl;
-        std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
+        std::cerr << exc.what() << std::endl;
+        return res;
     }
-    delete jsonparser;
-    if (json)
-        json.close();
 
+    if (root.isMember("language"))
+    {
+        if (root["language"].isInt())
+            conf->dlConf.iInstallerLanguage = root["language"].asUInt();
+        else
+        {
+            Util::parseOptionString(root["language"].asString(), conf->dlConf.vLanguagePriority, conf->dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
+        }
+        res++;
+    }
+    if (root.isMember("platform"))
+    {
+        if (root["platform"].isInt())
+            conf->dlConf.iInstallerPlatform = root["platform"].asUInt();
+        else
+        {
+            Util::parseOptionString(root["platform"].asString(), conf->dlConf.vPlatformPriority, conf->dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
+        }
+        res++;
+    }
+    if (root.isMember("dlc"))
+    {
+        conf->dlConf.bDLC = root["dlc"].asBool();
+        res++;
+    }
+    if (root.isMember("ignore-dlc-count"))
+    {
+        conf->dlConf.bIgnoreDLCCount = root["ignore-dlc-count"].asBool();
+        res++;
+    }
+    if (root.isMember("subdirectories"))
+    {
+        conf->dirConf.bSubDirectories = root["subdirectories"].asBool();
+        res++;
+    }
+    if (root.isMember("directory"))
+    {
+        conf->dirConf.sDirectory = root["directory"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-game"))
+    {
+        conf->dirConf.sGameSubdir = root["subdir-game"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-installers"))
+    {
+        conf->dirConf.sInstallersSubdir = root["subdir-installers"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-extras"))
+    {
+        conf->dirConf.sExtrasSubdir = root["subdir-extras"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-patches"))
+    {
+        conf->dirConf.sPatchesSubdir = root["subdir-patches"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-language-packs"))
+    {
+        conf->dirConf.sLanguagePackSubdir = root["subdir-language-packs"].asString();
+        res++;
+    }
+    if (root.isMember("subdir-dlc"))
+    {
+        conf->dirConf.sDLCSubdir = root["subdir-dlc"].asString();
+        res++;
+    }
     return res;
 }
 

@@ -10,6 +10,7 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
+#include <sstream>
 
 GalaxyConfig Globals::galaxyConf;
 
@@ -78,19 +79,19 @@ bool galaxyAPI::refreshLogin()
                             + "&refresh_token=" + Globals::galaxyConf.getRefreshToken();
 
     std::string json = this->getResponse(refresh_url);
-    if (!json.empty())
-    {
-        Json::Value token_json;
-        Json::Reader *jsonparser = new Json::Reader;
-        if (jsonparser->parse(json, token_json))
-        {
-            Globals::galaxyConf.setJSON(token_json);
-            res = true;
-        }
-        delete jsonparser;
+    if (json.empty())
+        return false;
+
+    Json::Value token_json;
+    std::istringstream json_stream(json);
+    try {
+        json_stream >> token_json;
+        Globals::galaxyConf.setJSON(token_json);
+    } catch (const Json::Exception& exc) {
+        return false;
     }
 
-    return res;
+    return true;
 }
 
 bool galaxyAPI::isTokenExpired()
@@ -145,59 +146,47 @@ std::string galaxyAPI::getResponse(const std::string& url, const bool& zlib_deco
 
 Json::Value galaxyAPI::getProductBuilds(const std::string& product_id, const std::string& platform, const std::string& generation)
 {
+    std::string url = "https://content-system.gog.com/products/" + product_id + "/os/" + platform + "/builds?generation=" + generation;
+    std::istringstream response(this->getResponse(url));
     Json::Value json;
 
-    std::string url = "https://content-system.gog.com/products/" + product_id + "/os/" + platform + "/builds?generation=" + generation;
-    std::string response = this->getResponse(url);
-
-    Json::Reader *jsonparser = new Json::Reader;
-    jsonparser->parse(response, json);
-    delete jsonparser;
+    response >> json;
 
     return json;
 }
 
 Json::Value galaxyAPI::getManifestV1(const std::string& product_id, const std::string& build_id, const std::string& manifest_id, const std::string& platform)
 {
+    std::string url = "https://cdn.gog.com/content-system/v1/manifests/" + product_id + "/" + platform + "/" + build_id + "/" + manifest_id + ".json";
+    std::istringstream response(this->getResponse(url));
     Json::Value json;
 
-    std::string url = "https://cdn.gog.com/content-system/v1/manifests/" + product_id + "/" + platform + "/" + build_id + "/" + manifest_id + ".json";
-    std::string response = this->getResponse(url);
-
-    Json::Reader *jsonparser = new Json::Reader;
-    jsonparser->parse(response, json);
-    delete jsonparser;
+    response >> json;
 
     return json;
 }
 
 Json::Value galaxyAPI::getManifestV2(std::string manifest_hash)
 {
-    Json::Value json;
-
     if (!manifest_hash.empty() && manifest_hash.find("/") == std::string::npos)
         manifest_hash = this->hashToGalaxyPath(manifest_hash);
 
     std::string url = "https://cdn.gog.com/content-system/v2/meta/" + manifest_hash;
-    std::string response = this->getResponse(url, true);
+    std::istringstream response(this->getResponse(url, true));
+    Json::Value json;
 
-    Json::Reader *jsonparser = new Json::Reader;
-    jsonparser->parse(response, json);
-    delete jsonparser;
+    response >> json;
 
     return json;
 }
 
 Json::Value galaxyAPI::getSecureLink(const std::string& product_id, const std::string& path)
 {
+    std::string url = "https://content-system.gog.com/products/" + product_id + "/secure_link?generation=2&path=" + path + "&_version=2";
+    std::istringstream response(this->getResponse(url));
     Json::Value json;
 
-    std::string url = "https://content-system.gog.com/products/" + product_id + "/secure_link?generation=2&path=" + path + "&_version=2";
-    std::string response = this->getResponse(url);
-
-    Json::Reader *jsonparser = new Json::Reader;
-    jsonparser->parse(response, json);
-    delete jsonparser;
+    response >>json;
 
     return json;
 }
@@ -257,14 +246,11 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
 
 Json::Value galaxyAPI::getProductInfo(const std::string& product_id)
 {
+    std::string url = "https://api.gog.com/products/" + product_id + "?expand=downloads,expanded_dlcs,description,screenshots,videos,related_products,changelog&locale=en-US";
+    std::istringstream response(this->getResponse(url));
     Json::Value json;
 
-    std::string url = "https://api.gog.com/products/" + product_id + "?expand=downloads,expanded_dlcs,description,screenshots,videos,related_products,changelog&locale=en-US";
-    std::string response = this->getResponse(url);
-
-    Json::Reader *jsonparser = new Json::Reader;
-    jsonparser->parse(response, json);
-    delete jsonparser;
+    response >> json;
 
     return json;
 }
@@ -384,9 +370,10 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 continue;
 
             Json::Value downlinkJson;
-            Json::Reader *jsonparser = new Json::Reader;
-            jsonparser->parse(downlinkResponse, downlinkJson);
-            delete jsonparser;
+            Json::CharReaderBuilder builder;
+            std::istringstream downlink_stream(downlinkResponse);
+            JSONCPP_STRING errs;
+            Json::parseFromStream(builder, downlink_stream, &downlinkJson, &errs);
 
             std::string downlink_url = downlinkJson["downlink"].asString();
             std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);

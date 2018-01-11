@@ -99,20 +99,20 @@ Json::Value Website::getGameDetailsJSON(const std::string& gameid)
 
     // Parse JSON
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
-    if (!jsonparser->parse(json, root))
-    {
+    std::istringstream json_stream(json);
+
+    try {
+        json_stream >> root;
+    } catch(const Json::Exception& exc) {
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << json << std::endl;
         #endif
-        std::cout << jsonparser->getFormattedErrorMessages();
-        delete jsonparser;
+        std::cout << exc.what();
         exit(1);
     }
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << root << std::endl;
     #endif
-    delete jsonparser;
 
     return root;
 }
@@ -122,22 +122,22 @@ std::vector<gameItem> Website::getGames()
 {
     std::vector<gameItem> games;
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
     int i = 1;
     bool bAllPagesParsed = false;
 
     do
     {
         std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
+        std::istringstream json_stream(response);
 
-        // Parse JSON
-        if (!jsonparser->parse(response, root))
-        {
+        try {
+            // Parse JSON
+            json_stream >> root;
+        } catch (const Json::Exception& exc) {
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << response << std::endl;
             #endif
-            std::cout << jsonparser->getFormattedErrorMessages();
-            delete jsonparser;
+            std::cout << exc.what();
             if (!response.empty())
             {
                 if(response[0] != '{')
@@ -269,8 +269,6 @@ std::vector<gameItem> Website::getGames()
     } while (!bAllPagesParsed);
     std::cerr << std::endl;
 
-    delete jsonparser;
-
     return games;
 }
 
@@ -278,20 +276,21 @@ std::vector<gameItem> Website::getGames()
 std::vector<gameItem> Website::getFreeGames()
 {
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
     std::vector<gameItem> games;
     std::string json = this->getResponse("https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&price=free&sort=title");
+    std::istringstream json_stream(json);
 
-    // Parse JSON
-    if (!jsonparser->parse(json, root))
-    {
+    try {
+        // Parse JSON
+        json_stream >> root;
+    } catch (const Json::Exception& exc) {
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Website::getFreeGames)" << std::endl << json << std::endl;
         #endif
-        std::cout << jsonparser->getFormattedErrorMessages();
-        delete jsonparser;
+        std::cout << exc.what();
         exit(1);
     }
+    
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Website::getFreeGames)" << std::endl << root << std::endl;
     #endif
@@ -304,7 +303,6 @@ std::vector<gameItem> Website::getFreeGames()
         game.id = products[i]["id"].isInt() ? std::to_string(products[i]["id"].asInt()) : products[i]["id"].asString();
         games.push_back(game);
     }
-    delete jsonparser;
 
     return games;
 }
@@ -506,18 +504,16 @@ int Website::Login(const std::string& email, const std::string& password)
         if (!json.empty())
         {
             Json::Value token_json;
-            Json::Reader *jsonparser = new Json::Reader;
-            if (jsonparser->parse(json, token_json))
-            {
+			std::istringstream json_stream(json);
+            try {
+                json_stream >> token_json;
+
                 Globals::galaxyConf.setJSON(token_json);
                 res = 2;
-            }
-            else
-            {
+            } catch (const Json::Exception& exc) {
                 std::cerr << "Failed to parse json" << std::endl << json << std::endl;
-                std::cerr << jsonparser->getFormattedErrorMessages() << std::endl;
+                std::cerr << exc.what() << std::endl;
             }
-            delete jsonparser;
         }
     }
 
@@ -608,23 +604,24 @@ bool Website::IsloggedInSimple()
 std::vector<wishlistItem> Website::getWishlistItems()
 {
     Json::Value root;
-    Json::Reader *jsonparser = new Json::Reader;
+    Json::CharReaderBuilder builder;
     int i = 1;
     bool bAllPagesParsed = false;
     std::vector<wishlistItem> wishlistItems;
 
     do
     {
-        std::string response = this->getResponse("https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i));
+        std::string response(this->getResponse("https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i)));
+        std::istringstream response_stream(response);
 
-        // Parse JSON
-        if (!jsonparser->parse(response, root))
-        {
+        try {
+            // Parse JSON
+            response_stream >> root;
+        } catch(const Json::Exception exc) {
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << response << std::endl;
             #endif
-            std::cout << jsonparser->getFormattedErrorMessages();
-            delete jsonparser;
+            std::cout << exc.what();
             exit(1);
         }
         #ifdef DEBUG
@@ -711,8 +708,6 @@ std::vector<wishlistItem> Website::getWishlistItems()
         }
         i++;
     } while (!bAllPagesParsed);
-
-    delete jsonparser;
 
     return wishlistItems;
 }
