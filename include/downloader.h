@@ -114,7 +114,7 @@ class Downloader
         void saveChangelog(const std::string& changelog, const std::string& filepath);
         static void processDownloadQueue(Config conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-        void printProgress();
+        template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
@@ -123,6 +123,7 @@ class Downloader
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
         std::vector<std::string> galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path);
+        static void processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid);
 
         Website *gogWebsite;
         API *gogAPI;
