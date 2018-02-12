@@ -3809,18 +3809,27 @@ void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index
         return;
     }
 
-    if (json["items"][build_index]["generation"].asInt() != 2)
+    std::string link = json["items"][build_index]["link"].asString();
+
+    if (json["items"][build_index]["generation"].asInt() == 1)
     {
-        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        json = gogGalaxy->getManifestV1(link);
+    }
+    else if (json["items"][build_index]["generation"].asInt() == 2)
+    {
+        std::string buildHash;
+        buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+        json = gogGalaxy->getManifestV2(buildHash);
+    }
+    else
+    {
+        std::cout << "Only generation 1 and 2 builds are supported currently" << std::endl;
         return;
     }
 
-    std::string link = json["items"][build_index]["link"].asString();
-    std::string buildHash;
-    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
-    json = gogGalaxy->getManifestV2(buildHash);
-
     std::cout << json << std::endl;
+
+    return;
 }
 
 std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path)

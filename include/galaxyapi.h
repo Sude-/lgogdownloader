@@ -49,6 +49,7 @@ class galaxyAPI
         bool refreshLogin();
         Json::Value getProductBuilds(const std::string& product_id, const std::string& platform = "windows", const std::string& generation = "2");
         Json::Value getManifestV1(const std::string& product_id, const std::string& build_id, const std::string& manifest_id = "repository", const std::string& platform = "windows");
+        Json::Value getManifestV1(const std::string& manifest_url);
         Json::Value getManifestV2(std::string manifest_hash);
         Json::Value getSecureLink(const std::string& product_id, const std::string& path);
         std::string getResponse(const std::string& url, const bool& zlib_decompress = false);

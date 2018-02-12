@@ -157,7 +157,13 @@ Json::Value galaxyAPI::getProductBuilds(const std::string& product_id, const std
 Json::Value galaxyAPI::getManifestV1(const std::string& product_id, const std::string& build_id, const std::string& manifest_id, const std::string& platform)
 {
     std::string url = "https://cdn.gog.com/content-system/v1/manifests/" + product_id + "/" + platform + "/" + build_id + "/" + manifest_id + ".json";
-    std::istringstream response(this->getResponse(url));
+
+    return this->getManifestV1(url);
+}
+
+Json::Value galaxyAPI::getManifestV1(const std::string& manifest_url)
+{
+    std::istringstream response(this->getResponse(manifest_url));
     Json::Value json;
 
     response >> json;
