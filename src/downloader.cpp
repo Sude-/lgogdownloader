@@ -3804,7 +3804,7 @@ void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index
     {
         for (unsigned int i = 0; i < json["items"].size(); ++i)
         {
-            std::cout << i << ": " << "Version " << json["items"][i]["version_name"].asString() << " - " << json["items"][i]["date_published"].asString() << std::endl;
+            std::cout << i << ": " << "Version " << json["items"][i]["version_name"].asString() << " - " << json["items"][i]["date_published"].asString() << " (Gen " << json["items"][i]["generation"].asInt() << ")" << std::endl;
         }
         return;
     }
