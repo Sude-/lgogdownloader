@@ -377,7 +377,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             Json::Value downlinkJson;
             Json::CharReaderBuilder builder;
             std::istringstream downlink_stream(downlinkResponse);
-            JSONCPP_STRING errs;
+            std::string errs;
             Json::parseFromStream(builder, downlink_stream, &downlinkJson, &errs);
 
             std::string downlink_url = downlinkJson["downlink"].asString();
