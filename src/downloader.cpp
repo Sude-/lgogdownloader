@@ -1034,6 +1034,36 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     {
         if (bSameVersion)
         {
+            // Check if file is complete so we can skip it instead of resuming
+            if (!xml_data.empty())
+            {
+                off_t filesize_xml;
+                off_t filesize_local = boost::filesystem::file_size(filepath);
+
+                tinyxml2::XMLDocument remote_xml;
+                remote_xml.Parse(xml_data.c_str());
+                tinyxml2::XMLElement *fileElem = remote_xml.FirstChildElement("file");
+                if (fileElem)
+                {
+                    std::string total_size = fileElem->Attribute("total_size");
+                    try
+                    {
+                        filesize_xml = std::stoull(total_size);
+                    }
+                    catch (std::invalid_argument& e)
+                    {
+                        filesize_xml = 0;
+                    }
+                    if (filesize_local == filesize_xml)
+                    {
+                        std::cout << "Skipping complete file: " + filepath << std::endl;
+                        fclose(outfile);
+                        res = CURLE_OK;
+                        return res;
+                    }
+                }
+            }
+
             // File exists, resume
             if ((outfile = freopen(filepath.c_str(), "r+", outfile))!=NULL )
             {
@@ -2681,6 +2711,34 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (bSameVersion)
             {
                 bResume = true;
+
+                // Check if file is complete so we can skip it instead of resuming
+                if (!xml.empty())
+                {
+                    off_t filesize_xml;
+                    off_t filesize_local = boost::filesystem::file_size(filepath);
+
+                    tinyxml2::XMLDocument remote_xml;
+                    remote_xml.Parse(xml.c_str());
+                    tinyxml2::XMLElement *fileElem = remote_xml.FirstChildElement("file");
+                    if (fileElem)
+                    {
+                        std::string total_size = fileElem->Attribute("total_size");
+                        try
+                        {
+                            filesize_xml = std::stoull(total_size);
+                        }
+                        catch (std::invalid_argument& e)
+                        {
+                            filesize_xml = 0;
+                        }
+                        if (filesize_local == filesize_xml)
+                        {
+                            msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
+                            continue;
+                        }
+                    }
+                }
             }
             else
             {
