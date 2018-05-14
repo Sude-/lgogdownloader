@@ -835,9 +835,6 @@ void Downloader::download()
     if (this->games.empty())
         this->getGameDetails();
 
-    if (Globals::globalConfig.dlConf.bCover && !Globals::globalConfig.bUpdateCheck)
-        coverXML = this->getResponse(Globals::globalConfig.sCoverList);
-
     for (unsigned int i = 0; i < games.size(); ++i)
     {
         gameSpecificConfig conf;
@@ -854,21 +851,6 @@ void Downloader::download()
         {
             std::string filepath = games[i].getChangelogFilepath();
             this->saveChangelog(games[i].changelog, filepath);
-        }
-
-        // Download covers
-        if (conf.dlConf.bCover && !Globals::globalConfig.bUpdateCheck)
-        {
-            if (!games[i].installers.empty())
-            {
-                // Take path from installer path because for some games the base directory for installer/extra path is not "gamename"
-                boost::filesystem::path filepath = boost::filesystem::absolute(games[i].installers[0].getFilepath(), boost::filesystem::current_path());
-
-                // Get base directory from filepath
-                std::string directory = filepath.parent_path().string();
-
-                this->downloadCovers(games[i].gamename, directory, coverXML);
-            }
         }
 
         if (conf.dlConf.bInstallers)
@@ -1497,92 +1479,6 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         boost::filesystem::last_write_time(filepath, timestamp);
     }
     curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
-
-    return res;
-}
-
-// Download cover images
-int Downloader::downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data)
-{
-    int res = 0;
-    tinyxml2::XMLDocument xml;
-
-    // Check that directory exists and create subdirectories
-    boost::filesystem::path path = directory;
-    if (boost::filesystem::exists(path))
-    {
-        if (!boost::filesystem::is_directory(path))
-        {
-            std::cout << path << " is not directory" << std::endl;
-            return res;
-        }
-
-    }
-    else
-    {
-        if (!boost::filesystem::create_directories(path))
-        {
-            std::cout << "Failed to create directory: " << path << std::endl;
-            return res;
-        }
-    }
-
-    xml.Parse(cover_xml_data.c_str());
-    tinyxml2::XMLElement *rootNode = xml.RootElement();
-    if (!rootNode)
-    {
-        std::cout << "Not valid XML" << std::endl;
-        return res;
-    }
-    else
-    {
-        tinyxml2::XMLNode *gameNode = rootNode->FirstChild();
-        while (gameNode)
-        {
-            tinyxml2::XMLElement *gameElem = gameNode->ToElement();
-            std::string game_name = gameElem->Attribute("name");
-
-            if (game_name == gamename)
-            {
-                boost::match_results<std::string::const_iterator> what;
-                tinyxml2::XMLNode *coverNode = gameNode->FirstChild();
-                while (coverNode)
-                {
-                    tinyxml2::XMLElement *coverElem = coverNode->ToElement();
-                    std::string cover_url = coverElem->GetText();
-                    // Get file extension for the image
-                    boost::regex e1(".*(\\.\\w+)$", boost::regex::perl | boost::regex::icase);
-                    boost::regex_search(cover_url, what, e1);
-                    std::string file_extension = what[1];
-                    std::string cover_name = std::string("cover_") + coverElem->Attribute("id") + file_extension;
-                    std::string filepath = directory + "/" + cover_name;
-
-                    std::cout << "Downloading cover " << filepath << std::endl;
-                    CURLcode result = this->downloadFile(cover_url, filepath);
-                    std::cout << std::endl;
-                    if (result == CURLE_OK)
-                        res = 1;
-                    else
-                        res = 0;
-
-                    if (result == CURLE_HTTP_RETURNED_ERROR)
-                    {
-                        long int response_code = 0;
-                        result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-                        std::cout << "HTTP ERROR: ";
-                        if (result == CURLE_OK)
-                            std::cout << response_code << " (" << cover_url << ")" << std::endl;
-                        else
-                            std::cout << "failed to get error code: " << curl_easy_strerror(result) << " (" << cover_url << ")" << std::endl;
-                    }
-
-                    coverNode = coverNode->NextSibling();
-                }
-                break; // Found cover for game, no need to go through rest of the game nodes
-            }
-            gameNode = gameNode->NextSibling();
-        }
-    }
 
     return res;
 }

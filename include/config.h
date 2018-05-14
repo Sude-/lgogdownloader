@@ -39,7 +39,6 @@ struct DownloadConfig
     unsigned int iGalaxyArch;
 
     bool bRemoteXML;
-    bool bCover;
     bool bSaveChangelogs;
     bool bSaveSerials;
     bool bAutomaticXMLCreation;
@@ -278,7 +277,6 @@ class Config
         Blacklist blacklist;
         Blacklist ignorelist;
         Blacklist gamehasdlc;
-        std::string sCoverList;
         std::string sGameHasDLCList;
 
         // Integers

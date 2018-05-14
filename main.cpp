@@ -34,8 +34,7 @@ int main(int argc, char *argv[])
     const unsigned int OPTION_EXTRAS     = 1 << 1;
     const unsigned int OPTION_PATCHES    = 1 << 2;
     const unsigned int OPTION_LANGPACKS  = 1 << 3;
-    const unsigned int OPTION_COVERS     = 1 << 4;
-    const unsigned int OPTION_DLCS       = 1 << 5;
+    const unsigned int OPTION_DLCS       = 1 << 4;
 
     const std::vector<GlobalConstants::optionsStruct> INCLUDE_OPTIONS =
     {
@@ -43,7 +42,6 @@ int main(int argc, char *argv[])
         { OPTION_EXTRAS,     "e", "Extras",         "e|extras"                  },
         { OPTION_PATCHES,    "p", "Patches",        "p|patches"                 },
         { OPTION_LANGPACKS,  "l", "Language packs", "l|languagepacks|langpacks" },
-        { OPTION_COVERS,     "c", "Covers",         "c|cover|covers"            },
         { OPTION_DLCS,       "d", "DLCs",           "d|dlc|dlcs"                }
     };
 
@@ -201,7 +199,6 @@ int main(int argc, char *argv[])
             ("timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
             ("retries", bpo::value<int>(&Globals::globalConfig.iRetries)->default_value(3), "Set maximum number of retries on failed download")
             ("wait", bpo::value<int>(&Globals::globalConfig.iWait)->default_value(0), "Time to wait between requests (milliseconds)")
-            ("cover-list", bpo::value<std::string>(&Globals::globalConfig.sCoverList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/covers.xml"), "Set URL for cover list")
             ("subdir-installers", bpo::value<std::string>(&Globals::globalConfig.dirConf.sInstallersSubdir)->default_value(""), ("Set subdirectory for installers" + subdir_help_text).c_str())
             ("subdir-extras", bpo::value<std::string>(&Globals::globalConfig.dirConf.sExtrasSubdir)->default_value("extras"), ("Set subdirectory for extras" + subdir_help_text).c_str())
             ("subdir-patches", bpo::value<std::string>(&Globals::globalConfig.dirConf.sPatchesSubdir)->default_value("patches"), ("Set subdirectory for patches" + subdir_help_text).c_str())
@@ -213,7 +210,7 @@ int main(int argc, char *argv[])
             ("save-serials", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
             ("ignore-dlc-count", bpo::value<std::string>(&Globals::globalConfig.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
             ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
-            ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value("covers"), ("Select what not to download/list/repair\n" + include_options_text).c_str())
+            ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value(""), ("Select what not to download/list/repair\n" + include_options_text).c_str())
             ("automatic-xml-creation", bpo::value<bool>(&Globals::globalConfig.dlConf.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
             ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
@@ -493,7 +490,6 @@ int main(int argc, char *argv[])
 
         // Assign values
         // TODO: Use config.iInclude in Downloader class directly and get rid of this value assignment
-        Globals::globalConfig.dlConf.bCover = (Globals::globalConfig.dlConf.iInclude & OPTION_COVERS);
         Globals::globalConfig.dlConf.bInstallers = (Globals::globalConfig.dlConf.iInclude & OPTION_INSTALLERS);
         Globals::globalConfig.dlConf.bExtras = (Globals::globalConfig.dlConf.iInclude & OPTION_EXTRAS);
         Globals::globalConfig.dlConf.bPatches = (Globals::globalConfig.dlConf.iInclude & OPTION_PATCHES);

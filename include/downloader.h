@@ -96,7 +96,6 @@ class Downloader
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
-        int downloadCovers(const std::string& gamename, const std::string& directory, const std::string& cover_xml_data);
         int getGameDetails();
         void getGameList();
         uintmax_t getResumePosition();
@@ -130,7 +129,6 @@ class Downloader
         galaxyAPI *gogGalaxy;
         std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;
-        std::string coverXML;
 
         off_t resume_position;
         int retries;
