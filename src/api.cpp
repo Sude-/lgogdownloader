@@ -196,7 +196,7 @@ int API::getUserDetails()
 
     Json::Value root;
     std::istringstream json_stream(json);
-    
+
     try {
         json_stream >> root;
     } catch (const Json::Exception& exc) {
@@ -307,7 +307,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
 
     try {
         json_stream >> root;
-    } catch (Json::Exception exc) {
+    } catch (Json::Exception& exc) {
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (API::getGameDetails)" << std::endl << json << std::endl;
         #endif
@@ -322,7 +322,7 @@ gameDetails API::getGameDetails(const std::string& game_name, const unsigned int
     game.title = root["game"]["title"].asString();
     game.icon = root["game"]["icon"].asString();
     std::vector<std::string> membernames = root["game"].getMemberNames();
-    
+
     // Installer details
     // Create a list of installers from JSON
     std::vector<gameFileInfo> installers;

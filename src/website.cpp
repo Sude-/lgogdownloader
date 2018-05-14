@@ -290,7 +290,7 @@ std::vector<gameItem> Website::getFreeGames()
         std::cout << exc.what();
         exit(1);
     }
-    
+
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Website::getFreeGames)" << std::endl << root << std::endl;
     #endif
@@ -617,7 +617,7 @@ std::vector<wishlistItem> Website::getWishlistItems()
         try {
             // Parse JSON
             response_stream >> root;
-        } catch(const Json::Exception exc) {
+        } catch(const Json::Exception& exc) {
             #ifdef DEBUG
                 std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << response << std::endl;
             #endif
