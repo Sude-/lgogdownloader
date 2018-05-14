@@ -63,12 +63,11 @@ int main(int argc, char *argv[])
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
-    unsigned int platform_all = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "|" + std::to_string(GlobalConstants::PLATFORMS[i].id) + "\n";
+        platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
     }
-    platform_text += "All = all|" + std::to_string(platform_all);
+    platform_text += "All = all";
     platform_text += "\n\n" + priority_help_text;
     platform_text += "\nExample: Linux if available otherwise Windows and Mac: l,w+m";
 
@@ -76,18 +75,16 @@ int main(int argc, char *argv[])
     std::string galaxy_platform_text = "Select platform\n";
     for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
     {
-        galaxy_platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "|" + std::to_string(GlobalConstants::PLATFORMS[i].id) + "\n";
+        galaxy_platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
     }
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
-    unsigned int language_all = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "|" + std::to_string(GlobalConstants::LANGUAGES[i].id) + "\n";
+        language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
     }
-    language_text += "Add the values to download multiple languages\nAll = all|" + std::to_string(language_all) + "\n"
-                    + "French + Polish = \"fr+pl\"|" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + " (" + std::to_string(GlobalConstants::LANGUAGE_FR) + "+" + std::to_string(GlobalConstants::LANGUAGE_PL) + "=" + std::to_string(GlobalConstants::LANGUAGE_FR | GlobalConstants::LANGUAGE_PL) + ")";
+    language_text += "All = all";
     language_text += "\n\n" + priority_help_text;
     language_text += "\nExample: German if available otherwise English and French: de,en+fr";
 
@@ -95,7 +92,7 @@ int main(int argc, char *argv[])
     std::string galaxy_language_text = "Select language\n";
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        galaxy_language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "|" + std::to_string(GlobalConstants::LANGUAGES[i].id) + "\n";
+        galaxy_language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
     }
 
     // Create help text for --galaxy-arch option
@@ -116,7 +113,7 @@ int main(int argc, char *argv[])
     std::string include_options_text;
     for (unsigned int i = 0; i < INCLUDE_OPTIONS.size(); ++i)
     {
-        include_options_text +=  INCLUDE_OPTIONS[i].str + " = " + INCLUDE_OPTIONS[i].regexp + "|" + std::to_string(INCLUDE_OPTIONS[i].id) + "\n";
+        include_options_text +=  INCLUDE_OPTIONS[i].str + " = " + INCLUDE_OPTIONS[i].regexp + "\n";
     }
     include_options_text += "Separate with \",\" to use multiple values";
 
@@ -507,13 +504,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (Globals::globalConfig.dlConf.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || Globals::globalConfig.dlConf.iInstallerPlatform > platform_all)
+    if (Globals::globalConfig.dlConf.iInstallerPlatform < GlobalConstants::PLATFORMS[0].id || Globals::globalConfig.dlConf.iInstallerPlatform > Util::getOptionValue("all", GlobalConstants::PLATFORMS))
     {
         std::cerr << "Invalid value for --platform" << std::endl;
         return 1;
     }
 
-    if (Globals::globalConfig.dlConf.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || Globals::globalConfig.dlConf.iInstallerLanguage > language_all)
+    if (Globals::globalConfig.dlConf.iInstallerLanguage < GlobalConstants::LANGUAGES[0].id || Globals::globalConfig.dlConf.iInstallerLanguage > Util::getOptionValue("all", GlobalConstants::LANGUAGES))
     {
         std::cerr << "Invalid value for --language" << std::endl;
         return 1;
