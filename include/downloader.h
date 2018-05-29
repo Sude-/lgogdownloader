@@ -67,6 +67,20 @@ struct ChunkMemoryStruct
     curl_off_t size;
 };
 
+typedef struct
+{
+	std::string filepath;
+	off_t comp_size;
+	off_t uncomp_size;
+	off_t start_offset_zip;
+	off_t start_offset_mojosetup;
+	off_t end_offset;
+	uint16_t file_attributes;
+	uint32_t crc32;
+
+	std::string installer_url;
+} zipFileEntry;
+
 class Downloader
 {
     public:
@@ -123,6 +137,9 @@ class Downloader
 
         std::vector<std::string> galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path);
         static void processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid);
+        void galaxyInstallGame_MojoSetupHack(const std::string& product_id);
+        static void processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid);
+        int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
 
         Website *gogWebsite;
         API *gogAPI;

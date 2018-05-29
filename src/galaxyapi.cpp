@@ -149,7 +149,17 @@ Json::Value galaxyAPI::getProductBuilds(const std::string& product_id, const std
     std::istringstream response(this->getResponse(url));
     Json::Value json;
 
-    response >> json;
+    if (!response.str().empty())
+    {
+        try
+        {
+            response >> json;
+        }
+        catch(const Json::Exception& exc)
+        {
+            // Failed to parse json response
+        }
+    }
 
     return json;
 }

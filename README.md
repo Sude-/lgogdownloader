@@ -12,6 +12,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 * [tinyxml2](https://github.com/leethomason/tinyxml2)
 * [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options, iostreams)
 * [libcrypto](https://www.openssl.org/) if libcurl is built with OpenSSL
+* [zlib](https://www.zlib.net/)
 
 ## Make dependencies
 * [cmake](https://cmake.org/) >= 3.0.0
@@ -25,7 +26,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
     libjsoncpp-dev liboauth-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
     libboost-date-time-dev libboost-iostreams-dev help2man cmake libssl-dev \
-    pkg-config
+    pkg-config zlib1g-dev
 
 ## Build and install
 

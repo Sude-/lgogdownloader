@@ -35,6 +35,7 @@ find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)
 find_package(Rhash REQUIRED)
 find_package(Threads REQUIRED)
+find_package(ZLIB REQUIRED)
 
 file(GLOB SRC_FILES
   main.cpp
@@ -47,6 +48,7 @@ file(GLOB SRC_FILES
   src/gamefile.cpp
   src/gamedetails.cpp
   src/galaxyapi.cpp
+  src/ziputil.cpp
   )
 
 set(GIT_CHECKOUT FALSE)
@@ -103,6 +105,7 @@ target_include_directories(${PROJECT_NAME}
   PRIVATE ${Htmlcxx_INCLUDE_DIRS}
   PRIVATE ${Tinyxml2_INCLUDE_DIRS}
   PRIVATE ${Rhash_INCLUDE_DIRS}
+  PRIVATE ${ZLIB_INCLUDE_DIRS}
   )
 
 target_link_libraries(${PROJECT_NAME}
@@ -114,6 +117,7 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE ${Tinyxml2_LIBRARIES}
   PRIVATE ${Rhash_LIBRARIES}
   PRIVATE ${CMAKE_THREAD_LIBS_INIT}
+  PRIVATE ${ZLIB_LIBRARIES}
   )
 
 if(LINK_LIBCRYPTO EQUAL 1)

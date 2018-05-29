@@ -9,6 +9,7 @@
 #include "globals.h"
 #include "downloadinfo.h"
 #include "message.h"
+#include "ziputil.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -44,6 +45,7 @@ ThreadSafeQueue<gameFile> createXMLQueue;
 ThreadSafeQueue<gameItem> gameItemQueue;
 ThreadSafeQueue<gameDetails> gameDetailsQueue;
 ThreadSafeQueue<galaxyDepotItem> dlQueueGalaxy;
+ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 
 static curl_off_t WriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp)
@@ -3307,6 +3309,11 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
     {
         std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+
+        // Galaxy install hack for Linux
+        std::cout << "Trying to use installers as repository" << std::endl;
+        this->galaxyInstallGame_MojoSetupHack(product_id);
+
         return;
     }
 
@@ -3751,6 +3758,42 @@ void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index
     if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
     {
         std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+
+        std::cout << "Checking for installers that can be used as repository" << std::endl;
+        DownloadConfig dlConf = Globals::globalConfig.dlConf;
+        dlConf.bInstallers = true;
+        dlConf.bExtras = false;
+        dlConf.bLanguagePacks = false;
+        dlConf.bPatches = false;
+        dlConf.bDLC = true;
+        dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
+        dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
+
+        Json::Value product_info = gogGalaxy->getProductInfo(product_id);
+        gameDetails game = gogGalaxy->productInfoJsonToGameDetails(product_info, dlConf);
+
+        std::vector<gameFile> vInstallers;
+        if (!game.installers.empty())
+        {
+            vInstallers.push_back(game.installers[0]);
+            for (unsigned int i = 0; i < game.dlcs.size(); ++i)
+            {
+                if (!game.dlcs[i].installers.empty())
+                    vInstallers.push_back(game.dlcs[i].installers[0]);
+            }
+        }
+
+        if (vInstallers.empty())
+        {
+            std::cout << "No installers found" << std::endl;
+        }
+        else
+        {
+            std::cout << "Using these installers" << std::endl;
+            for (unsigned int i = 0; i < vInstallers.size(); ++i)
+                std::cout << "\t" << vInstallers[i].gamename << "/" << vInstallers[i].id << std::endl;
+        }
+
         return;
     }
 
@@ -3858,4 +3901,777 @@ std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<ga
     }
 
     return orphans;
+}
+
+void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
+{
+    DownloadConfig dlConf = Globals::globalConfig.dlConf;
+    dlConf.bInstallers = true;
+    dlConf.bExtras = false;
+    dlConf.bLanguagePacks = false;
+    dlConf.bPatches = false;
+    dlConf.bDLC = true;
+    dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
+    dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
+
+    Json::Value product_info = gogGalaxy->getProductInfo(product_id);
+    gameDetails game = gogGalaxy->productInfoJsonToGameDetails(product_info, dlConf);
+
+    std::vector<gameFile> vInstallers;
+    if (!game.installers.empty())
+    {
+        vInstallers.push_back(game.installers[0]);
+        for (unsigned int i = 0; i < game.dlcs.size(); ++i)
+        {
+            if (!game.dlcs[i].installers.empty())
+                vInstallers.push_back(game.dlcs[i].installers[0]);
+        }
+    }
+
+    if (!vInstallers.empty())
+    {
+        std::vector<zipFileEntry> zipFileEntries;
+        for (unsigned int i = 0; i < vInstallers.size(); ++i)
+        {
+            std::vector<zipFileEntry> vFiles;
+            std::cout << "Getting file list for " << vInstallers[i].gamename << "/" << vInstallers[i].id << std::endl;
+            if (this->mojoSetupGetFileVector(vInstallers[i], vFiles))
+            {
+                std::cerr << "Failed to get file list" << std::endl;
+                return;
+            }
+            else
+            {
+                zipFileEntries.insert(std::end(zipFileEntries), std::begin(vFiles), std::end(vFiles));
+            }
+        }
+
+        std::string gamedir = game.title;
+        if (gamedir.empty())
+            gamedir = game.gamename;
+        if (gamedir.empty())
+            gamedir = product_id;
+
+        std::string install_directory = Globals::globalConfig.dirConf.sDirectory + "/" + gamedir + "/";
+        std::vector<zipFileEntry> vZipDirectories;
+        std::vector<zipFileEntry> vZipFiles;
+        std::vector<zipFileEntry> vZipFilesSymlink;
+        for (std::uintmax_t i = 0; i < zipFileEntries.size(); ++i)
+        {
+            // Ignore all files and directories that are not in "data/noarch/" directory
+            std::string noarch = "data/noarch/";
+            if (zipFileEntries[i].filepath.find(noarch) == std::string::npos || zipFileEntries[i].filepath == noarch)
+                continue;
+
+            zipFileEntry zfe = zipFileEntries[i];
+            Util::replaceString(zfe.filepath, noarch, install_directory);
+            while (Util::replaceString(zfe.filepath, "//", "/")); // Replace any double slashes with single slash
+
+            if (zfe.filepath.at(zfe.filepath.length()-1) == '/')
+                vZipDirectories.push_back(zfe);
+            else if (ZipUtil::isSymlink(zfe.file_attributes))
+                vZipFilesSymlink.push_back(zfe);
+            else
+                vZipFiles.push_back(zfe);
+        }
+
+        // Create directories
+        for (std::uintmax_t i = 0; i < vZipDirectories.size(); ++i)
+        {
+            if (!boost::filesystem::exists(vZipDirectories[i].filepath))
+            {
+                if (!boost::filesystem::create_directories(vZipDirectories[i].filepath))
+                {
+                    std::cerr << "Failed to create directory " << vZipDirectories[i].filepath << std::endl;
+                    return;
+                }
+            }
+        }
+
+        // Add files to download queue
+        for (std::uintmax_t i = 0; i < vZipFiles.size(); ++i)
+            dlQueueGalaxy_MojoSetupHack.push(vZipFiles[i]);
+
+        // Add symlinks to download queue
+        for (std::uintmax_t i = 0; i < vZipFilesSymlink.size(); ++i)
+            dlQueueGalaxy_MojoSetupHack.push(vZipFilesSymlink[i]);
+
+        // Limit thread count to number of items in download queue
+        unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlQueueGalaxy_MojoSetupHack.size()));
+
+        // Create download threads
+        std::vector<std::thread> vThreads;
+        for (unsigned int i = 0; i < iThreads; ++i)
+        {
+            DownloadInfo dlInfo;
+            dlInfo.setStatus(DLSTATUS_NOTSTARTED);
+            vDownloadInfo.push_back(dlInfo);
+            vThreads.push_back(std::thread(Downloader::processGalaxyDownloadQueue_MojoSetupHack, Globals::globalConfig, i));
+        }
+
+        this->printProgress(dlQueueGalaxy_MojoSetupHack);
+
+        // Join threads
+        for (unsigned int i = 0; i < vThreads.size(); ++i)
+            vThreads[i].join();
+
+        vThreads.clear();
+        vDownloadInfo.clear();
+    }
+    else
+    {
+        std::cout << "No installers found" << std::endl;
+    }
+}
+
+void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid)
+{
+    std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
+
+    CURL* dlhandle = curl_easy_init();
+    curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
+    curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
+
+    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
+    curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);
+    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
+    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.curlConf.bVerbose);
+    curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+    curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
+    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
+    curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
+
+    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
+    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, conf.curlConf.iLowSpeedTimeout);
+    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.curlConf.iLowSpeedTimeoutRate);
+
+    if (!conf.curlConf.sCACertPath.empty())
+        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
+
+    xferInfo xferinfo;
+    xferinfo.tid = tid;
+    xferinfo.curlhandle = dlhandle;
+
+    curl_easy_setopt(dlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallbackForThread);
+    curl_easy_setopt(dlhandle, CURLOPT_XFERINFODATA, &xferinfo);
+
+    zipFileEntry zfe;
+    while (dlQueueGalaxy_MojoSetupHack.try_pop(zfe))
+    {
+        vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
+
+        boost::filesystem::path path = zfe.filepath;
+        boost::filesystem::path path_tmp = zfe.filepath + ".lgogdltmp";
+
+        // Check that directory exists and create it
+        boost::filesystem::path directory = path.parent_path();
+        mtx_create_directories.lock(); // Use mutex to avoid possible race conditions
+        if (boost::filesystem::exists(directory))
+        {
+            if (!boost::filesystem::is_directory(directory))
+            {
+                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_ERROR, msg_prefix));
+                vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+                mtx_create_directories.unlock();
+                return;
+            }
+        }
+        else
+        {
+            if (!boost::filesystem::create_directories(directory))
+            {
+                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix));
+                vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+                mtx_create_directories.unlock();
+                return;
+            }
+        }
+        mtx_create_directories.unlock();
+
+        vDownloadInfo[tid].setFilename(path.string());
+
+        if (ZipUtil::isSymlink(zfe.file_attributes))
+        {
+            if (boost::filesystem::is_symlink(path))
+            {
+                msgQueue.push(Message("Symlink already exists: " + path.string(), MSGTYPE_INFO, msg_prefix));
+                continue;
+            }
+        }
+        else
+        {
+            if (boost::filesystem::exists(path))
+            {
+                if (conf.bVerbose)
+                    msgQueue.push(Message("File already exists: " + path.string(), MSGTYPE_INFO, msg_prefix));
+
+                off_t filesize = static_cast<off_t>(boost::filesystem::file_size(path));
+                if (filesize == zfe.uncomp_size)
+                {
+                    // File is same size
+                    if (Util::getFileHash(path.string(), RHASH_CRC32) == Util::formattedString("%08x", zfe.crc32))
+                    {
+                        msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix));
+                        continue;
+                    }
+                    else
+                    {
+                        msgQueue.push(Message(path.string() + ": CRC32 mismatch. Deleting old file.", MSGTYPE_WARNING, msg_prefix));
+                        if (!boost::filesystem::remove(path))
+                        {
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    // File size mismatch
+                    msgQueue.push(Message(path.string() + ": File size mismatch. Deleting old file.", MSGTYPE_INFO, msg_prefix));
+                    if (!boost::filesystem::remove(path))
+                    {
+                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        continue;
+                    }
+                }
+            }
+        }
+
+        off_t resume_from = 0;
+        if (boost::filesystem::exists(path_tmp))
+        {
+            off_t filesize = static_cast<off_t>(boost::filesystem::file_size(path_tmp));
+            if (filesize < zfe.comp_size)
+            {
+                // Continue
+                resume_from = filesize;
+            }
+            else
+            {
+                // Delete old file
+                msgQueue.push(Message(path_tmp.string() + ": Deleting old file.", MSGTYPE_INFO, msg_prefix));
+                if (!boost::filesystem::remove(path_tmp))
+                {
+                    msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                    continue;
+                }
+            }
+        }
+
+        std::string url = zfe.installer_url;
+        std::string dlrange = std::to_string(zfe.start_offset_mojosetup) + "-" + std::to_string(zfe.end_offset);
+        curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
+        if (ZipUtil::isSymlink(zfe.file_attributes))
+        {
+            // Symlink
+            std::stringstream symlink_compressed;
+            std::stringstream symlink_uncompressed;
+            std::string link_target;
+
+            CURLcode result = CURLE_RECV_ERROR;
+            curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+            curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, &symlink_compressed);
+            curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
+
+            vDownloadInfo[tid].setFilename(path.string());
+
+            if (conf.iWait > 0)
+                usleep(conf.iWait); // Delay the request by specified time
+
+            xferinfo.offset = 0;
+            xferinfo.timer.reset();
+            xferinfo.TimeAndSize.clear();
+
+            result = curl_easy_perform(dlhandle);
+
+            if (result != CURLE_OK)
+            {
+                symlink_compressed.str(std::string());
+                msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix));
+                continue;
+            }
+
+            int res = ZipUtil::extractStream(&symlink_compressed, &symlink_uncompressed);
+            symlink_compressed.str(std::string());
+
+            if (res != 0)
+            {
+                std::string msg = "Extraction failed (";
+                switch (res)
+                {
+                    case 1:
+                        msg += "invalid input stream";
+                        break;
+                    case 2:
+                        msg += "unsupported compression method";
+                        break;
+                    case 3:
+                        msg += "invalid output stream";
+                        break;
+                    case 4:
+                        msg += "zlib error";
+                        break;
+                    default:
+                        msg += "unknown error";
+                        break;
+                }
+                msg += ")";
+
+                msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix));
+                symlink_uncompressed.str(std::string());
+                continue;
+            }
+
+            link_target = symlink_uncompressed.str();
+            symlink_uncompressed.str(std::string());
+
+            if (!link_target.empty())
+            {
+                if (!boost::filesystem::exists(path))
+                {
+                    if (conf.bVerbose)
+                        msgQueue.push(Message(path.string() + ": Creating symlink to " + link_target, MSGTYPE_INFO, msg_prefix));
+                    boost::filesystem::create_symlink(link_target, path);
+                }
+            }
+        }
+        else
+        {
+            // Download file
+            CURLcode result = CURLE_RECV_ERROR;
+
+            off_t max_size_memory = 5 << 20; // 5MB
+            if (zfe.comp_size < max_size_memory) // Handle small files in memory
+            {
+                std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary);
+                if (!ofs)
+                {
+                    msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                    continue;
+                }
+
+                std::stringstream data_compressed;
+                vDownloadInfo[tid].setFilename(path.string());
+                curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+                curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, &data_compressed);
+                curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
+
+                xferinfo.offset = 0;
+                xferinfo.timer.reset();
+                xferinfo.TimeAndSize.clear();
+
+                result = curl_easy_perform(dlhandle);
+
+                if (result != CURLE_OK)
+                {
+                    data_compressed.str(std::string());
+                    ofs.close();
+                    msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix));
+                    if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
+                    {
+                        if (!boost::filesystem::remove(path))
+                        {
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        }
+                    }
+                    continue;
+                }
+
+                int res = ZipUtil::extractStream(&data_compressed, &ofs);
+                data_compressed.str(std::string());
+                ofs.close();
+
+                if (res != 0)
+                {
+                    std::string msg = "Extraction failed (";
+                    switch (res)
+                    {
+                        case 1:
+                            msg += "invalid input stream";
+                            break;
+                        case 2:
+                            msg += "unsupported compression method";
+                            break;
+                        case 3:
+                            msg += "invalid output stream";
+                            break;
+                        case 4:
+                            msg += "zlib error";
+                            break;
+                        default:
+                            msg += "unknown error";
+                            break;
+                    }
+                    msg += ")";
+
+                    msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix));
+                    data_compressed.str(std::string());
+                    if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
+                    {
+                        if (!boost::filesystem::remove(path))
+                        {
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        }
+                    }
+                    continue;
+                }
+
+                // Set file parmission
+                boost::filesystem::perms permissions = ZipUtil::getBoostFilePermission(zfe.file_attributes);
+                if (boost::filesystem::exists(path))
+                    Util::setFilePermissions(path, permissions);
+            }
+            else // Use temorary file for bigger files
+            {
+                vDownloadInfo[tid].setFilename(path_tmp.string());
+                curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+                curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
+
+                int iRetryCount = 0;
+                do
+                {
+                    if (iRetryCount != 0)
+                        msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + path_tmp.filename().string(), MSGTYPE_INFO, msg_prefix));
+
+
+                    FILE* outfile;
+                    // File exists, resume
+                    if (resume_from > 0)
+                    {
+                        if ((outfile=fopen(path_tmp.string().c_str(), "r+"))!=NULL)
+                        {
+                            fseek(outfile, 0, SEEK_END);
+                            dlrange = std::to_string(zfe.start_offset_mojosetup + resume_from) + "-" + std::to_string(zfe.end_offset);
+                            curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, outfile);
+                            curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
+                        }
+                        else
+                        {
+                            msgQueue.push(Message("Failed to open " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                            break;
+                        }
+                    }
+                    else // File doesn't exist, create new file
+                    {
+                        if ((outfile=fopen(path_tmp.string().c_str(), "w"))!=NULL)
+                        {
+                            curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, outfile);
+                            curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
+                        }
+                        else
+                        {
+                            msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                            break;
+                        }
+                    }
+
+                    if (conf.iWait > 0)
+                        usleep(conf.iWait); // Delay the request by specified time
+
+                    xferinfo.offset = 0;
+                    xferinfo.timer.reset();
+                    xferinfo.TimeAndSize.clear();
+                    result = curl_easy_perform(dlhandle);
+                    fclose(outfile);
+
+                    if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT)
+                    {
+                        iRetryCount++;
+                        if (boost::filesystem::exists(path_tmp) && boost::filesystem::is_regular_file(path_tmp))
+                            resume_from = static_cast<off_t>(boost::filesystem::file_size(path_tmp));
+                    }
+
+                } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT) && (iRetryCount <= conf.iRetries));
+
+                if (result == CURLE_OK)
+                {
+                    // Extract file
+                    int res = ZipUtil::extractFile(path_tmp.string(), path.string());
+                    if (res != 0)
+                    {
+                        std::string msg = "Extraction failed (";
+                        switch (res)
+                        {
+                            case 1:
+                                msg += "failed to open input file";
+                                break;
+                            case 2:
+                                msg += "unsupported compression method";
+                                break;
+                            case 3:
+                                msg += "failed to create output file";
+                                break;
+                            case 4:
+                                msg += "zlib error";
+                                break;
+                            default:
+                                msg += "unknown error";
+                                break;
+                        }
+                        msg += ")";
+
+                        msgQueue.push(Message(msg + " " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                        continue;
+                    }
+                    else
+                    {
+                        if (boost::filesystem::exists(path_tmp) && boost::filesystem::is_regular_file(path_tmp))
+                        {
+                            if (!boost::filesystem::remove(path_tmp))
+                            {
+                                msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            }
+                        }
+                    }
+
+                    // Set file parmission
+                    boost::filesystem::perms permissions = ZipUtil::getBoostFilePermission(zfe.file_attributes);
+                    if (boost::filesystem::exists(path))
+                        Util::setFilePermissions(path, permissions);
+                }
+                else
+                {
+                    msgQueue.push(Message("Download failed " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                    continue;
+                }
+            }
+        }
+
+        msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix));
+    }
+
+    vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+    curl_easy_cleanup(dlhandle);
+
+    return;
+}
+
+int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles)
+{
+    Json::Value downlinkJson;
+    std::string response = gogGalaxy->getResponse(gf.galaxy_downlink_json_url);
+
+    if (response.empty())
+    {
+        std::cerr << "Found nothing in " << gf.galaxy_downlink_json_url << std::endl;
+        return 1;
+    }
+
+    try
+    {
+        std::istringstream iss(response);
+        iss >> downlinkJson;
+    }
+    catch (const Json::Exception& exc)
+    {
+        std::cerr << "Could not parse JSON response" << std::endl;
+        return 1;
+    }
+
+    if (!downlinkJson.isMember("downlink"))
+    {
+        std::cerr << "Invalid JSON response" << std::endl;
+        return 1;
+    }
+
+    std::string xml_url;
+    if (downlinkJson.isMember("checksum"))
+    {
+        if (!downlinkJson["checksum"].empty())
+            xml_url = downlinkJson["checksum"].asString();
+    }
+    else
+    {
+        std::cerr << "Invalid JSON response. Response doesn't contain XML url." << std::endl;
+        return 1;
+    }
+
+
+    // Get XML data
+    std::string xml_data = gogGalaxy->getResponse(xml_url);
+    if (xml_data.empty())
+    {
+        std::cerr << "Failed to get XML data" << std::endl;
+        return 1;
+    }
+
+
+    std::uintmax_t file_size = 0;
+    tinyxml2::XMLDocument xml;
+    xml.Parse(xml_data.c_str());
+    tinyxml2::XMLElement *fileElem = xml.FirstChildElement("file");
+
+    if (!fileElem)
+    {
+        std::cerr << "Failed to parse XML data" << std::endl;
+        return 1;
+    }
+    else
+    {
+        std::string total_size = fileElem->Attribute("total_size");
+        try
+        {
+            file_size = std::stoull(total_size);
+        }
+        catch (std::invalid_argument& e)
+        {
+            file_size = 0;
+        }
+
+        if (file_size == 0)
+        {
+            std::cerr << "Failed to get file size" << std::endl;
+            return 1;
+        }
+    }
+
+    std::string installer_url = downlinkJson["downlink"].asString();
+    if (installer_url.empty())
+    {
+        std::cerr << "Failed to get installer url" << std::endl;
+        return 1;
+    }
+
+    off_t head_size = 100 << 10; // 100 kB
+    off_t tail_size = 200 << 10; // 200 kB
+    std::string head_range = "0-" + std::to_string(head_size);
+    std::string tail_range = std::to_string(file_size - tail_size) + "-" + std::to_string(file_size);
+
+    CURLcode result;
+
+    // Get head
+    std::stringstream head;
+    curl_easy_setopt(curlhandle, CURLOPT_URL, installer_url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &head);
+    curl_easy_setopt(curlhandle, CURLOPT_RANGE, head_range.c_str());
+    result = curl_easy_perform(curlhandle);
+
+    if (result != CURLE_OK)
+    {
+        std::cerr << "Failed to download data" << std::endl;
+        return 1;
+    }
+
+    // Get zip start offset in MojoSetup installer
+    off_t mojosetup_zip_offset = 0;
+    off_t mojosetup_script_size = ZipUtil::getMojoSetupScriptSize(&head);
+    head.seekg(0, head.beg);
+    off_t mojosetup_installer_size = ZipUtil::getMojoSetupInstallerSize(&head);
+    head.str(std::string());
+
+    if (mojosetup_script_size == -1 || mojosetup_installer_size == -1)
+    {
+        std::cerr << "Failed to get Zip offset" << std::endl;
+        return 1;
+    }
+    else
+    {
+        mojosetup_zip_offset = mojosetup_script_size + mojosetup_installer_size;
+    }
+
+    // Get tail
+    std::stringstream tail;
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &tail);
+    curl_easy_setopt(curlhandle, CURLOPT_RANGE, tail_range.c_str());
+    result = curl_easy_perform(curlhandle);
+
+    if (result != CURLE_OK)
+    {
+        std::cerr << "Failed to download data" << std::endl;
+        return 1;
+    }
+
+    off_t offset_zip_eocd = ZipUtil::getZipEOCDOffset(&tail);
+    off_t offset_zip64_eocd = ZipUtil::getZip64EOCDOffset(&tail);
+
+    if (offset_zip_eocd < 0)
+    {
+        std::cerr << "Failed to find Zip EOCD offset" << std::endl;
+        return 1;
+    }
+
+    zipEOCD eocd = ZipUtil::readZipEOCDStruct(&tail, offset_zip_eocd);
+
+    uint64_t cd_offset = eocd.cd_start_offset;
+    uint64_t cd_total = eocd.total_cd_records;
+
+    if (offset_zip64_eocd >= 0)
+    {
+        zip64EOCD eocd64 = ZipUtil::readZip64EOCDStruct(&tail, offset_zip64_eocd);
+        if (cd_offset == UINT32_MAX)
+            cd_offset = eocd64.cd_offset;
+
+        if (cd_total == UINT16_MAX)
+            cd_total = eocd64.cd_total;
+    }
+
+    off_t cd_offset_in_stream = 0;
+    off_t mojosetup_cd_offset = mojosetup_zip_offset + cd_offset;
+    off_t cd_offset_from_file_end = file_size - mojosetup_cd_offset;
+
+    if (cd_offset_from_file_end > tail_size)
+    {
+        tail.str(std::string());
+        tail_range = std::to_string(mojosetup_cd_offset) + "-" + std::to_string(file_size);
+        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &tail);
+        curl_easy_setopt(curlhandle, CURLOPT_RANGE, tail_range.c_str());
+        result = curl_easy_perform(curlhandle);
+
+        if (result != CURLE_OK)
+        {
+            std::cerr << "Failed to download data" << std::endl;
+            return 1;
+        }
+    }
+    else
+    {
+        cd_offset_in_stream = tail_size - cd_offset_from_file_end;
+    }
+
+    tail.seekg(cd_offset_in_stream, tail.beg);
+    uint32_t signature = ZipUtil::readUInt32(&tail);
+    if (signature != ZIP_CD_HEADER_SIGNATURE)
+    {
+        std::cerr << "Failed to find Zip Central Directory" << std::endl;
+        return 1;
+    }
+
+
+    // Read file entries from Zip Central Directory
+    tail.seekg(cd_offset_in_stream, tail.beg);
+    for (std::uint64_t i = 0; i < cd_total; ++i)
+    {
+        zipCDEntry cd;
+        cd = ZipUtil::readZipCDEntry(&tail);
+
+        zipFileEntry zfe;
+        zfe.filepath = cd.filename;
+        zfe.comp_size = cd.comp_size;
+        zfe.uncomp_size = cd.uncomp_size;
+        zfe.start_offset_zip = cd.disk_offset;
+        zfe.start_offset_mojosetup = zfe.start_offset_zip + mojosetup_zip_offset;
+        zfe.file_attributes = cd.external_file_attr >> 16;
+        zfe.crc32 = cd.crc32;
+        zfe.installer_url = installer_url;
+
+        vFiles.push_back(zfe);
+    }
+    tail.str(std::string());
+
+    // Set end offset for all entries
+    vFiles[vFiles.size() - 1].end_offset = mojosetup_cd_offset - 1;
+    for (std::uintmax_t i = 0; i < (vFiles.size() - 1); i++)
+    {
+        vFiles[i].end_offset = vFiles[i+1].start_offset_mojosetup - 1;
+    }
+
+    return 0;
 }
