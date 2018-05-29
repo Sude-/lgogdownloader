@@ -3282,13 +3282,13 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     else
         sPlatform = "windows";
 
-    std::string sLanguage = "en";
+    std::string sLanguageRegex = "en|eng|english|en[_-]US";
     unsigned int iLanguage = Globals::globalConfig.dlConf.iGalaxyLanguage;
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
         if (GlobalConstants::LANGUAGES[i].id == iLanguage)
         {
-            sLanguage = GlobalConstants::LANGUAGES[i].code;
+            sLanguageRegex = GlobalConstants::LANGUAGES[i].regexp;
             break;
         }
     }
@@ -3340,10 +3340,12 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     {
         bool bSelectedLanguage = false;
         bool bSelectedArch = false;
+        boost::regex language_re("^(" + sLanguageRegex + ")$", boost::regex::perl | boost::regex::icase);
+        boost::match_results<std::string::const_iterator> what;
         for (unsigned int j = 0; j < json["depots"][i]["languages"].size(); ++j)
         {
             std::string language = json["depots"][i]["languages"][j].asString();
-            if (language == "*" || language == sLanguage)
+            if (language == "*" || boost::regex_search(language, what, language_re))
                 bSelectedLanguage = true;
         }
 
