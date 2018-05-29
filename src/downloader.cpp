@@ -4320,12 +4320,18 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                     continue;
                 }
 
-                // Set file parmission
-                boost::filesystem::perms permissions = ZipUtil::getBoostFilePermission(zfe.file_attributes);
                 if (boost::filesystem::exists(path))
+                {
+                    // Set file permission
+                    boost::filesystem::perms permissions = ZipUtil::getBoostFilePermission(zfe.file_attributes);
                     Util::setFilePermissions(path, permissions);
+
+                    // Set timestamp
+                    if (zfe.timestamp > 0)
+                        boost::filesystem::last_write_time(path, zfe.timestamp);
+                }
             }
-            else // Use temorary file for bigger files
+            else // Use temporary file for bigger files
             {
                 vDownloadInfo[tid].setFilename(path_tmp.string());
                 curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
@@ -4428,7 +4434,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                         }
                     }
 
-                    // Set file parmission
+                    // Set file permission
                     boost::filesystem::perms permissions = ZipUtil::getBoostFilePermission(zfe.file_attributes);
                     if (boost::filesystem::exists(path))
                         Util::setFilePermissions(path, permissions);
@@ -4662,6 +4668,7 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
         zfe.start_offset_mojosetup = zfe.start_offset_zip + mojosetup_zip_offset;
         zfe.file_attributes = cd.external_file_attr >> 16;
         zfe.crc32 = cd.crc32;
+        zfe.timestamp = cd.timestamp;
         zfe.installer_url = installer_url;
 
         vFiles.push_back(zfe);

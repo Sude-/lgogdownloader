@@ -77,6 +77,7 @@ typedef struct
 	off_t end_offset;
 	uint16_t file_attributes;
 	uint32_t crc32;
+	time_t timestamp;
 
 	std::string installer_url;
 } zipFileEntry;
