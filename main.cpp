@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
     bpo::options_description options_cli_cfg;
     bpo::options_description options_cfg_only;
     bpo::options_description options_cfg_all("Configuration");
+    bool bClearUpdateNotifications = false;
     try
     {
         bool bInsecure = false;
@@ -160,9 +161,11 @@ int main(int argc, char *argv[])
             ("list-details", bpo::value<bool>(&Globals::globalConfig.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
-            ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)\nAliases: \"all\", \"free\"\nAlias \"free\" doesn't work with cached details")
+            ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)")
             ("create-xml", bpo::value<std::string>(&Globals::globalConfig.sXMLFile)->implicit_value("automatic"), "Create GOG XML for file\n\"automatic\" to enable automatic XML creation")
-            ("update-check", bpo::value<bool>(&Globals::globalConfig.bUpdateCheck)->zero_tokens()->default_value(false), "Check for update notifications")
+            ("notifications", bpo::value<bool>(&Globals::globalConfig.bNotifications)->zero_tokens()->default_value(false), "Check notifications")
+            ("updated", bpo::value<bool>(&Globals::globalConfig.bUpdated)->zero_tokens()->default_value(false), "List/download only games with update flag set")
+            ("clear-update-flags", bpo::value<bool>(&bClearUpdateNotifications)->zero_tokens()->default_value(false), "Clear update notification flags")
             ("check-orphans", bpo::value<std::string>(&Globals::globalConfig.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
             ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download")
             ("save-config", bpo::value<bool>(&Globals::globalConfig.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
@@ -721,8 +724,10 @@ int main(int argc, char *argv[])
         downloader.showWishlist();
     else if (Globals::globalConfig.bUpdateCache)
         downloader.updateCache();
-    else if (Globals::globalConfig.bUpdateCheck) // Update check has priority over download and list
-        downloader.updateCheck();
+    else if (Globals::globalConfig.bNotifications)
+        downloader.checkNotifications();
+    else if (bClearUpdateNotifications)
+        downloader.clearUpdateNotifications();
     else if (!vFileIdStrings.empty())
     {
         for (std::vector<std::string>::iterator it = vFileIdStrings.begin(); it != vFileIdStrings.end(); it++)

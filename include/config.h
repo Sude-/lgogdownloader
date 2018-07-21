@@ -213,11 +213,12 @@ class Config
 
         bool bDownload;
         bool bRepair;
-        bool bUpdateCheck;
+        bool bUpdated;
         bool bList;
         bool bListDetails;
         bool bCheckStatus;
         bool bShowWishlist;
+        bool bNotifications;
 
         bool bVerbose;
         bool bUnicode; // use Unicode in console output

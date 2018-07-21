@@ -124,10 +124,11 @@ std::vector<gameItem> Website::getGames()
     Json::Value root;
     int i = 1;
     bool bAllPagesParsed = false;
+    int iUpdated = Globals::globalConfig.bUpdated ? 1 : 0;
 
     do
     {
-        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
+        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
         std::istringstream json_stream(response);
 
         try {
@@ -151,7 +152,7 @@ std::vector<gameItem> Website::getGames()
         #ifdef DEBUG
             std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << root << std::endl;
         #endif
-        if (root["page"].asInt() == root["totalPages"].asInt())
+        if (root["page"].asInt() == root["totalPages"].asInt() || root["totalPages"].asInt() == 0)
             bAllPagesParsed = true;
         if (root["products"].isArray())
         {
@@ -203,10 +204,6 @@ std::vector<gameItem> Website::getGames()
                 // Filter the game list
                 if (!Globals::globalConfig.sGameRegex.empty())
                 {
-                    // GameRegex filter aliases
-                    if (Globals::globalConfig.sGameRegex == "all")
-                        Globals::globalConfig.sGameRegex = ".*";
-
                     boost::regex expression(Globals::globalConfig.sGameRegex);
                     boost::match_results<std::string::const_iterator> what;
                     if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
@@ -268,41 +265,6 @@ std::vector<gameItem> Website::getGames()
         i++;
     } while (!bAllPagesParsed);
     std::cerr << std::endl;
-
-    return games;
-}
-
-// Get list of free games
-std::vector<gameItem> Website::getFreeGames()
-{
-    Json::Value root;
-    std::vector<gameItem> games;
-    std::string json = this->getResponse("https://www.gog.com/games/ajax/filtered?mediaType=game&page=1&price=free&sort=title");
-    std::istringstream json_stream(json);
-
-    try {
-        // Parse JSON
-        json_stream >> root;
-    } catch (const Json::Exception& exc) {
-        #ifdef DEBUG
-            std::cerr << "DEBUG INFO (Website::getFreeGames)" << std::endl << json << std::endl;
-        #endif
-        std::cout << exc.what();
-        exit(1);
-    }
-
-    #ifdef DEBUG
-        std::cerr << "DEBUG INFO (Website::getFreeGames)" << std::endl << root << std::endl;
-    #endif
-
-    Json::Value products = root["products"];
-    for (unsigned int i = 0; i < products.size(); ++i)
-    {
-        gameItem game;
-        game.name = products[i]["slug"].asString();
-        game.id = products[i]["id"].isInt() ? std::to_string(products[i]["id"].asInt()) : products[i]["id"].asString();
-        games.push_back(game);
-    }
 
     return games;
 }

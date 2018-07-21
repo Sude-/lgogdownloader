@@ -91,7 +91,8 @@ class Downloader
         int init();
         int login();
         int listGames();
-        void updateCheck();
+        void checkNotifications();
+        void clearUpdateNotifications();
         void repair();
         void download();
         void checkOrphans();

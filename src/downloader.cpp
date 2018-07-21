@@ -354,38 +354,62 @@ int Downloader::login()
     return 0;
 }
 
-void Downloader::updateCheck()
+void Downloader::checkNotifications()
 {
-    std::cout << "New forum replies: " << gogAPI->user.notifications_forum << std::endl;
-    std::cout << "New private messages: " << gogAPI->user.notifications_messages << std::endl;
-    std::cout << "Updated games: " << gogAPI->user.notifications_games << std::endl;
+    Json::Value userData = gogGalaxy->getUserData();
 
-    if (gogAPI->user.notifications_games)
+    if (userData.empty())
     {
-        Globals::globalConfig.sGameRegex = ".*"; // Always check all games
-        if (Globals::globalConfig.bList || Globals::globalConfig.bListDetails || Globals::globalConfig.bDownload)
-        {
-            if (Globals::globalConfig.bList)
-                Globals::globalConfig.bListDetails = true; // Always list details
-            this->getGameList();
-            if (Globals::globalConfig.bDownload)
-                this->download();
-            else
-                this->listGames();
-        }
+        std::cout << "Empty JSON response" << std::endl;
+        return;
     }
+
+    if (!userData.isMember("updates"))
+    {
+        std::cout << "Invalid JSON response" << std::endl;
+        return;
+    }
+
+    std::cout << "New forum replies: " << userData["updates"]["messages"].asInt() << std::endl;
+    std::cout << "Updated games: " << userData["updates"]["products"].asInt() << std::endl;
+    std::cout << "Unread chat messages: " << userData["updates"]["unreadChatMessages"].asInt() << std::endl;
+    std::cout << "Pending friend requests: " << userData["updates"]["pendingFriendRequests"].asInt() << std::endl;
+}
+
+void Downloader::clearUpdateNotifications()
+{
+    Json::Value userData = gogGalaxy->getUserData();
+    if (userData.empty())
+    {
+        return;
+    }
+
+    if (!userData.isMember("updates"))
+    {
+        return;
+    }
+
+    if (userData["updates"]["products"].asInt() < 1)
+    {
+        std::cout << "No updates" << std::endl;
+        return;
+    }
+
+    Globals::globalConfig.bUpdated = true;
+    this->getGameList();
+
+    for (unsigned int i = 0; i < gameItems.size(); ++i)
+    {
+        // Getting game details should remove the update flag
+        std::cerr << "\033[KClearing update flags " << i+1 << " / " << gameItems.size() << "\r" << std::flush;
+        Json::Value details = gogWebsite->getGameDetailsJSON(gameItems[i].id);
+    }
+    std::cerr << std::endl;
 }
 
 void Downloader::getGameList()
 {
-    if (Globals::globalConfig.sGameRegex == "free")
-    {
-        gameItems = gogWebsite->getFreeGames();
-    }
-    else
-    {
-        gameItems = gogWebsite->getGames();
-    }
+    gameItems = gogWebsite->getGames();
 }
 
 /* Get detailed info about the games
@@ -399,12 +423,6 @@ int Downloader::getGameDetails()
 
     if (Globals::globalConfig.bUseCache && !Globals::globalConfig.bUpdateCache)
     {
-        // GameRegex filter alias for all games
-        if (Globals::globalConfig.sGameRegex == "all")
-            Globals::globalConfig.sGameRegex = ".*";
-        else if (Globals::globalConfig.sGameRegex == "free")
-            std::cerr << "Warning: regex alias \"free\" doesn't work with cached details" << std::endl;
-
         int result = this->loadGameDetailsCache();
         if (result == 0)
         {
@@ -531,35 +549,32 @@ int Downloader::listGames()
                 std::cout << "serials:" << std::endl << games[i].serials << std::endl;
 
             // List installers
-            if (Globals::globalConfig.dlConf.bInstallers)
+            if (Globals::globalConfig.dlConf.bInstallers && !games[i].installers.empty())
             {
                 std::cout << "installers: " << std::endl;
                 for (unsigned int j = 0; j < games[i].installers.size(); ++j)
                 {
-                    if (!Globals::globalConfig.bUpdateCheck || games[i].installers[j].updated) // Always list updated files
+                    std::string filepath = games[i].installers[j].getFilepath();
+                    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        std::string filepath = games[i].installers[j].getFilepath();
-                        if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-                        {
-                            if (Globals::globalConfig.bVerbose)
-                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                            continue;
-                        }
-
-                        std::string languages = Util::getOptionNameString(games[i].installers[j].language, GlobalConstants::LANGUAGES);
-
-                        std::cout   << "\tid: " << games[i].installers[j].id << std::endl
-                                    << "\tname: " << games[i].installers[j].name << std::endl
-                                    << "\tpath: " << games[i].installers[j].path << std::endl
-                                    << "\tsize: " << games[i].installers[j].size << std::endl
-                                    << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
-                                    << "\tlanguage: " << languages << std::endl
-                                    << std::endl;
+                        if (Globals::globalConfig.bVerbose)
+                            std::cerr << "skipped blacklisted file " << filepath << std::endl;
+                        continue;
                     }
+
+                    std::string languages = Util::getOptionNameString(games[i].installers[j].language, GlobalConstants::LANGUAGES);
+
+                    std::cout   << "\tid: " << games[i].installers[j].id << std::endl
+                                << "\tname: " << games[i].installers[j].name << std::endl
+                                << "\tpath: " << games[i].installers[j].path << std::endl
+                                << "\tsize: " << games[i].installers[j].size << std::endl
+                                << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
+                                << "\tlanguage: " << languages << std::endl
+                                << std::endl;
                 }
             }
             // List extras
-            if (Globals::globalConfig.dlConf.bExtras && !Globals::globalConfig.bUpdateCheck && !games[i].extras.empty())
+            if (Globals::globalConfig.dlConf.bExtras && !games[i].extras.empty())
             {
                 std::cout << "extras: " << std::endl;
                 for (unsigned int j = 0; j < games[i].extras.size(); ++j)
@@ -580,7 +595,7 @@ int Downloader::listGames()
                 }
             }
             // List patches
-            if (Globals::globalConfig.dlConf.bPatches && !Globals::globalConfig.bUpdateCheck && !games[i].patches.empty())
+            if (Globals::globalConfig.dlConf.bPatches && !games[i].patches.empty())
             {
                 std::cout << "patches: " << std::endl;
                 for (unsigned int j = 0; j < games[i].patches.size(); ++j)
@@ -605,7 +620,7 @@ int Downloader::listGames()
                 }
             }
             // List language packs
-            if (Globals::globalConfig.dlConf.bLanguagePacks && !Globals::globalConfig.bUpdateCheck && !games[i].languagepacks.empty())
+            if (Globals::globalConfig.dlConf.bLanguagePacks && !games[i].languagepacks.empty())
             {
                 std::cout << "language packs: " << std::endl;
                 for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
@@ -782,19 +797,11 @@ void Downloader::repair()
             }
         }
 
-        Json::Value downlinkJson;
-        std::string response = gogGalaxy->getResponse(vGameFiles[i].galaxy_downlink_json_url);
+        Json::Value downlinkJson = gogGalaxy->getResponseJson(vGameFiles[i].galaxy_downlink_json_url);
 
-        if (response.empty())
+        if (downlinkJson.empty())
         {
-            std::cerr << "Found nothing in " << vGameFiles[i].galaxy_downlink_json_url << ", skipping file" << std::endl;
-            continue;
-        }
-        try {
-            std::istringstream iss(response);
-            iss >> downlinkJson;
-        } catch (const Json::Exception& exc) {
-            std::cerr << "Could not parse JSON response, skipping file" << std::endl;
+            std::cerr << "Empty JSON response, skipping file" << std::endl;
             continue;
         }
 
@@ -2653,20 +2660,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
 
         // Get downlink JSON from Galaxy API
-        Json::Value downlinkJson;
-        std::string response = galaxy->getResponse(gf.galaxy_downlink_json_url);
+        Json::Value downlinkJson = galaxy->getResponseJson(gf.galaxy_downlink_json_url);
 
-        if (response.empty())
+        if (downlinkJson.empty())
         {
-            msgQueue.push(Message("Found nothing in " + gf.galaxy_downlink_json_url + ", skipping file", MSGTYPE_WARNING, msg_prefix));
-            continue;
-        }
-
-        try {
-            std::istringstream iss(response);
-            iss >> downlinkJson;
-        } catch (const Json::Exception& exc) {
-            msgQueue.push(Message("Could not parse JSON response, skipping file", MSGTYPE_WARNING, msg_prefix));
+            msgQueue.push(Message("Empty JSON response, skipping file", MSGTYPE_WARNING, msg_prefix));
             continue;
         }
 
@@ -3226,20 +3224,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         }
 
         game.makeFilepaths(conf.dirConf);
-
-        if (!config.bUpdateCheck)
-            gameDetailsQueue.push(game);
-        else
-        { // Update check, only add games that have updated files
-            for (unsigned int j = 0; j < game.installers.size(); ++j)
-            {
-                if (game.installers[j].updated)
-                {
-                    gameDetailsQueue.push(game);
-                    break; // add the game only once
-                }
-            }
-        }
+        gameDetailsQueue.push(game);
     }
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
@@ -4458,23 +4443,11 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
 
 int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles)
 {
-    Json::Value downlinkJson;
-    std::string response = gogGalaxy->getResponse(gf.galaxy_downlink_json_url);
+    Json::Value downlinkJson = gogGalaxy->getResponseJson(gf.galaxy_downlink_json_url);
 
-    if (response.empty())
+    if (downlinkJson.empty())
     {
-        std::cerr << "Found nothing in " << gf.galaxy_downlink_json_url << std::endl;
-        return 1;
-    }
-
-    try
-    {
-        std::istringstream iss(response);
-        iss >> downlinkJson;
-    }
-    catch (const Json::Exception& exc)
-    {
-        std::cerr << "Could not parse JSON response" << std::endl;
+        std::cerr << "Empty JSON response" << std::endl;
         return 1;
     }
 

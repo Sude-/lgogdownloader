@@ -22,7 +22,6 @@ class Website
         std::string getResponse(const std::string& url);
         Json::Value getGameDetailsJSON(const std::string& gameid);
         std::vector<gameItem> getGames();
-        std::vector<gameItem> getFreeGames();
         std::vector<wishlistItem> getWishlistItems();
         bool IsLoggedIn();
         virtual ~Website();
@@ -30,7 +29,6 @@ class Website
     private:
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         CURL* curlhandle;
-        Config config;
         bool IsloggedInSimple();
         bool IsLoggedInComplex(const std::string& email);
         int retries;

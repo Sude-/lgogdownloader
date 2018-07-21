@@ -64,7 +64,7 @@ struct tm ZipUtil::date_time_to_tm(uint64_t date, uint64_t time)
     uint64_t dos_time_base_year = 1980;
 
     struct tm timeinfo;
-    timeinfo.tm_year = (uint16_t)(((date & 0xFE00) >> 9)  - local_time_base_year + dos_time_base_year);
+    timeinfo.tm_year = (uint16_t)(((date & 0xFE00) >> 9) - local_time_base_year + dos_time_base_year);
     timeinfo.tm_mon = (uint16_t)(((date & 0x1E0) >> 5) - 1);
     timeinfo.tm_mday = (uint16_t)(date & 0x1F);
     timeinfo.tm_hour = (uint16_t)((time & 0xF800) >> 11);

@@ -53,10 +53,12 @@ class galaxyAPI
         Json::Value getManifestV2(std::string manifest_hash);
         Json::Value getSecureLink(const std::string& product_id, const std::string& path);
         std::string getResponse(const std::string& url, const bool& zlib_decompress = false);
+        Json::Value getResponseJson(const std::string& url, const bool& zlib_decompress = false);
         std::string hashToGalaxyPath(const std::string& hash);
         std::vector<galaxyDepotItem> getDepotItemsVector(const std::string& hash);
         Json::Value getProductInfo(const std::string& product_id);
         gameDetails productInfoJsonToGameDetails(const Json::Value& json, const DownloadConfig& dlConf);
+        Json::Value getUserData();
     protected:
     private:
         CurlConfig curlConf;
