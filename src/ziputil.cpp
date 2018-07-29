@@ -6,7 +6,7 @@
 
 #include "ziputil.h"
 
-#include <sstream>
+#include <fstream>
 #include <sys/stat.h>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
