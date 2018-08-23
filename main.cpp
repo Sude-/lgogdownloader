@@ -660,10 +660,7 @@ int main(int argc, char *argv[])
                     continue;
                 }
 
-                if (!option_value_string.empty())
-                {
-                    ofs << option << " = " << option_value_string << std::endl;
-                }
+                ofs << option << " = " << option_value_string << std::endl;
             }
             ofs.close();
             if (!Globals::globalConfig.bRespectUmask)
