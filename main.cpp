@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
         bool bNoSubDirectories = false;
         bool bNoPlatformDetection = false;
         bool bLogin = false;
+        bool bNoGalaxyDependencies = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
         std::string sIncludeOptions;
@@ -237,6 +238,7 @@ int main(int argc, char *argv[])
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
             ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
+            ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);
@@ -436,6 +438,7 @@ int main(int argc, char *argv[])
         Globals::globalConfig.dlConf.bRemoteXML = !bNoRemoteXML;
         Globals::globalConfig.dirConf.bSubDirectories = !bNoSubDirectories;
         Globals::globalConfig.bPlatformDetection = !bNoPlatformDetection;
+        Globals::globalConfig.dlConf.bGalaxyDependencies = !bNoGalaxyDependencies;
 
         for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)

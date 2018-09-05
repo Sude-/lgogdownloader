@@ -51,6 +51,7 @@ struct DownloadConfig
 
     bool bIgnoreDLCCount;
     bool bDuplicateHandler;
+    bool bGalaxyDependencies;
 };
 
 struct gameSpecificConfig

@@ -3323,48 +3323,49 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
     std::vector<galaxyDepotItem> items;
     for (unsigned int i = 0; i < json["depots"].size(); ++i)
     {
-        bool bSelectedLanguage = false;
-        bool bSelectedArch = false;
-        boost::regex language_re("^(" + sLanguageRegex + ")$", boost::regex::perl | boost::regex::icase);
-        boost::match_results<std::string::const_iterator> what;
-        for (unsigned int j = 0; j < json["depots"][i]["languages"].size(); ++j)
-        {
-            std::string language = json["depots"][i]["languages"][j].asString();
-            if (language == "*" || boost::regex_search(language, what, language_re))
-                bSelectedLanguage = true;
-        }
+        std::vector<galaxyDepotItem> vec = gogGalaxy->getFilteredDepotItemsVectorFromJson(json["depots"][i], sLanguageRegex, sGalaxyArch);
 
-        if (json["depots"][i].isMember("osBitness"))
+        if (!vec.empty())
+            items.insert(std::end(items), std::begin(vec), std::end(vec));
+    }
+
+    // Add dependency ids to vector
+    std::vector<std::string> dependencies;
+    if (json.isMember("dependencies") && Globals::globalConfig.dlConf.bGalaxyDependencies)
+    {
+        for (unsigned int i = 0; i < json["dependencies"].size(); ++i)
         {
-            for (unsigned int j = 0; j < json["depots"][i]["osBitness"].size(); ++j)
+            dependencies.push_back(json["dependencies"][i].asString());
+        }
+    }
+
+    // Add dependencies to items vector
+    if (!dependencies.empty())
+    {
+        Json::Value dependenciesJson = gogGalaxy->getDependenciesJson();
+        if (!dependenciesJson.empty() && dependenciesJson.isMember("depots"))
+        {
+            for (unsigned int i = 0; i < dependenciesJson["depots"].size(); ++i)
             {
-                std::string osBitness = json["depots"][i]["osBitness"][j].asString();
-                if (osBitness == "*" || osBitness == sGalaxyArch)
-                    bSelectedArch = true;
+                std::string dependencyId = dependenciesJson["depots"][i]["dependencyId"].asString();
+                if (std::any_of(dependencies.begin(), dependencies.end(), [dependencyId](std::string dependency){return dependency == dependencyId;}))
+                {
+                    std::vector<galaxyDepotItem> vec = gogGalaxy->getFilteredDepotItemsVectorFromJson(dependenciesJson["depots"][i], sLanguageRegex, sGalaxyArch, true);
+
+                    if (!vec.empty())
+                        items.insert(std::end(items), std::begin(vec), std::end(vec));
+                }
             }
         }
-        else
+    }
+
+    // Set product id for items
+    for (auto it = items.begin(); it != items.end(); ++it)
+    {
+        if (it->product_id.empty())
         {
-            // No osBitness found, assume that we want to download this depot
-            bSelectedArch = true;
+            it->product_id = product_id;
         }
-
-        if (!bSelectedLanguage || !bSelectedArch)
-            continue;
-
-        std::string depotHash = json["depots"][i]["manifest"].asString();
-        std::string depot_product_id = json["depots"][i]["productId"].asString();
-
-        if (depot_product_id.empty())
-            depot_product_id = product_id;
-
-        std::vector<galaxyDepotItem> vec = gogGalaxy->getDepotItemsVector(depotHash);
-
-        // Set product id for items
-        for (auto it = vec.begin(); it != vec.end(); ++it)
-            it->product_id = depot_product_id;
-
-        items.insert(std::end(items), std::begin(vec), std::end(vec));
     }
 
     uintmax_t totalSize = 0;
@@ -3626,7 +3627,11 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 }
             }
 
-            Json::Value json = galaxy->getSecureLink(item.product_id, galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
+            Json::Value json;
+            if (item.isDependency)
+                json = galaxy->getDependencyLink(galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
+            else
+                json = galaxy->getSecureLink(item.product_id, galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
 
             // Prefer edgecast urls
             bool bPreferEdgecast = true;

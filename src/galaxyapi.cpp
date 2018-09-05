@@ -176,12 +176,16 @@ Json::Value galaxyAPI::getManifestV1(const std::string& manifest_url)
     return this->getResponseJson(manifest_url);
 }
 
-Json::Value galaxyAPI::getManifestV2(std::string manifest_hash)
+Json::Value galaxyAPI::getManifestV2(std::string manifest_hash, const bool& is_dependency)
 {
     if (!manifest_hash.empty() && manifest_hash.find("/") == std::string::npos)
         manifest_hash = this->hashToGalaxyPath(manifest_hash);
 
-    std::string url = "https://cdn.gog.com/content-system/v2/meta/" + manifest_hash;
+    std::string url;
+    if (is_dependency)
+        url = "https://cdn.gog.com/content-system/v2/dependencies/meta/" + manifest_hash;
+    else
+        url = "https://cdn.gog.com/content-system/v2/meta/" + manifest_hash;
 
     return this->getResponseJson(url, true);
 }
@@ -193,6 +197,14 @@ Json::Value galaxyAPI::getSecureLink(const std::string& product_id, const std::s
     return this->getResponseJson(url);
 }
 
+Json::Value galaxyAPI::getDependencyLink(const std::string& path)
+{
+    std::string url = "https://content-system.gog.com/open_link?generation=2&_version=2&path=/dependencies/store/" + path;
+
+    return this->getResponseJson(url);
+}
+
+
 std::string galaxyAPI::hashToGalaxyPath(const std::string& hash)
 {
     std::string galaxy_path = hash;
@@ -202,9 +214,9 @@ std::string galaxyAPI::hashToGalaxyPath(const std::string& hash)
     return galaxy_path;
 }
 
-std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& hash)
+std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& hash, const bool& is_dependency)
 {
-    Json::Value json = this->getManifestV2(hash);
+    Json::Value json = this->getManifestV2(hash, is_dependency);
 
     std::vector<galaxyDepotItem> items;
 
@@ -216,6 +228,7 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
             item.totalSizeCompressed = 0;
             item.totalSizeUncompressed = 0;
             item.path = json["depot"]["items"][i]["path"].asString();
+            item.isDependency = is_dependency;
 
             while (Util::replaceString(item.path, "\\", "/"));
             for (unsigned int j = 0; j < json["depot"]["items"][i]["chunks"].size(); ++j)
@@ -442,4 +455,72 @@ Json::Value galaxyAPI::getUserData()
     std::string url = "https://embed.gog.com/userData.json";
 
     return this->getResponseJson(url);
+}
+
+Json::Value galaxyAPI::getDependenciesJson()
+{
+    std::string url = "https://content-system.gog.com/dependencies/repository?generation=2";
+    Json::Value dependencies;
+    Json::Value repository = this->getResponseJson(url);
+
+    if (!repository.empty())
+    {
+        if (repository.isMember("repository_manifest"))
+        {
+            std::string manifest_url = repository["repository_manifest"].asString();
+            dependencies = this->getResponseJson(manifest_url, true);
+        }
+    }
+
+    return dependencies;
+}
+
+std::vector<galaxyDepotItem> galaxyAPI::getFilteredDepotItemsVectorFromJson(const Json::Value& depot_json, const std::string& galaxy_language, const std::string& galaxy_arch, const bool& is_dependency)
+{
+    std::vector<galaxyDepotItem> items;
+
+    bool bSelectedLanguage = false;
+    bool bSelectedArch = false;
+    boost::regex language_re("^(" + galaxy_language + ")$", boost::regex::perl | boost::regex::icase);
+    boost::match_results<std::string::const_iterator> what;
+    for (unsigned int j = 0; j < depot_json["languages"].size(); ++j)
+    {
+        std::string language = depot_json["languages"][j].asString();
+        if (language == "*" || boost::regex_search(language, what, language_re))
+            bSelectedLanguage = true;
+    }
+
+    if (depot_json.isMember("osBitness"))
+    {
+        for (unsigned int j = 0; j < depot_json["osBitness"].size(); ++j)
+        {
+            std::string osBitness = depot_json["osBitness"][j].asString();
+            if (osBitness == "*" || osBitness == galaxy_arch)
+                bSelectedArch = true;
+        }
+    }
+    else
+    {
+        // No osBitness found, assume that we want this depot
+        bSelectedArch = true;
+    }
+
+    if (bSelectedLanguage && bSelectedArch)
+    {
+        std::string depotHash = depot_json["manifest"].asString();
+        std::string depot_product_id = depot_json["productId"].asString();
+
+        items = this->getDepotItemsVector(depotHash, is_dependency);
+
+        // Set product id for items
+        for (auto it = items.begin(); it != items.end(); ++it)
+        {
+            if (!depot_product_id.empty())
+            {
+                it->product_id = depot_product_id;
+            }
+        }
+    }
+
+    return items;
 }

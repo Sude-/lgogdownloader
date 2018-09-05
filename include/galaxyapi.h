@@ -37,6 +37,7 @@ struct galaxyDepotItem
     uintmax_t totalSizeUncompressed;
     std::string md5;
     std::string product_id;
+    bool isDependency = false;
 };
 
 class galaxyAPI
@@ -50,15 +51,18 @@ class galaxyAPI
         Json::Value getProductBuilds(const std::string& product_id, const std::string& platform = "windows", const std::string& generation = "2");
         Json::Value getManifestV1(const std::string& product_id, const std::string& build_id, const std::string& manifest_id = "repository", const std::string& platform = "windows");
         Json::Value getManifestV1(const std::string& manifest_url);
-        Json::Value getManifestV2(std::string manifest_hash);
+        Json::Value getManifestV2(std::string manifest_hash, const bool& is_dependency = false);
         Json::Value getSecureLink(const std::string& product_id, const std::string& path);
+        Json::Value getDependencyLink(const std::string& path);
         std::string getResponse(const std::string& url, const bool& zlib_decompress = false);
         Json::Value getResponseJson(const std::string& url, const bool& zlib_decompress = false);
         std::string hashToGalaxyPath(const std::string& hash);
-        std::vector<galaxyDepotItem> getDepotItemsVector(const std::string& hash);
+        std::vector<galaxyDepotItem> getDepotItemsVector(const std::string& hash, const bool& is_dependency = false);
         Json::Value getProductInfo(const std::string& product_id);
         gameDetails productInfoJsonToGameDetails(const Json::Value& json, const DownloadConfig& dlConf);
         Json::Value getUserData();
+        Json::Value getDependenciesJson();
+        std::vector<galaxyDepotItem> getFilteredDepotItemsVectorFromJson(const Json::Value& depot_json, const std::string& galaxy_language, const std::string& galaxy_arch, const bool& is_dependency = false);
     protected:
     private:
         CurlConfig curlConf;
