@@ -513,9 +513,9 @@ std::vector<galaxyDepotItem> galaxyAPI::getFilteredDepotItemsVectorFromJson(cons
         items = this->getDepotItemsVector(depotHash, is_dependency);
 
         // Set product id for items
-        for (auto it = items.begin(); it != items.end(); ++it)
+        if (!depot_product_id.empty())
         {
-            if (!depot_product_id.empty())
+            for (auto it = items.begin(); it != items.end(); ++it)
             {
                 it->product_id = depot_product_id;
             }
