@@ -93,6 +93,18 @@ namespace GlobalConstants
         { ARCH_X86, "32", "32-bit", "32|x86|32bit|32-bit" },
         { ARCH_X64, "64", "64-bit", "64|x64|64bit|64-bit" }
     };
+
+    // Galaxy CDNs
+    const unsigned int CDN_EDGECAST  = 1 << 0;
+    const unsigned int CDN_HIGHWINDS = 1 << 1;
+    const unsigned int CDN_GOG       = 1 << 2;
+
+    const std::vector<optionsStruct> GALAXY_CDNS =
+    {
+        { CDN_EDGECAST,  "edgecast",   "Edgecast",  "ec|edgecast"             },
+        { CDN_HIGHWINDS, "high_winds", "Highwinds", "hw|highwinds|high_winds" },
+        { CDN_GOG,       "gog_cdn",    "GOG",       "gog|gog_cdn"             }
+    };
 }
 
 #endif // GLOBALCONSTANTS_H_INCLUDED

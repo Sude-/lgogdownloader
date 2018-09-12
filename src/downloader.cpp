@@ -3636,31 +3636,76 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             else
                 json = galaxy->getSecureLink(item.product_id, galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
 
-            // Prefer edgecast urls
-            bool bPreferEdgecast = true;
-            unsigned int idx = 0;
+            // Handle priority of CDNs
+            struct urlPriority
+            {
+                std::string url;
+                int priority;
+            };
+
+            // Build a vector of all urls and their priority score
+            std::vector<urlPriority> cdnUrls;
             for (unsigned int k = 0; k < json["urls"].size(); ++k)
             {
                 std::string endpoint_name = json["urls"][k]["endpoint_name"].asString();
-                if (bPreferEdgecast)
+
+                unsigned int score = conf.dlConf.vGalaxyCDNPriority.size();
+                unsigned int cdn = Util::getOptionValue(endpoint_name, GlobalConstants::GALAXY_CDNS, false);
+                for (unsigned int idx = 0; idx < score; ++idx)
                 {
-                    if (endpoint_name == "edgecast")
+                    if (cdn & conf.dlConf.vGalaxyCDNPriority[idx])
                     {
-                        idx = k;
+                        score = idx;
                         break;
                     }
                 }
+
+                // Couldn't find a match when assigning score
+                if (score == conf.dlConf.vGalaxyCDNPriority.size())
+                {
+                    // Add index value to score
+                    // This way unknown CDNs have priority based on the order they appear in json
+                    score += k;
+                }
+
+                // Build url according to url_format
+                std::string link_base_url = json["urls"][k]["parameters"]["base_url"].asString();
+                std::string link_path = json["urls"][k]["parameters"]["path"].asString();
+                std::string link_token = json["urls"][k]["parameters"]["token"].asString();
+
+                std::string url = json["urls"][k]["url_format"].asString();
+
+                while(Util::replaceString(url, "{base_url}", link_base_url));
+                while(Util::replaceString(url, "{path}", link_path));
+                while(Util::replaceString(url, "{token}", link_token));
+
+                // Highwinds specific
+                std::string link_hw_l= json["urls"][k]["parameters"]["l"].asString();
+                std::string link_hw_source = json["urls"][k]["parameters"]["source"].asString();
+                std::string link_hw_ttl = json["urls"][k]["parameters"]["ttl"].asString();
+                std::string link_hw_gog_token = json["urls"][k]["parameters"]["gog_token"].asString();
+
+                while(Util::replaceString(url, "{l}", link_hw_l));
+                while(Util::replaceString(url, "{source}", link_hw_source));
+                while(Util::replaceString(url, "{ttl}", link_hw_ttl));
+                while(Util::replaceString(url, "{gog_token}", link_hw_gog_token));
+
+                urlPriority cdnurl;
+                cdnurl.url = url;
+                cdnurl.priority = score;
+                cdnUrls.push_back(cdnurl);
             }
 
-            // Build url according to url_format
-            std::string link_base_url = json["urls"][idx]["parameters"]["base_url"].asString();
-            std::string link_path = json["urls"][idx]["parameters"]["path"].asString();
-            std::string link_token = json["urls"][idx]["parameters"]["token"].asString();
-            std::string url = json["urls"][idx]["url_format"].asString();
+            // Sort urls by priority (lowest score first)
+            std::sort(cdnUrls.begin(), cdnUrls.end(),
+                [](urlPriority a, urlPriority b)
+                {
+                    return (a.priority < b.priority);
+                }
+            );
 
-            while(Util::replaceString(url, "{base_url}", link_base_url));
-            while(Util::replaceString(url, "{path}", link_path));
-            while(Util::replaceString(url, "{token}", link_token));
+            // Select url with lowest priority score
+            std::string url = cdnUrls[0].url;
 
             curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);

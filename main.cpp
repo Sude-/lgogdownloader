@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     std::string language_text = "Select which language installers are downloaded\n";
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
     }
     language_text += "All = all";
     language_text += "\n\n" + priority_help_text;
@@ -93,14 +93,14 @@ int main(int argc, char *argv[])
     std::string galaxy_language_text = "Select language\n";
     for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
     {
-        galaxy_language_text +=  GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        galaxy_language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
     }
 
     // Create help text for --galaxy-arch option
     std::string galaxy_arch_text = "Select architecture\n";
     for (unsigned int i = 0; i < GlobalConstants::GALAXY_ARCHS.size(); ++i)
     {
-        galaxy_arch_text +=  GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
+        galaxy_arch_text += GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
     }
 
     // Create help text for --subdir-galaxy-install option
@@ -116,6 +116,14 @@ int main(int argc, char *argv[])
         "> alphanumeric\n"
         "> space\n"
         "> - _ . ( ) [ ] { }";
+
+    // Create help text for --galaxy-cdn-priority option
+    std::string galaxy_cdn_priority_text = "Set priority for used CDNs\n";
+    for (unsigned int i = 0; i < GlobalConstants::GALAXY_CDNS.size(); ++i)
+    {
+        galaxy_cdn_priority_text += GlobalConstants::GALAXY_CDNS[i].str + " = " + GlobalConstants::GALAXY_CDNS[i].regexp + "\n";
+    }
+    galaxy_cdn_priority_text += "\n" + priority_help_text;
 
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh)$"; // Limit to files with these extensions (".old" is for renamed older version files)
@@ -166,6 +174,7 @@ int main(int argc, char *argv[])
         std::string sGalaxyPlatform;
         std::string sGalaxyLanguage;
         std::string sGalaxyArch;
+        std::string sGalaxyCDN;
         Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -255,6 +264,7 @@ int main(int argc, char *argv[])
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
+            ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,highwinds,gog_cdn"), galaxy_cdn_priority_text.c_str())
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);
@@ -492,6 +502,8 @@ int main(int argc, char *argv[])
 
         if (Globals::globalConfig.dlConf.iGalaxyArch == 0 || Globals::globalConfig.dlConf.iGalaxyArch == Util::getOptionValue("all", GlobalConstants::GALAXY_ARCHS, false))
             Globals::globalConfig.dlConf.iGalaxyArch = GlobalConstants::ARCH_X64;
+
+        Util::parseOptionString(sGalaxyCDN, Globals::globalConfig.dlConf.vGalaxyCDNPriority, Globals::globalConfig.dlConf.iGalaxyCDN, GlobalConstants::GALAXY_CDNS);
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;

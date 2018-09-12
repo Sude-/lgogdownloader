@@ -32,8 +32,10 @@ struct DownloadConfig
 {
     unsigned int iInstallerPlatform;
     unsigned int iInstallerLanguage;
+    unsigned int iGalaxyCDN;
     std::vector<unsigned int> vPlatformPriority;
     std::vector<unsigned int> vLanguagePriority;
+    std::vector<unsigned int> vGalaxyCDNPriority;
     unsigned int iInclude;
     unsigned int iGalaxyPlatform;
     unsigned int iGalaxyLanguage;
