@@ -103,6 +103,20 @@ int main(int argc, char *argv[])
         galaxy_arch_text +=  GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
     }
 
+    // Create help text for --subdir-galaxy-install option
+    std::string galaxy_install_subdir_text = "Set subdirectory for galaxy install\n"
+        "\nTemplates:\n"
+        "- %install_dir% = Installation directory from Galaxy API response\n"
+        "- %gamename% = Game name\n"
+        "- %title% = Title of the game\n"
+        "- %product_id% = Product id of the game\n"
+        "- %install_dir_stripped% = %install_dir% with some characters stripped\n"
+        "- %title_stripped% = %title% with some characters stripped\n"
+        "\n\"stripped\" means that every character that doesn't match the following list is removed:\n"
+        "> alphanumeric\n"
+        "> space\n"
+        "> - _ . ( ) [ ] { }";
+
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh)$"; // Limit to files with these extensions (".old" is for renamed older version files)
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
@@ -240,6 +254,7 @@ int main(int argc, char *argv[])
             ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
+            ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);

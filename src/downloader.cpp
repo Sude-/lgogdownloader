@@ -3314,9 +3314,51 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
     json = gogGalaxy->getManifestV2(buildHash);
     std::string game_title = json["products"][0]["name"].asString();
-    std::string install_directory = json["installDirectory"].asString();
-    if (install_directory.empty())
-        install_directory = product_id;
+    std::string install_directory;
+
+    if (Globals::globalConfig.dirConf.bSubDirectories)
+    {
+        install_directory = Globals::globalConfig.dirConf.sGalaxyInstallSubdir;
+
+        // Templates for installation subdir
+        std::map<std::string, std::string> templates;
+        templates["%install_dir%"] = json["installDirectory"].asString();
+        templates["%product_id%"] = product_id;
+
+        std::vector<std::string> templates_need_info =
+        {
+            "%gamename%",
+            "%title%",
+            "%title_stripped%"
+        };
+
+        if (std::any_of(templates_need_info.begin(), templates_need_info.end(), [install_directory](std::string template_dir){return template_dir == install_directory;}))
+        {
+            Json::Value productInfo = gogGalaxy->getProductInfo(product_id);
+            std::string gamename = productInfo["slug"].asString();
+            std::string title = productInfo["title"].asString();
+
+            if (!gamename.empty())
+                templates["%gamename%"] = productInfo["slug"].asString();
+            if (!title.empty())
+                templates["%title%"] = productInfo["title"].asString();
+        }
+
+        if (templates.count("%install_dir%"))
+        {
+            templates["%install_dir_stripped%"] = Util::getStrippedString(templates["%install_dir%"]);
+        }
+
+        if (templates.count("%title%"))
+        {
+            templates["%title_stripped%"] = Util::getStrippedString(templates["%title%"]);;
+        }
+
+        if (templates.count(install_directory))
+        {
+            install_directory = templates[install_directory];
+        }
+    }
 
     std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
 

@@ -608,3 +608,24 @@ std::string Util::getJsonUIntValueAsString(const Json::Value& json_value)
 
     return value;
 }
+
+std::string Util::getStrippedString(std::string str)
+{
+    str.erase(
+        std::remove_if(str.begin(), str.end(),
+            [](unsigned char c)
+            {
+                bool bIsValid = false;
+                bIsValid = (std::isspace(c) && std::isprint(c)) || std::isalnum(c);
+                std::vector<unsigned char> validChars = { '-', '_', '.', '(', ')', '[', ']', '{', '}' };
+                if (std::any_of(validChars.begin(), validChars.end(), [c](unsigned char x){return x == c;}))
+                {
+                    bIsValid = true;
+                }
+                return !bIsValid;
+            }
+        ),
+        str.end()
+    );
+    return str;
+}

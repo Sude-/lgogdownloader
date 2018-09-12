@@ -25,6 +25,7 @@ struct DirectoryConfig
     std::string sPatchesSubdir;
     std::string sLanguagePackSubdir;
     std::string sDLCSubdir;
+    std::string sGalaxyInstallSubdir;
 };
 
 struct DownloadConfig

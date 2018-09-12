@@ -72,6 +72,7 @@ namespace Util
     std::string getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename = std::string());
     void shortenStringToTerminalWidth(std::string& str);
     std::string getJsonUIntValueAsString(const Json::Value& json);
+    std::string getStrippedString(std::string str);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {
