@@ -3318,46 +3318,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
 
     if (Globals::globalConfig.dirConf.bSubDirectories)
     {
-        install_directory = Globals::globalConfig.dirConf.sGalaxyInstallSubdir;
-
-        // Templates for installation subdir
-        std::map<std::string, std::string> templates;
-        templates["%install_dir%"] = json["installDirectory"].asString();
-        templates["%product_id%"] = product_id;
-
-        std::vector<std::string> templates_need_info =
-        {
-            "%gamename%",
-            "%title%",
-            "%title_stripped%"
-        };
-
-        if (std::any_of(templates_need_info.begin(), templates_need_info.end(), [install_directory](std::string template_dir){return template_dir == install_directory;}))
-        {
-            Json::Value productInfo = gogGalaxy->getProductInfo(product_id);
-            std::string gamename = productInfo["slug"].asString();
-            std::string title = productInfo["title"].asString();
-
-            if (!gamename.empty())
-                templates["%gamename%"] = productInfo["slug"].asString();
-            if (!title.empty())
-                templates["%title%"] = productInfo["title"].asString();
-        }
-
-        if (templates.count("%install_dir%"))
-        {
-            templates["%install_dir_stripped%"] = Util::getStrippedString(templates["%install_dir%"]);
-        }
-
-        if (templates.count("%title%"))
-        {
-            templates["%title_stripped%"] = Util::getStrippedString(templates["%title%"]);;
-        }
-
-        if (templates.count(install_directory))
-        {
-            install_directory = templates[install_directory];
-        }
+        install_directory = this->getGalaxyInstallDirectory(gogGalaxy, json);
     }
 
     std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
@@ -3980,13 +3941,26 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
             }
         }
 
-        std::string gamedir = game.title;
-        if (gamedir.empty())
-            gamedir = game.gamename;
-        if (gamedir.empty())
-            gamedir = product_id;
+        std::string install_directory;
 
-        std::string install_directory = Globals::globalConfig.dirConf.sDirectory + "/" + gamedir + "/";
+        if (Globals::globalConfig.dirConf.bSubDirectories)
+        {
+            Json::Value windows_builds = gogGalaxy->getProductBuilds(product_id, "windows");
+            if (!windows_builds.empty())
+            {
+                std::string link = windows_builds["items"][0]["link"].asString();
+                std::string buildHash;
+                buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+
+                Json::Value manifest = gogGalaxy->getManifestV2(buildHash);
+                if (!manifest.empty())
+                {
+                    install_directory = this->getGalaxyInstallDirectory(gogGalaxy, manifest);
+                }
+            }
+        }
+
+        std::string install_path = Globals::globalConfig.dirConf.sDirectory + "/" + install_directory + "/";
         std::vector<zipFileEntry> vZipDirectories;
         std::vector<zipFileEntry> vZipFiles;
         std::vector<zipFileEntry> vZipFilesSymlink;
@@ -3998,7 +3972,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
                 continue;
 
             zipFileEntry zfe = zipFileEntries[i];
-            Util::replaceString(zfe.filepath, noarch, install_directory);
+            Util::replaceString(zfe.filepath, noarch, install_path);
             while (Util::replaceString(zfe.filepath, "//", "/")); // Replace any double slashes with single slash
 
             if (zfe.filepath.at(zfe.filepath.length()-1) == '/')
@@ -4703,4 +4677,51 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
     }
 
     return 0;
+}
+
+std::string Downloader::getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest)
+{
+    std::string install_directory = Globals::globalConfig.dirConf.sGalaxyInstallSubdir;
+    std::string product_id = manifest["baseProductId"].asString();
+
+    // Templates for installation subdir
+    std::map<std::string, std::string> templates;
+    templates["%install_dir%"] = manifest["installDirectory"].asString();
+    templates["%product_id%"] = product_id;
+
+    std::vector<std::string> templates_need_info =
+    {
+        "%gamename%",
+        "%title%",
+        "%title_stripped%"
+    };
+
+    if (std::any_of(templates_need_info.begin(), templates_need_info.end(), [install_directory](std::string template_dir){return template_dir == install_directory;}))
+    {
+        Json::Value productInfo = galaxyHandle->getProductInfo(product_id);
+        std::string gamename = productInfo["slug"].asString();
+        std::string title = productInfo["title"].asString();
+
+        if (!gamename.empty())
+            templates["%gamename%"] = productInfo["slug"].asString();
+        if (!title.empty())
+            templates["%title%"] = productInfo["title"].asString();
+    }
+
+    if (templates.count("%install_dir%"))
+    {
+        templates["%install_dir_stripped%"] = Util::getStrippedString(templates["%install_dir%"]);
+    }
+
+    if (templates.count("%title%"))
+    {
+        templates["%title_stripped%"] = Util::getStrippedString(templates["%title%"]);;
+    }
+
+    if (templates.count(install_directory))
+    {
+        install_directory = templates[install_directory];
+    }
+
+    return install_directory;
 }

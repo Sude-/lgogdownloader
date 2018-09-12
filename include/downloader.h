@@ -142,6 +142,7 @@ class Downloader
         void galaxyInstallGame_MojoSetupHack(const std::string& product_id);
         static void processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid);
         int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
+        std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
 
         Website *gogWebsite;
         API *gogAPI;
