@@ -3610,6 +3610,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             }
         }
 
+        bool bChunkFailure = false;
         std::time_t timestamp = -1;
         for (unsigned int j = start_chunk; j < item.chunks.size(); ++j)
         {
@@ -3635,6 +3636,15 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 json = galaxy->getDependencyLink(galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
             else
                 json = galaxy->getSecureLink(item.product_id, galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
+
+            if (json.empty())
+            {
+                bChunkFailure = true;
+                std::string error_message = path.string() + ": Empty JSON response (product: " + item.product_id + ", chunk #"+ std::to_string(j) + ": " + item.chunks[j].md5_compressed + ")";
+                msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix));
+                free(chunk.memory);
+                break;
+            }
 
             // Handle priority of CDNs
             struct urlPriority
@@ -3694,6 +3704,14 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 cdnurl.url = url;
                 cdnurl.priority = score;
                 cdnUrls.push_back(cdnurl);
+            }
+
+            if (cdnUrls.empty())
+            {
+                bChunkFailure = true;
+                msgQueue.push(Message(path.string() + ": Failed to get download url", MSGTYPE_ERROR, msg_prefix));
+                free(chunk.memory);
+                break;
             }
 
             // Sort urls by priority (lowest score first)
@@ -3765,6 +3783,12 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 ofs.close();
 
             free(chunk.memory);
+        }
+
+        if (bChunkFailure)
+        {
+            msgQueue.push(Message(path.string() + ": Chunk failure, skipping file", MSGTYPE_ERROR, msg_prefix));
+            continue;
         }
 
         // Set timestamp for downloaded file to same value as file on server
