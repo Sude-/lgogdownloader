@@ -244,6 +244,7 @@ int main(int argc, char *argv[])
             ("progress-interval", bpo::value<int>(&Globals::globalConfig.iProgressInterval)->default_value(100), "Set interval for progress bar update (milliseconds)\nValue must be between 1 and 10000")
             ("lowspeed-timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeout)->default_value(30), "Set time in number seconds that the transfer speed should be below the rate set with --lowspeed-rate for it to considered too slow and aborted")
             ("lowspeed-rate", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeoutRate)->default_value(200), "Set average transfer speed in bytes per second that the transfer should be below during time specified with --lowspeed-timeout for it to be considered too slow and aborted")
+            ("include-hidden-products", bpo::value<bool>(&Globals::globalConfig.bIncludeHiddenProducts)->zero_tokens()->default_value(false), "Include games that have been set hidden in account page")
         ;
         // Options read from config file
         options_cfg_only.add_options()

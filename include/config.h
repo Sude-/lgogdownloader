@@ -223,6 +223,7 @@ class Config
         bool bCheckStatus;
         bool bShowWishlist;
         bool bNotifications;
+        bool bIncludeHiddenProducts;
 
         bool bVerbose;
         bool bUnicode; // use Unicode in console output

@@ -125,10 +125,11 @@ std::vector<gameItem> Website::getGames()
     int i = 1;
     bool bAllPagesParsed = false;
     int iUpdated = Globals::globalConfig.bUpdated ? 1 : 0;
+    int iHidden = 0;
 
     do
     {
-        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hasHiddenProducts=false&hiddenFlag=0&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
+        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
         std::istringstream json_stream(response);
 
         try {
@@ -154,6 +155,15 @@ std::vector<gameItem> Website::getGames()
         #endif
         if (root["page"].asInt() == root["totalPages"].asInt() || root["totalPages"].asInt() == 0)
             bAllPagesParsed = true;
+
+        // Make the next loop handle hidden products
+        if (Globals::globalConfig.bIncludeHiddenProducts && bAllPagesParsed && iHidden == 0)
+        {
+            bAllPagesParsed = false;
+            iHidden = 1;
+            i = 0; // Set to 0 because we increment it at the end of the loop
+        }
+
         if (root["products"].isArray())
         {
             for (unsigned int i = 0; i < root["products"].size(); ++i)
@@ -265,6 +275,11 @@ std::vector<gameItem> Website::getGames()
         i++;
     } while (!bAllPagesParsed);
     std::cerr << std::endl;
+
+    if (Globals::globalConfig.bIncludeHiddenProducts)
+    {
+        std::sort(games.begin(), games.end(), [](const gameItem& i, const gameItem& j) -> bool { return i.name < j.name; });
+    }
 
     return games;
 }
