@@ -146,6 +146,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
     if(!rhash_context)
     {
         std::cerr << "error: couldn't initialize rhash context" << std::endl;
+        fclose(infile);
         return res;
     }
     char rhash_result[rhash_get_hash_length(RHASH_MD5)];
@@ -160,6 +161,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         if (chunk == NULL)
         {
             std::cerr << "Memory error" << std::endl;
+            fclose(infile);
             return res;
         }
         size = fread(chunk, 1, chunk_size, infile);
@@ -167,6 +169,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         {
             std::cerr << "Read error" << std::endl;
             free(chunk);
+            fclose(infile);
             return res;
         }
 
