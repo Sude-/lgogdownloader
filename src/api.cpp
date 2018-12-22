@@ -242,9 +242,19 @@ std::string API::getResponse(const std::string& url)
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    CURLcode result = curl_easy_perform(curlhandle);
-    std::string response = memory.str();
-    memory.str(std::string());
+
+    int retries = 0;
+    CURLcode result;
+    std::string response;
+    do
+    {
+        if (Globals::globalConfig.iWait > 0)
+            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
+        result = curl_easy_perform(curlhandle);
+        response = memory.str();
+        memory.str(std::string());
+    }
+    while ((result != CURLE_OK) && response.empty() && (retries++ < Globals::globalConfig.iRetries));
 
     if (result == CURLE_HTTP_RETURNED_ERROR)
     {
