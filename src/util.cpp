@@ -59,9 +59,8 @@ std::string Util::makeRelativeFilepath(const std::string& path, const std::strin
 std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
-    char result[rhash_get_hash_length(hash_id)];
+    char result[rhash_get_hash_length(hash_id) + 1];
 
-    rhash_library_init();
     int i = rhash_file(hash_id, filename.c_str(), digest);
     if (i < 0)
         std::cerr << "LibRHash error: " << strerror(errno) << std::endl;
@@ -74,9 +73,8 @@ std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
 std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
-    char result[rhash_get_hash_length(hash_id)];
+    char result[rhash_get_hash_length(hash_id) + 1];
 
-    rhash_library_init();
     int i = rhash_msg(hash_id, chunk, chunk_size, digest);
     if (i < 0)
         std::cerr << "LibRHash error: " << strerror(errno) << std::endl;
@@ -141,7 +139,6 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
     std::cout << "Getting MD5 for chunks" << std::endl;
 
     rhash rhash_context;
-    rhash_library_init();
     rhash_context = rhash_init(RHASH_MD5);
     if(!rhash_context)
     {
@@ -149,7 +146,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         fclose(infile);
         return res;
     }
-    char rhash_result[rhash_get_hash_length(RHASH_MD5)];
+    char rhash_result[rhash_get_hash_length(RHASH_MD5) + 1];
 
     for (i = 0; i < chunks; i++) {
         uintmax_t range_begin = i*chunk_size;
