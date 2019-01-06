@@ -26,6 +26,8 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
 
 int main(int argc, char *argv[])
 {
+    rhash_library_init();
+
     // Constants for option selection with include/exclude
     /* TODO: Add options to give better control for user
              For example: option to select base game and DLC installers separately,
