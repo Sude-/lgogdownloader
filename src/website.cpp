@@ -316,6 +316,12 @@ int Website::Login(const std::string& email, const std::string& password)
                         << "Try to login later or compile LGOGDownloader with -DUSE_QT_GUI=ON" << std::endl;
             return res = 0;
         #else
+            if (Globals::globalConfig.bDisableLoginGUI)
+            {
+                std::cout << "Login form contains reCAPTCHA but GUI login is disabled." << std::endl
+                        << "Enable GUI login or try to login later." << std::endl;
+                return res = 0;
+            }
             GuiLogin gl;
             gl.Login();
 

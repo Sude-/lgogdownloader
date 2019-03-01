@@ -247,6 +247,9 @@ int main(int argc, char *argv[])
             ("lowspeed-timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeout)->default_value(30), "Set time in number seconds that the transfer speed should be below the rate set with --lowspeed-rate for it to considered too slow and aborted")
             ("lowspeed-rate", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeoutRate)->default_value(200), "Set average transfer speed in bytes per second that the transfer should be below during time specified with --lowspeed-timeout for it to be considered too slow and aborted")
             ("include-hidden-products", bpo::value<bool>(&Globals::globalConfig.bIncludeHiddenProducts)->zero_tokens()->default_value(false), "Include games that have been set hidden in account page")
+#ifdef USE_QT_GUI_LOGIN
+            ("disable-login-gui", bpo::value<bool>(&Globals::globalConfig.bDisableLoginGUI)->zero_tokens()->default_value(false), "Disable login GUI when encountering reCAPTCHA on login form.\nUseful when downloader is compiled with GUI support but you are using it through SSH without X forwarding")
+#endif
         ;
         // Options read from config file
         options_cfg_only.add_options()
