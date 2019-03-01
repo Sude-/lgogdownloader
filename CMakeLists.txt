@@ -4,6 +4,13 @@ project (lgogdownloader LANGUAGES C CXX VERSION 3.4)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(LINK_LIBCRYPTO 0)
 
+option(USE_QT_GUI "Build with Qt GUI login support" OFF)
+if(USE_QT_GUI)
+  add_definitions(-DUSE_QT_GUI_LOGIN=1)
+  set(CMAKE_AUTOMOC ON)
+  set(CMAKE_AUTOUIC ON)
+endif(USE_QT_GUI)
+
 find_program(READELF readelf DOC "Location of the readelf program")
 find_program(GREP grep DOC "Location of the grep program")
 find_package(Boost
@@ -50,6 +57,17 @@ file(GLOB SRC_FILES
   src/galaxyapi.cpp
   src/ziputil.cpp
   )
+
+if(USE_QT_GUI)
+  find_package(Qt5Widgets CONFIG REQUIRED)
+  find_package(Qt5WebEngineWidgets CONFIG REQUIRED)
+
+  file(GLOB QT_GUI_SRC_FILES
+    src/gui_login.cpp
+  )
+  list(APPEND SRC_FILES ${QT_GUI_SRC_FILES})
+endif(USE_QT_GUI)
+
 
 set(GIT_CHECKOUT FALSE)
 if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
@@ -126,6 +144,13 @@ if(LINK_LIBCRYPTO EQUAL 1)
     PRIVATE ${Libcrypto_LIBRARIES}
   )
 endif(LINK_LIBCRYPTO EQUAL 1)
+
+if(USE_QT_GUI)
+  target_link_libraries(${PROJECT_NAME}
+    PRIVATE Qt5::Widgets
+    PRIVATE Qt5::WebEngineWidgets
+  )
+endif(USE_QT_GUI)
 
 if(MSVC)
   # Force to always compile with W4

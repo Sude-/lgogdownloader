@@ -10,6 +10,10 @@
 #include <htmlcxx/html/ParserDom.h>
 #include <boost/algorithm/string/case_conv.hpp>
 
+#ifdef USE_QT_GUI_LOGIN
+    #include "gui_login.h"
+#endif
+
 Website::Website()
 {
     this->retries = 0;
@@ -297,6 +301,7 @@ int Website::Login(const std::string& email, const std::string& password)
     std::string tagname_token;
     std::string auth_url = "https://auth.gog.com/auth?client_id=" + Globals::galaxyConf.getClientId() + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size()) + "&response_type=code&layout=default&brand=gog";
     std::string auth_code;
+    bool bRecaptcha = false;
 
     std::string login_form_html = this->getResponse(auth_url);
     #ifdef DEBUG
@@ -305,110 +310,62 @@ int Website::Login(const std::string& email, const std::string& password)
     #endif
     if (login_form_html.find("google.com/recaptcha") != std::string::npos)
     {
-        std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
-                    << "Try to login later" << std::endl;
-        return res = 0;
-    }
+        bRecaptcha = true;
+        #ifndef USE_QT_GUI_LOGIN
+            std::cout   << "Login form contains reCAPTCHA (https://www.google.com/recaptcha/)" << std::endl
+                        << "Try to login later or compile LGOGDownloader with -DUSE_QT_GUI=ON" << std::endl;
+            return res = 0;
+        #else
+            GuiLogin gl;
+            gl.Login();
 
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
-    tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
-    for (; login_it != login_it_end; ++login_it)
-    {
-        if (login_it->tagName()=="input")
-        {
-            login_it->parseAttributes();
-            if (login_it->attribute("id").second == "login__token")
+            auto cookies = gl.getCookies();
+            for (auto cookie : cookies)
             {
-                token = login_it->attribute("value").second; // login token
-                tagname_token = login_it->attribute("name").second;
+                curl_easy_setopt(curlhandle, CURLOPT_COOKIELIST, cookie.c_str());
             }
-        }
+            auth_code = gl.getCode();
+        #endif
     }
 
-    if (token.empty())
+    if (bRecaptcha)
     {
-        std::cout << "Failed to get login token" << std::endl;
-        return res = 0;
+        // This should never be reached but do additional check here just in case
+        #ifndef USE_QT_GUI_LOGIN
+            return res = 0;
+        #endif
     }
-
-    //Create postdata - escape characters in email/password to support special characters
-    postdata = (std::string)curl_easy_escape(curlhandle, tagname_username.c_str(), tagname_username.size()) + "=" + (std::string)curl_easy_escape(curlhandle, email.c_str(), email.size())
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_password.c_str(), tagname_password.size()) + "=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_login.c_str(), tagname_login.size()) + "="
-            + "&" + (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token.c_str(), token.size());
-    curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login_check");
-    curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
-
-    // Don't follow to redirect location because we need to check it for two step authorization.
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-    CURLcode result = curl_easy_perform(curlhandle);
-    memory.str(std::string());
-
-    if (result != CURLE_OK)
+    else
     {
-        // Expected to hit maximum amount of redirects so don't print error on it
-        if (result != CURLE_TOO_MANY_REDIRECTS)
-            std::cout << curl_easy_strerror(result) << std::endl;
-    }
-
-    // Get redirect url
-    char *redirect_url;
-    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-
-    // Handle two step authorization
-    if (std::string(redirect_url).find("two_step") != std::string::npos)
-    {
-        std::string security_code;
-        std::string tagname_two_step_send = "second_step_authentication[send]";
-        std::string tagname_two_step_auth_letter_1 = "second_step_authentication[token][letter_1]";
-        std::string tagname_two_step_auth_letter_2 = "second_step_authentication[token][letter_2]";
-        std::string tagname_two_step_auth_letter_3 = "second_step_authentication[token][letter_3]";
-        std::string tagname_two_step_auth_letter_4 = "second_step_authentication[token][letter_4]";
-        std::string tagname_two_step_token;
-        std::string token_two_step;
-        std::string two_step_html = this->getResponse(redirect_url);
-        redirect_url = NULL;
-
-        tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
-        tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
-        tree<htmlcxx::HTML::Node>::iterator two_step_it_end = two_step_dom.end();
-        for (; two_step_it != two_step_it_end; ++two_step_it)
+        htmlcxx::HTML::ParserDom parser;
+        tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
+        tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
+        tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
+        for (; login_it != login_it_end; ++login_it)
         {
-            if (two_step_it->tagName()=="input")
+            if (login_it->tagName()=="input")
             {
-                two_step_it->parseAttributes();
-                if (two_step_it->attribute("id").second == "second_step_authentication__token")
+                login_it->parseAttributes();
+                if (login_it->attribute("id").second == "login__token")
                 {
-                    token_two_step = two_step_it->attribute("value").second; // two step token
-                    tagname_two_step_token = two_step_it->attribute("name").second;
+                    token = login_it->attribute("value").second; // login token
+                    tagname_token = login_it->attribute("name").second;
                 }
             }
         }
 
-        std::cerr << "Security code: ";
-        std::getline(std::cin,security_code);
-        if (security_code.size() != 4)
+        if (token.empty())
         {
-            std::cerr << "Security code must be 4 characters long" << std::endl;
-            exit(1);
+            std::cout << "Failed to get login token" << std::endl;
+            return res = 0;
         }
 
-        postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_4.c_str(), tagname_two_step_auth_letter_4.size()) + "=" + security_code[3]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_send.c_str(), tagname_two_step_send.size()) + "="
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_token.c_str(), tagname_two_step_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_two_step.c_str(), token_two_step.size());
-
-        curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
+        //Create postdata - escape characters in email/password to support special characters
+        postdata = (std::string)curl_easy_escape(curlhandle, tagname_username.c_str(), tagname_username.size()) + "=" + (std::string)curl_easy_escape(curlhandle, email.c_str(), email.size())
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_password.c_str(), tagname_password.size()) + "=" + (std::string)curl_easy_escape(curlhandle, password.c_str(), password.size())
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_login.c_str(), tagname_login.size()) + "="
+                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token.c_str(), token.size());
+        curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login_check");
         curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
         curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
         curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
@@ -417,47 +374,118 @@ int Website::Login(const std::string& email, const std::string& password)
         curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
         curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
 
-        // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
+        // Don't follow to redirect location because we need to check it for two step authorization.
         curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-        result = curl_easy_perform(curlhandle);
+        CURLcode result = curl_easy_perform(curlhandle);
         memory.str(std::string());
-        curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-    }
 
-    if (!std::string(redirect_url).empty())
-    {
-        long response_code;
-        do
+        if (result != CURLE_OK)
         {
-            curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+            // Expected to hit maximum amount of redirects so don't print error on it
+            if (result != CURLE_TOO_MANY_REDIRECTS)
+                std::cout << curl_easy_strerror(result) << std::endl;
+        }
+
+        // Get redirect url
+        char *redirect_url;
+        curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+
+        // Handle two step authorization
+        if (std::string(redirect_url).find("two_step") != std::string::npos)
+        {
+            std::string security_code;
+            std::string tagname_two_step_send = "second_step_authentication[send]";
+            std::string tagname_two_step_auth_letter_1 = "second_step_authentication[token][letter_1]";
+            std::string tagname_two_step_auth_letter_2 = "second_step_authentication[token][letter_2]";
+            std::string tagname_two_step_auth_letter_3 = "second_step_authentication[token][letter_3]";
+            std::string tagname_two_step_auth_letter_4 = "second_step_authentication[token][letter_4]";
+            std::string tagname_two_step_token;
+            std::string token_two_step;
+            std::string two_step_html = this->getResponse(redirect_url);
+            redirect_url = NULL;
+
+            tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
+            tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
+            tree<htmlcxx::HTML::Node>::iterator two_step_it_end = two_step_dom.end();
+            for (; two_step_it != two_step_it_end; ++two_step_it)
+            {
+                if (two_step_it->tagName()=="input")
+                {
+                    two_step_it->parseAttributes();
+                    if (two_step_it->attribute("id").second == "second_step_authentication__token")
+                    {
+                        token_two_step = two_step_it->attribute("value").second; // two step token
+                        tagname_two_step_token = two_step_it->attribute("name").second;
+                    }
+                }
+            }
+
+            std::cerr << "Security code: ";
+            std::getline(std::cin,security_code);
+            if (security_code.size() != 4)
+            {
+                std::cerr << "Security code must be 4 characters long" << std::endl;
+                exit(1);
+            }
+
+            postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
+                    + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
+                    + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
+                    + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_4.c_str(), tagname_two_step_auth_letter_4.size()) + "=" + security_code[3]
+                    + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_send.c_str(), tagname_two_step_send.size()) + "="
+                    + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_token.c_str(), tagname_two_step_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_two_step.c_str(), token_two_step.size());
+
+            curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
+            curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
+            curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+            curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+            curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
+            curl_easy_setopt(curlhandle, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+
+            // Don't follow to redirect location because it doesn't work properly. Must clean up the redirect url first.
+            curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
             result = curl_easy_perform(curlhandle);
             memory.str(std::string());
+            curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+        }
 
-            result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-            if ((response_code / 100) == 3)
-                curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-
-            std::string redir_url = std::string(redirect_url);
-            boost::regex re(".*code=(.*?)([\?&].*|$)", boost::regex_constants::icase);
-            boost::match_results<std::string::const_iterator> what;
-            if (boost::regex_search(redir_url, what, re))
+        if (!std::string(redirect_url).empty())
+        {
+            long response_code;
+            do
             {
-                auth_code = what[1];
-                if (!auth_code.empty())
-                    break;
-            }
-        } while (result == CURLE_OK && (response_code / 100) == 3);
-    }
+                curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+                result = curl_easy_perform(curlhandle);
+                memory.str(std::string());
 
-    curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
-    curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    result = curl_easy_perform(curlhandle);
+                result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                if ((response_code / 100) == 3)
+                    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
 
-    if (result != CURLE_OK)
-    {
-        std::cout << curl_easy_strerror(result) << std::endl;
+                std::string redir_url = std::string(redirect_url);
+                boost::regex re(".*code=(.*?)([\?&].*|$)", boost::regex_constants::icase);
+                boost::match_results<std::string::const_iterator> what;
+                if (boost::regex_search(redir_url, what, re))
+                {
+                    auth_code = what[1];
+                    if (!auth_code.empty())
+                        break;
+                }
+            } while (result == CURLE_OK && (response_code / 100) == 3);
+        }
+
+        curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+        curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
+        curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+        result = curl_easy_perform(curlhandle);
+
+        if (result != CURLE_OK)
+        {
+            std::cout << curl_easy_strerror(result) << std::endl;
+        }
     }
 
     if (this->IsLoggedInComplex(email))
