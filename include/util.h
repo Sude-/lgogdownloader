@@ -22,6 +22,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
 #include <json/json.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 struct gameItem
 {
@@ -73,6 +74,8 @@ namespace Util
     void shortenStringToTerminalWidth(std::string& str);
     std::string getJsonUIntValueAsString(const Json::Value& json);
     std::string getStrippedString(std::string str);
+    std::string makeEtaString(const unsigned long long& iBytesRemaining, const double& dlRate);
+    std::string makeEtaString(const boost::posix_time::time_duration& duration);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {

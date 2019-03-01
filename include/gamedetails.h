@@ -38,6 +38,7 @@ class gameDetails
         std::string getChangelogFilepath();
         Json::Value getDetailsAsJson();
         std::vector<gameFile> getGameFileVector();
+        std::vector<gameFile> getGameFileVectorFiltered(const unsigned int& iType);
         virtual ~gameDetails();
     protected:
         void filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config);

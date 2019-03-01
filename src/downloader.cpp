@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -47,6 +48,7 @@ ThreadSafeQueue<gameDetails> gameDetailsQueue;
 ThreadSafeQueue<galaxyDepotItem> dlQueueGalaxy;
 ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
+std::atomic<unsigned long long> iTotalRemainingBytes(0);
 
 static curl_off_t WriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp)
 {
@@ -862,34 +864,6 @@ void Downloader::download()
             this->saveChangelog(games[i].changelog, filepath);
         }
 
-        if (conf.dlConf.bInstallers)
-        {
-            for (unsigned int j = 0; j < games[i].installers.size(); ++j)
-            {
-                dlQueue.push(games[i].installers[j]);
-            }
-        }
-        if (conf.dlConf.bPatches)
-        {
-            for (unsigned int j = 0; j < games[i].patches.size(); ++j)
-            {
-                dlQueue.push(games[i].patches[j]);
-            }
-        }
-        if (conf.dlConf.bExtras)
-        {
-            for (unsigned int j = 0; j < games[i].extras.size(); ++j)
-            {
-                dlQueue.push(games[i].extras[j]);
-            }
-        }
-        if (conf.dlConf.bLanguagePacks)
-        {
-            for (unsigned int j = 0; j < games[i].languagepacks.size(); ++j)
-            {
-                dlQueue.push(games[i].languagepacks[j]);
-            }
-        }
         if (conf.dlConf.bDLC && !games[i].dlcs.empty())
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
@@ -904,37 +878,25 @@ void Downloader::download()
                     std::string filepath = games[i].dlcs[j].getChangelogFilepath();
                     this->saveChangelog(games[i].dlcs[j].changelog, filepath);
                 }
-
-                if (conf.dlConf.bInstallers)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].installers.size(); ++k)
-                    {
-                        dlQueue.push(games[i].dlcs[j].installers[k]);
-                    }
-                }
-                if (conf.dlConf.bPatches)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
-                    {
-                        dlQueue.push(games[i].dlcs[j].patches[k]);
-                    }
-                }
-                if (conf.dlConf.bExtras)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
-                    {
-                        dlQueue.push(games[i].dlcs[j].extras[k]);
-                    }
-                }
-                if (conf.dlConf.bLanguagePacks)
-                {
-                    for (unsigned int k = 0; k < games[i].dlcs[j].languagepacks.size(); ++k)
-                    {
-                        dlQueue.push(games[i].dlcs[j].languagepacks[k]);
-                    }
-                }
             }
         }
+
+        auto vFiles = games[i].getGameFileVectorFiltered(conf.dlConf.iInclude);
+        for (auto gf : vFiles)
+        {
+            dlQueue.push(gf);
+            unsigned long long filesize = 0;
+            try
+            {
+                filesize = std::stoll(gf.size);
+            }
+            catch (std::invalid_argument& e)
+            {
+                filesize = 0;
+            }
+            iTotalRemainingBytes.fetch_add(filesize);
+        }
+
     }
 
     if (!dlQueue.empty())
@@ -1634,30 +1596,7 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
             rate = (size_last - size_first) / static_cast<double>((time_last - time_first));
         }
 
-        bptime::time_duration eta(bptime::seconds((long)((dltotal - dlnow) / rate)));
-        std::stringstream eta_ss;
-        if (eta.hours() > 23)
-        {
-           eta_ss << eta.hours() / 24 << "d " <<
-                     std::setfill('0') << std::setw(2) << eta.hours() % 24 << "h " <<
-                     std::setfill('0') << std::setw(2) << eta.minutes() << "m " <<
-                     std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-        }
-        else if (eta.hours() > 0)
-        {
-           eta_ss << eta.hours() << "h " <<
-                     std::setfill('0') << std::setw(2) << eta.minutes() << "m " <<
-                     std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-        }
-        else if (eta.minutes() > 0)
-        {
-           eta_ss << eta.minutes() << "m " <<
-                     std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-        }
-        else
-        {
-           eta_ss << eta.seconds() << "s";
-        }
+        std::string etastring = Util::makeEtaString((dltotal - dlnow), rate);
 
         // Create progressbar
         double fraction = starting ? 0.0 : static_cast<double>(dlnow) / static_cast<double>(dltotal);
@@ -1676,7 +1615,7 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
             rate /= 1024;
             rate_unit = "kB/s";
         }
-        std::string status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), eta_ss.str().c_str());
+        std::string status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), etastring.c_str());
         int status_text_length = status_text.length() + 6;
 
         if ((status_text_length + bar_length) > iTermWidth)
@@ -2596,6 +2535,17 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
 
+        unsigned long long filesize = 0;
+        try
+        {
+            filesize = std::stoll(gf.size);
+        }
+        catch (std::invalid_argument& e)
+        {
+            filesize = 0;
+        }
+        iTotalRemainingBytes.fetch_sub(filesize);
+
         // Get directory from filepath
         boost::filesystem::path filepath = gf.getFilepath();
         filepath = boost::filesystem::absolute(filepath, boost::filesystem::current_path());
@@ -2990,6 +2940,7 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
 
         int iTermWidth = Util::getTerminalWidth();
         double total_rate = 0;
+        bptime::time_duration eta_total_seconds;
 
         // Create progress info text for all download threads
         std::vector<std::string> vProgressText;
@@ -3019,29 +2970,8 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
             int progress_percentage_text_length = progress_percentage_text.length() + 1;
 
             bptime::time_duration eta(bptime::seconds((long)((progress_info.dltotal - progress_info.dlnow) / progress_info.rate)));
-            std::stringstream eta_ss;
-            if (eta.hours() > 23)
-            {
-               eta_ss << eta.hours() / 24 << "d " <<
-                         std::setfill('0') << std::setw(2) << eta.hours() % 24 << "h " <<
-                         std::setfill('0') << std::setw(2) << eta.minutes() << "m " <<
-                         std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-            }
-            else if (eta.hours() > 0)
-            {
-               eta_ss << eta.hours() << "h " <<
-                         std::setfill('0') << std::setw(2) << eta.minutes() << "m " <<
-                         std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-            }
-            else if (eta.minutes() > 0)
-            {
-               eta_ss << eta.minutes() << "m " <<
-                         std::setfill('0') << std::setw(2) << eta.seconds() << "s";
-            }
-            else
-            {
-               eta_ss << eta.seconds() << "s";
-            }
+            eta_total_seconds += eta;
+            std::string etastring = Util::makeEtaString(eta);
 
             std::string rate_unit;
             if (progress_info.rate > 1048576) // 1 MB
@@ -3055,7 +2985,7 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
                 rate_unit = "kB/s";
             }
 
-            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s", static_cast<double>(progress_info.dlnow)/1024/1024, static_cast<double>(progress_info.dltotal)/1024/1024, progress_info.rate, rate_unit.c_str(), eta_ss.str().c_str());
+            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s", static_cast<double>(progress_info.dlnow)/1024/1024, static_cast<double>(progress_info.dltotal)/1024/1024, progress_info.rate, rate_unit.c_str(), etastring.c_str());
             int status_text_length = progress_status_text.length() + 1;
 
             if ((status_text_length + progress_percentage_text_length + bar_length) > iTermWidth)
@@ -3077,6 +3007,16 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         // Total download speed and number of remaining tasks in download queue
         if (dl_status != DLSTATUS_FINISHED)
         {
+            unsigned long long total_remaining = iTotalRemainingBytes.load();
+            std::string total_eta_str;
+            if (total_remaining > 0)
+            {
+                bptime::time_duration eta(bptime::seconds((long)(total_remaining / total_rate)));
+                eta += eta_total_seconds;
+                total_eta_str = Util::makeEtaString(eta);
+                total_eta_str = Util::formattedString(" (%0.2fMB) ETA: %s", static_cast<double>(total_remaining)/1024/1024, total_eta_str.c_str());
+            }
+
             std::ostringstream ss;
             if (Globals::globalConfig.iThreads > 1)
             {
@@ -3094,6 +3034,10 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
                 ss << "Total: " << std::setprecision(2) << std::fixed << total_rate << rate_unit << " | ";
             }
             ss << "Remaining: " << download_queue.size();
+
+            if (!total_eta_str.empty())
+                ss << total_eta_str;
+
             vProgressText.push_back(ss.str());
         }
 
@@ -3381,6 +3325,7 @@ void Downloader::galaxyInstallGame(const std::string& product_id, int build_inde
             std::cout << "\tmd5: " << items[i].md5 << std::endl;
         }
         totalSize += items[i].totalSizeUncompressed;
+        iTotalRemainingBytes.fetch_add(items[i].totalSizeCompressed);
         dlQueueGalaxy.push(items[i]);
     }
 
@@ -3467,6 +3412,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
     while (dlQueueGalaxy.try_pop(item))
     {
         vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
+        iTotalRemainingBytes.fetch_sub(item.totalSizeCompressed);
 
         boost::filesystem::path path = install_path + "/" + item.path;
 
@@ -4067,11 +4013,17 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
 
         // Add files to download queue
         for (std::uintmax_t i = 0; i < vZipFiles.size(); ++i)
+        {
             dlQueueGalaxy_MojoSetupHack.push(vZipFiles[i]);
+            iTotalRemainingBytes.fetch_add(vZipFiles[i].comp_size);
+        }
 
         // Add symlinks to download queue
         for (std::uintmax_t i = 0; i < vZipFilesSymlink.size(); ++i)
+        {
             dlQueueGalaxy_MojoSetupHack.push(vZipFilesSymlink[i]);
+            iTotalRemainingBytes.fetch_add(vZipFilesSymlink[i].comp_size);
+        }
 
         // Limit thread count to number of items in download queue
         unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlQueueGalaxy_MojoSetupHack.size()));
@@ -4138,6 +4090,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
     while (dlQueueGalaxy_MojoSetupHack.try_pop(zfe))
     {
         vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
+        iTotalRemainingBytes.fetch_sub(zfe.comp_size);
 
         boost::filesystem::path path = zfe.filepath;
         boost::filesystem::path path_tmp = zfe.filepath + ".lgogdltmp";

@@ -210,3 +210,31 @@ std::vector<gameFile> gameDetails::getGameFileVector()
 
     return vGameFiles;
 }
+
+// Return vector containing all game files matching download filters
+std::vector<gameFile> gameDetails::getGameFileVectorFiltered(const unsigned int& iType)
+{
+    std::vector<gameFile> vGameFiles = this->getGameFileVector();
+
+    std::remove_if(
+        vGameFiles.begin(),
+        vGameFiles.end(),
+        [iType](gameFile gf)
+        {
+            bool bRemove = false;
+            if (gf.type & iType)
+            {
+                // Remove if DLC but DLCs not enabled
+                if ( !((iType & GFTYPE_DLC) & iType) )
+                    bRemove = true;
+            }
+            else
+            {
+                bRemove = true;
+            }
+            return bRemove;
+        }
+    );
+
+    return vGameFiles;
+}

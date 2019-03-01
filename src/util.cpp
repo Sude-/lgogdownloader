@@ -629,3 +629,42 @@ std::string Util::getStrippedString(std::string str)
     );
     return str;
 }
+
+std::string Util::makeEtaString(const unsigned long long& iBytesRemaining, const double& dlRate)
+{
+    boost::posix_time::time_duration duration(boost::posix_time::seconds((long)(iBytesRemaining / dlRate)));
+
+    return Util::makeEtaString(duration);
+}
+
+std::string Util::makeEtaString(const boost::posix_time::time_duration& duration)
+{
+    std::string etastr;
+    std::stringstream eta_ss;
+
+    if (duration.hours() > 23)
+    {
+       eta_ss << duration.hours() / 24 << "d " <<
+                 std::setfill('0') << std::setw(2) << duration.hours() % 24 << "h " <<
+                 std::setfill('0') << std::setw(2) << duration.minutes() << "m " <<
+                 std::setfill('0') << std::setw(2) << duration.seconds() << "s";
+    }
+    else if (duration.hours() > 0)
+    {
+       eta_ss << duration.hours() << "h " <<
+                 std::setfill('0') << std::setw(2) << duration.minutes() << "m " <<
+                 std::setfill('0') << std::setw(2) << duration.seconds() << "s";
+    }
+    else if (duration.minutes() > 0)
+    {
+       eta_ss << duration.minutes() << "m " <<
+                 std::setfill('0') << std::setw(2) << duration.seconds() << "s";
+    }
+    else
+    {
+       eta_ss << duration.seconds() << "s";
+    }
+    etastr = eta_ss.str();
+
+    return etastr;
+}
