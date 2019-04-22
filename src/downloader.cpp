@@ -3197,7 +3197,72 @@ void Downloader::saveGalaxyJSON()
     }
 }
 
+bool Downloader::galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product)
+{
+    selected_product = product_id;
+
+    // Check to see if product_id is id or gamename
+    boost::regex expression("^[0-9]+$");
+    boost::match_results<std::string::const_iterator> what;
+    if (!boost::regex_search(product_id, what, expression))
+    {
+        Globals::globalConfig.sGameRegex = product_id;
+        this->getGameList();
+        if (this->gameItems.empty())
+        {
+            std::cerr << "Didn't match any products" << std::endl;
+            return false;
+        }
+
+        if (this->gameItems.size() == 1)
+        {
+            selected_product = this->gameItems[0].id;
+        }
+        else
+        {
+            std::cout << "Select product:" << std::endl;
+            for (unsigned int i = 0; i < this->gameItems.size(); ++i)
+                std::cout << i << ": " << this->gameItems[i].name << std::endl;
+
+            if (!isatty(STDIN_FILENO)) {
+                std::cerr << "Unable to read selection" << std::endl;
+                return false;
+            }
+
+            int iSelect = -1;
+            int iSelectMax = this->gameItems.size();
+            while (iSelect < 0 || iSelect >= iSelectMax)
+            {
+                std::cerr << "> ";
+                std::string selection;
+
+                std::getline(std::cin, selection);
+                try
+                {
+                    iSelect = std::stoi(selection);
+                }
+                catch(std::invalid_argument& e)
+                {
+                    std::cerr << e.what() << std::endl;
+                }
+            }
+            selected_product = this->gameItems[iSelect].id;
+        }
+    }
+    return true;
+}
+
 void Downloader::galaxyInstallGame(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyInstallGameById(id, build_index, iGalaxyArch);
+    }
+}
+
+void Downloader::galaxyInstallGameById(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
 {
     if (build_index < 0)
         build_index = 0;
@@ -3752,6 +3817,16 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 }
 
 void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyShowBuildsById(id, build_index);
+    }
+}
+
+void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_index)
 {
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;

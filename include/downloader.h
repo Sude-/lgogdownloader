@@ -107,7 +107,9 @@ class Downloader
         void saveGalaxyJSON();
 
         void galaxyInstallGame(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
+        void galaxyInstallGameById(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
         void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
+        void galaxyShowBuildsById(const std::string& product_id, int build_index = -1);
     protected:
     private:
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
@@ -143,6 +145,7 @@ class Downloader
         static void processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid);
         int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
         std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
+        bool galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product);
 
         Website *gogWebsite;
         API *gogAPI;
