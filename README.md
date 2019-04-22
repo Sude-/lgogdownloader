@@ -33,7 +33,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 
     $ mkdir build
     $ cd build
-    $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
+    $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON
     $ make
     # sudo make install
 
