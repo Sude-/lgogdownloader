@@ -232,7 +232,7 @@ class Config
         bool bRespectUmask;
         bool bPlatformDetection;
 #ifdef USE_QT_GUI_LOGIN
-        bool bDisableLoginGUI;
+        bool bEnableLoginGUI;
 #endif
 
         // Cache
