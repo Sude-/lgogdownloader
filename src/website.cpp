@@ -323,7 +323,7 @@ int Website::Login(const std::string& email, const std::string& password)
                 return res = 0;
             }
             GuiLogin gl;
-            gl.Login();
+            gl.Login(email, password);
 
             auto cookies = gl.getCookies();
             for (auto cookie : cookies)

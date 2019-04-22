@@ -28,7 +28,20 @@ void GuiLogin::loadFinished(bool success)
 {
     QWebEngineView *view = qobject_cast<QWebEngineView*>(sender());
     std::string url = view->page()->url().toString().toUtf8().constData();
-    if (success && url.find("https://embed.gog.com/on_login_success") != std::string::npos)
+
+    // Autofill login form
+    if (success && url.find("https://login.gog.com/auth?client_id=") != std::string::npos)
+    {
+        if (!this->login_username.empty() && !this->login_password.empty())
+        {
+            std::string js_fill_username = "document.getElementById(\"login_username\").value = \"" + this->login_username + "\";";
+            std::string js_fill_password = "document.getElementById(\"login_password\").value = \"" + this->login_password + "\";";
+            std::string js = js_fill_username + js_fill_password;
+            view->page()->runJavaScript(QString::fromStdString(js));
+        }
+    }
+    // Get auth code
+    else if (success && url.find("https://embed.gog.com/on_login_success") != std::string::npos)
     {
         std::string find_str = "code=";
         auto pos = url.find(find_str);
@@ -68,9 +81,16 @@ void GuiLogin::cookieAdded(const QNetworkCookie& cookie)
 
 void GuiLogin::Login()
 {
+    this->Login(std::string(), std::string());
+}
+
+void GuiLogin::Login(const std::string& username, const std::string& password)
+{
     QByteArray redirect_uri = QUrl::toPercentEncoding(QString::fromStdString(Globals::galaxyConf.getRedirectUri()));
     std::string auth_url = "https://auth.gog.com/auth?client_id=" + Globals::galaxyConf.getClientId() + "&redirect_uri=" + redirect_uri.toStdString() + "&response_type=code";
     QUrl url = QString::fromStdString(auth_url);
+    this->login_username = username;
+    this->login_password = password;
 
     std::vector<char> version_string(
         Globals::globalConfig.sVersionString.c_str(),

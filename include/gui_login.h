@@ -25,6 +25,7 @@ class GuiLogin : public QObject
         virtual ~GuiLogin();
 
         void Login();
+        void Login(const std::string& username, const std::string& password);
         std::string getCode();
         std::vector<std::string> getCookies();
 
@@ -32,6 +33,8 @@ class GuiLogin : public QObject
         QWebEngineCookieStore *cookiestore;
         std::vector<std::string> cookies;
         std::string auth_code;
+        std::string login_username;
+        std::string login_password;
 
     public slots:
         void loadFinished(bool success);
