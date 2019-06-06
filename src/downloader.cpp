@@ -3425,7 +3425,18 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     std::vector<std::string> orphans = this->galaxyGetOrphanedFiles(items, install_path);
     std::cout << "\t" << orphans.size() << " orphaned files" << std::endl;
     for (unsigned int i = 0; i < orphans.size(); ++i)
-        std::cout << "\t" << orphans[i] << std::endl;
+    {
+        if (Globals::globalConfig.dlConf.bGalaxyDeleteOrphans)
+        {
+            std::string filepath = orphans[i];
+            std::cout << "Deleting " << filepath << std::endl;
+            if (boost::filesystem::exists(filepath))
+                if (!boost::filesystem::remove(filepath))
+                    std::cerr << "Failed to delete " << filepath << std::endl;
+        }
+        else
+            std::cout << "\t" << orphans[i] << std::endl;
+    }
 }
 
 void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid)
