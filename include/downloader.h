@@ -146,6 +146,7 @@ class Downloader
         int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
         std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
         bool galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product);
+        std::vector<galaxyDepotItem> galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
 
         Website *gogWebsite;
         API *gogAPI;

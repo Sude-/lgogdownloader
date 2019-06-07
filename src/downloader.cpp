@@ -3252,29 +3252,9 @@ bool Downloader::galaxySelectProductIdHelper(const std::string& product_id, std:
     return true;
 }
 
-void Downloader::galaxyInstallGame(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch)
 {
-    std::string id;
-    if(this->galaxySelectProductIdHelper(product_id, id))
-    {
-        if (!id.empty())
-            this->galaxyInstallGameById(id, build_index, iGalaxyArch);
-    }
-}
-
-void Downloader::galaxyInstallGameById(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
-{
-    if (build_index < 0)
-        build_index = 0;
-
-    std::string sPlatform;
-    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
-    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
-        sPlatform = "linux";
-    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
-        sPlatform = "osx";
-    else
-        sPlatform = "windows";
+    std::string product_id = json["baseProductId"].asString();
 
     std::string sLanguageRegex = "en|eng|english|en[_-]US";
     unsigned int iLanguage = Globals::globalConfig.dlConf.iGalaxyLanguage;
@@ -3296,41 +3276,6 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
             break;
         }
     }
-
-    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
-
-    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
-    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
-    {
-        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
-
-        // Galaxy install hack for Linux
-        std::cout << "Trying to use installers as repository" << std::endl;
-        this->galaxyInstallGame_MojoSetupHack(product_id);
-
-        return;
-    }
-
-    if (json["items"][build_index]["generation"].asInt() != 2)
-    {
-        std::cout << "Only generation 2 builds are supported currently" << std::endl;
-        return;
-    }
-
-    std::string link = json["items"][build_index]["link"].asString();
-    std::string buildHash;
-    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
-
-    json = gogGalaxy->getManifestV2(buildHash);
-    std::string game_title = json["products"][0]["name"].asString();
-    std::string install_directory;
-
-    if (Globals::globalConfig.dirConf.bSubDirectories)
-    {
-        install_directory = this->getGalaxyInstallDirectory(gogGalaxy, json);
-    }
-
-    std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
 
     std::vector<galaxyDepotItem> items;
     for (unsigned int i = 0; i < json["depots"].size(); ++i)
@@ -3377,6 +3322,151 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
         if (it->product_id.empty())
         {
             it->product_id = product_id;
+        }
+    }
+
+    return items;
+}
+
+void Downloader::galaxyInstallGame(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyInstallGameById(id, build_index, iGalaxyArch);
+    }
+}
+
+void Downloader::galaxyInstallGameById(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+{
+    if (build_index < 0)
+        build_index = 0;
+
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+
+    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
+    {
+        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+
+        // Galaxy install hack for Linux
+        std::cout << "Trying to use installers as repository" << std::endl;
+        this->galaxyInstallGame_MojoSetupHack(product_id);
+
+        return;
+    }
+
+    if (json["items"][build_index]["generation"].asInt() != 2)
+    {
+        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+    std::string buildHash;
+    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+
+    // Save builds json to another variable for later use
+    Json::Value json_builds = json;
+
+    json = gogGalaxy->getManifestV2(buildHash);
+    std::string game_title = json["products"][0]["name"].asString();
+    std::string install_directory;
+
+    if (Globals::globalConfig.dirConf.bSubDirectories)
+    {
+        install_directory = this->getGalaxyInstallDirectory(gogGalaxy, json);
+    }
+
+    std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
+
+    std::vector<galaxyDepotItem> items = this->galaxyGetDepotItemVectorFromJson(json, iGalaxyArch);
+
+    // Check for differences between previously installed build and new build
+    std::vector<galaxyDepotItem> items_old;
+
+    std::string info_path = install_path + "/goggame-" + product_id + ".info";
+    std::string old_build_id;
+    int old_build_index = -1;
+    if (boost::filesystem::exists(info_path))
+    {
+        std::ifstream info_file_stream(info_path, std::ifstream::binary);
+        Json::Value info_json;
+        try {
+            info_file_stream >> info_json;
+            old_build_id = info_json["buildId"].asString();
+        }
+        catch (const Json::Exception& exc)
+        {
+            std::cout << "Failed to parse " << info_path << std::endl;
+            std::cout << exc.what() << std::endl;
+            return;
+        }
+
+        if (!old_build_id.empty())
+        {
+            for (unsigned int i = 0; i < json_builds["items"].size(); ++i)
+            {
+                std::string build_id = json_builds["items"][i]["build_id"].asString();
+                if (build_id == old_build_id)
+                {
+                    old_build_index = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Check for deleted files between builds
+    if (old_build_index >= 0 && old_build_index != build_index)
+    {
+        std::string link = json_builds["items"][old_build_index]["link"].asString();
+        std::string buildHash_old;
+        buildHash_old.assign(link.begin()+link.find_last_of("/")+1, link.end());
+
+        Json::Value json_old = gogGalaxy->getManifestV2(buildHash_old);
+        items_old = this->galaxyGetDepotItemVectorFromJson(json_old, iGalaxyArch);
+    }
+
+    std::vector<std::string> deleted_filepaths;
+    if (!items_old.empty())
+    {
+        for (auto old_item: items_old)
+        {
+            bool isDeleted = true;
+            for (auto item: items)
+            {
+                if (old_item.path == item.path)
+                {
+                    isDeleted = false;
+                    break;
+                }
+            }
+            if (isDeleted)
+                deleted_filepaths.push_back(old_item.path);
+        }
+    }
+
+    // Delete old files
+    if (!deleted_filepaths.empty())
+    {
+        for (auto path : deleted_filepaths)
+        {
+            std::string filepath = install_path + "/" + path;
+            std::cout << "Deleting " << filepath << std::endl;
+            if (boost::filesystem::exists(filepath))
+                if (!boost::filesystem::remove(filepath))
+                    std::cerr << "Failed to delete " << filepath << std::endl;
         }
     }
 
