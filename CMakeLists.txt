@@ -139,6 +139,19 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE ${ZLIB_LIBRARIES}
   )
 
+# Check if libatomic is needed in order to use std::atomic, and add
+# it to the list of JavaScriptCore libraries.
+file(WRITE ${CMAKE_BINARY_DIR}/test_atomic.cpp
+     "#include <atomic>\n"
+     "int main() { std::atomic<int64_t> i(0); i++; return 0; }\n")
+try_compile(ATOMIC_BUILD_SUCCEEDED ${CMAKE_BINARY_DIR} ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+if (NOT ATOMIC_BUILD_SUCCEEDED)
+  target_link_libraries(${PROJECT_NAME}
+    PRIVATE -latomic
+  )
+endif ()
+file(REMOVE ${CMAKE_BINARY_DIR}/test_atomic.cpp)
+
 if(LINK_LIBCRYPTO EQUAL 1)
   target_link_libraries(${PROJECT_NAME}
     PRIVATE ${Libcrypto_LIBRARIES}
