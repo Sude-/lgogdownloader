@@ -9,9 +9,7 @@
 #include <QApplication>
 #include <QtWidgets/QWidget>
 #include <QtWebEngineWidgets/QWebEngineView>
-#include <QStyle>
 #include <QLayout>
-#include <QDesktopWidget>
 #include <QWebEngineProfile>
 
 GuiLogin::GuiLogin()
@@ -103,16 +101,7 @@ void GuiLogin::Login(const std::string& username, const std::string& password)
 
     QWidget window;
     QVBoxLayout *layout = new QVBoxLayout;
-    QSize window_size(440, 540);
-
-    window.setGeometry(
-        QStyle::alignedRect(
-            Qt::LeftToRight,
-            Qt::AlignCenter,
-            window_size,
-            qApp->desktop()->availableGeometry()
-        )
-    );
+    window.resize(440, 540);
 
     QWebEngineView *webengine = new QWebEngineView(&window);
     layout->addWidget(webengine);
