@@ -17,6 +17,10 @@
 
     void thread_locking_callback(int mode, int n, const char* file, int line)
     {
+        // suppress -Wunused-parameter messages by casting these variables to void
+        (void) file;
+        (void) line;
+
         if(mode & CRYPTO_LOCK)
             ssl_mutex_array[n].lock();
         else
