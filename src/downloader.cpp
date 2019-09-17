@@ -1029,6 +1029,41 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
                     {
                         std::cout << "Skipping complete file: " + filepath << std::endl;
                         fclose(outfile);
+
+                        // Save remote XML
+                        if (!xml_data.empty())
+                        {
+                            if ((bLocalXMLExists && (!bSameVersion || Globals::globalConfig.bRepair)) || !bLocalXMLExists)
+                            {
+                                // Check that directory exists and create subdirectories
+                                boost::filesystem::path path = xml_directory;
+                                if (boost::filesystem::exists(path))
+                                {
+                                    if (!boost::filesystem::is_directory(path))
+                                    {
+                                        std::cerr << path << " is not directory" << std::endl;
+                                    }
+                                }
+                                else
+                                {
+                                    if (!boost::filesystem::create_directories(path))
+                                    {
+                                        std::cerr << "Failed to create directory: " << path << std::endl;
+                                    }
+                                }
+                                std::ofstream ofs(local_xml_file.string().c_str());
+                                if (ofs)
+                                {
+                                    ofs << xml_data;
+                                    ofs.close();
+                                }
+                                else
+                                {
+                                    std::cerr << "Can't create " << local_xml_file.string() << std::endl;
+                                }
+                            }
+                        }
+
                         res = CURLE_OK;
                         return res;
                     }
@@ -2655,6 +2690,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
         }
 
+        bool bIsComplete = false;
         bool bResume = false;
         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
         {
@@ -2685,7 +2721,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                         if (filesize_local == filesize_xml)
                         {
                             msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
-                            continue;
+                            bIsComplete = true; // Set to true so we can skip after saving xml data
                         }
                     }
                 }
@@ -2740,6 +2776,10 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
             }
         }
+
+        // File was complete and we have saved xml data so we can skip it
+        if (bIsComplete)
+            continue;
 
         std::string url = downlinkJson["downlink"].asString();
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
