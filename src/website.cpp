@@ -112,7 +112,6 @@ Json::Value Website::getGameDetailsJSON(const std::string& gameid)
             std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << json << std::endl;
         #endif
         std::cout << exc.what();
-        exit(1);
     }
     #ifdef DEBUG
         std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << root << std::endl;
