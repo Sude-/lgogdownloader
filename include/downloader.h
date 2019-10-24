@@ -120,7 +120,7 @@ class Downloader
         CURLcode beginDownload();
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
-        std::string getRemoteFileHash(const std::string& gamename, const std::string& id);
+        std::string getRemoteFileHash(const gameFile& gf);
         int loadGameDetailsCache();
         int saveGameDetailsCache();
         std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);

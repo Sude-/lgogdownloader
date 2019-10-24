@@ -341,7 +341,7 @@ int Downloader::login()
         {
             if (!gogAPI->login(email, password))
             {
-                std::cerr << "API: Login failed (some features may not work)" << std::endl;
+                std::cerr << "API: Login failed (--download-file option will not work)" << std::endl;
                 return 0;
             }
             else
@@ -2020,7 +2020,6 @@ void Downloader::checkStatus()
             continue;
 
         std::string gamename = vGameFiles[i].gamename;
-        std::string id = vGameFiles[i].id;
 
         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
         {
@@ -2030,7 +2029,7 @@ void Downloader::checkStatus()
 
             // GOG only provides xml data for installers, patches and language packs
             if (type & (GFTYPE_INSTALLER | GFTYPE_PATCH | GFTYPE_LANGPACK))
-                remoteHash = this->getRemoteFileHash(gamename, id);
+                remoteHash = this->getRemoteFileHash(vGameFiles[i]);
             std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
 
             if (!remoteHash.empty())
@@ -2101,25 +2100,50 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
     return localHash;
 }
 
-std::string Downloader::getRemoteFileHash(const std::string& gamename, const std::string& id)
+std::string Downloader::getRemoteFileHash(const gameFile& gf)
 {
     std::string remoteHash;
-    std::string xml_data = gogAPI->getXML(gamename, id);
-    if (gogAPI->getError())
+
+    // Refresh Galaxy login if token is expired
+    if (gogGalaxy->isTokenExpired())
     {
-        std::cout << gogAPI->getErrorMessage() << std::endl;
-        gogAPI->clearError();
+        if (!gogGalaxy->refreshLogin())
+        {
+            std::cerr << "Galaxy API failed to refresh login" << std::endl;
+            return remoteHash;
+        }
     }
-    if (!xml_data.empty())
+
+    // Get downlink JSON from Galaxy API
+    Json::Value downlinkJson = gogGalaxy->getResponseJson(gf.galaxy_downlink_json_url);
+
+    if (downlinkJson.empty())
+    {
+        std::cerr << "Empty JSON response" << std::endl;
+        return remoteHash;
+    }
+
+    std::string xml_url;
+    if (downlinkJson.isMember("checksum"))
+        if (!downlinkJson["checksum"].empty())
+            xml_url = downlinkJson["checksum"].asString();
+
+    // Get XML data
+    std::string xml;
+    if (!xml_url.empty())
+        xml = gogGalaxy->getResponse(xml_url);
+
+    if (!xml.empty())
     {
         tinyxml2::XMLDocument remote_xml;
-        remote_xml.Parse(xml_data.c_str());
+        remote_xml.Parse(xml.c_str());
         tinyxml2::XMLElement *fileElemRemote = remote_xml.FirstChildElement("file");
         if (fileElemRemote)
         {
             remoteHash = fileElemRemote->Attribute("md5");
         }
     }
+
     return remoteHash;
 }
 
