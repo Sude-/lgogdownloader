@@ -1192,7 +1192,7 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
 
     // Retry partially downloaded file
     // Retry if we aborted the transfer due to low speed limit
-    if ((res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT) && (this->retries < Globals::globalConfig.iRetries) )
+    if ((res == CURLE_PARTIAL_FILE || res == CURLE_OPERATION_TIMEDOUT || res == CURLE_RECV_ERROR) && (this->retries < Globals::globalConfig.iRetries) )
     {
         this->retries++;
 
@@ -1201,6 +1201,8 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
             std::cerr << " (partial download)";
         else if (res == CURLE_OPERATION_TIMEDOUT)
             std::cerr << " (timeout)";
+        else if (res == CURLE_RECV_ERROR)
+            std::cerr << " (failed receiving network data)";
         std::cerr << std::endl;
 
         res = this->downloadFile(url, filepath, xml_data, gamename);
@@ -2825,14 +2827,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             result = curl_easy_perform(dlhandle);
             fclose(outfile);
 
-            if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT)
+            if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR)
             {
                 iRetryCount++;
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                     bResume = true;
             }
 
-        } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT) && (iRetryCount <= conf.iRetries));
+        } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR) && (iRetryCount <= conf.iRetries));
 
         long int response_code = 0;
         if (result == CURLE_HTTP_RETURNED_ERROR)
@@ -4628,14 +4630,14 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                     result = curl_easy_perform(dlhandle);
                     fclose(outfile);
 
-                    if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT)
+                    if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR)
                     {
                         iRetryCount++;
                         if (boost::filesystem::exists(path_tmp) && boost::filesystem::is_regular_file(path_tmp))
                             resume_from = static_cast<off_t>(boost::filesystem::file_size(path_tmp));
                     }
 
-                } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT) && (iRetryCount <= conf.iRetries));
+                } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR) && (iRetryCount <= conf.iRetries));
 
                 if (result == CURLE_OK)
                 {
