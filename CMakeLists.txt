@@ -4,6 +4,10 @@ project (lgogdownloader LANGUAGES C CXX VERSION 3.5)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(LINK_LIBCRYPTO 0)
 
+# Disable search for boost-cmake
+# Fixes building with Boost >= 1.70.0
+set(Boost_NO_BOOST_CMAKE ON)
+
 option(USE_QT_GUI "Build with Qt GUI login support" OFF)
 if(USE_QT_GUI)
   add_definitions(-DUSE_QT_GUI_LOGIN=1)
