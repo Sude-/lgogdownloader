@@ -198,12 +198,6 @@ struct CurlConfig
     long int iLowSpeedTimeoutRate;
 };
 
-struct GogAPIConfig
-{
-    std::string sToken;
-    std::string sSecret;
-};
-
 class Config
 {
     public:
@@ -279,8 +273,6 @@ class Config
         std::string sVersionNumber;
         std::string sEmail;
         std::string sPassword;
-
-        GogAPIConfig apiConf;
 
         // Lists
         Blacklist blacklist;

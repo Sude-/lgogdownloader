@@ -40,7 +40,6 @@ if(CURL_FOUND)
   endif(READELF_RESULT_VAR EQUAL 0)
 endif(CURL_FOUND)
 
-find_package(OAuth REQUIRED)
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)

@@ -5,7 +5,6 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 ## Dependencies
 
 * [libcurl](https://curl.haxx.se/libcurl/) >= 7.32.0
-* [liboauth](https://sourceforge.net/projects/liboauth/)
 * [librhash](https://github.com/rhash/RHash)
 * [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
 * [htmlcxx](http://htmlcxx.sourceforge.net/)
@@ -24,7 +23,7 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 ### Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
-    libjsoncpp-dev liboauth-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
+    libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
     libboost-date-time-dev libboost-iostreams-dev help2man cmake libssl-dev \
     pkg-config zlib1g-dev qtwebengine5-dev

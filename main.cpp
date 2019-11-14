@@ -248,11 +248,6 @@ int main(int argc, char *argv[])
             ("lowspeed-rate", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeoutRate)->default_value(200), "Set average transfer speed in bytes per second that the transfer should be below during time specified with --lowspeed-timeout for it to be considered too slow and aborted")
             ("include-hidden-products", bpo::value<bool>(&Globals::globalConfig.bIncludeHiddenProducts)->zero_tokens()->default_value(false), "Include games that have been set hidden in account page")
         ;
-        // Options read from config file
-        options_cfg_only.add_options()
-            ("token", bpo::value<std::string>(&Globals::globalConfig.apiConf.sToken)->default_value(""), "oauth token")
-            ("secret", bpo::value<std::string>(&Globals::globalConfig.apiConf.sSecret)->default_value(""), "oauth secret")
-        ;
 
         options_cli_no_cfg_hidden.add_options()
             ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
@@ -702,11 +697,6 @@ int main(int argc, char *argv[])
         std::ofstream ofs(Globals::globalConfig.sConfigFilePath.c_str());
         if (ofs)
         {
-            if (!Globals::globalConfig.apiConf.sToken.empty() && !Globals::globalConfig.apiConf.sSecret.empty())
-            {
-                ofs << "token = " << Globals::globalConfig.apiConf.sToken << std::endl;
-                ofs << "secret = " << Globals::globalConfig.apiConf.sSecret << std::endl;
-            }
             ofs.close();
             if (!Globals::globalConfig.bRespectUmask)
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
