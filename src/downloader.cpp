@@ -71,7 +71,7 @@ static curl_off_t WriteChunkMemoryCallback(void *contents, curl_off_t size, curl
 
 Downloader::Downloader()
 {
-    if (Globals::globalConfig.bLoginHTTP)
+    if (Globals::globalConfig.bLogin)
     {
         if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
             if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
@@ -109,16 +109,6 @@ Downloader::Downloader()
 
     // Create new GOG website handle
     gogWebsite = new Website();
-
-    // Create new API handle and set curl options for the API
-    gogAPI = new API(Globals::globalConfig.apiConf.sToken, Globals::globalConfig.apiConf.sSecret);
-    gogAPI->curlSetOpt(CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
-    gogAPI->curlSetOpt(CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
-    gogAPI->curlSetOpt(CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
-    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
-        gogAPI->curlSetOpt(CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
-
-    gogAPI->init();
 
     progressbar = new ProgressBar(Globals::globalConfig.bUnicode, Globals::globalConfig.bColor);
 
@@ -159,7 +149,6 @@ Downloader::~Downloader()
 
     delete progressbar;
     delete gogGalaxy;
-    delete gogAPI;
     delete gogWebsite;
     curl_easy_cleanup(curlhandle);
     // Make sure that cookie file is only readable/writable by owner
@@ -176,12 +165,11 @@ Downloader::~Downloader()
 bool Downloader::isLoggedIn()
 {
     bool bIsLoggedIn = false;
-    Globals::globalConfig.bLoginAPI = false;
-    Globals::globalConfig.bLoginHTTP = false;
+    Globals::globalConfig.bLogin= false;
 
     bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
     if (!bWebsiteIsLoggedIn)
-        Globals::globalConfig.bLoginHTTP = true;
+        Globals::globalConfig.bLogin = true;
 
     bool bGalaxyIsLoggedIn = !gogGalaxy->isTokenExpired();
     if (!bGalaxyIsLoggedIn)
@@ -189,17 +177,9 @@ bool Downloader::isLoggedIn()
         if (gogGalaxy->refreshLogin())
             bGalaxyIsLoggedIn = true;
         else
-            Globals::globalConfig.bLoginHTTP = true;
+            Globals::globalConfig.bLogin = true;
     }
 
-    bool bIsLoggedInAPI = gogAPI->isLoggedIn();
-    if (!bIsLoggedInAPI)
-        Globals::globalConfig.bLoginAPI = true;
-
-    /* Check that website and Galaxy API are logged in.
-        Allows users to use most of the functionality without having valid API login credentials.
-        Globals::globalConfig.bLoginAPI can still be set to true at this point which means that if website is not logged in we still try to login to API.
-    */
     if (bWebsiteIsLoggedIn && bGalaxyIsLoggedIn)
         bIsLoggedIn = true;
 
@@ -299,8 +279,8 @@ int Downloader::login()
     }
     else
     {
-        // Login to website
-        if (Globals::globalConfig.bLoginHTTP)
+        // Login to website and Galaxy API
+        if (Globals::globalConfig.bLogin)
         {
             // Delete old cookies
             if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
@@ -331,25 +311,6 @@ int Downloader::login()
                 {
                     this->saveGalaxyJSON();
                 }
-
-                if (!Globals::globalConfig.bLoginAPI)
-                    return 1;
-            }
-        }
-        // Login to API
-        if (Globals::globalConfig.bLoginAPI)
-        {
-            if (!gogAPI->login(email, password))
-            {
-                std::cerr << "API: Login failed (--download-file option will not work)" << std::endl;
-                return 0;
-            }
-            else
-            {
-                std::cerr << "API: Login successful" << std::endl;
-                Globals::globalConfig.apiConf.sToken = gogAPI->getToken();
-                Globals::globalConfig.apiConf.sSecret = gogAPI->getSecret();
-                return 1;
             }
         }
     }
@@ -1688,91 +1649,6 @@ size_t Downloader::readData(void *ptr, size_t size, size_t nmemb, FILE *stream)
 uintmax_t Downloader::getResumePosition()
 {
     return this->resume_position;
-}
-
-std::vector<gameFile> Downloader::getExtrasFromJSON(const Json::Value& json, const std::string& gamename, const Config& config)
-{
-    std::vector<gameFile> extras;
-
-    // Create new API handle and set curl options for the API
-    API* api = new API(config.apiConf.sToken, config.apiConf.sSecret);
-    api->curlSetOpt(CURLOPT_VERBOSE, config.curlConf.bVerbose);
-    api->curlSetOpt(CURLOPT_SSL_VERIFYPEER, config.curlConf.bVerifyPeer);
-    api->curlSetOpt(CURLOPT_CONNECTTIMEOUT, config.curlConf.iTimeout);
-    if (!config.curlConf.sCACertPath.empty())
-        api->curlSetOpt(CURLOPT_CAINFO, config.curlConf.sCACertPath.c_str());
-
-    if (!api->init())
-    {
-        delete api;
-        return extras;
-    }
-
-    for (unsigned int i = 0; i < json["extras"].size(); ++i)
-    {
-        std::string id, name, path, downloaderUrl;
-        name = json["extras"][i]["name"].asString();
-        downloaderUrl = json["extras"][i]["downloaderUrl"].asString();
-        id.assign(downloaderUrl.begin()+downloaderUrl.find_last_of("/")+1, downloaderUrl.end());
-
-        // Get path from download link
-        std::string url = api->getExtraLink(gamename, id);
-        if (api->getError())
-        {
-            api->clearError();
-            continue;
-        }
-        url = htmlcxx::Uri::decode(url);
-        if (url.find("/extras/") != std::string::npos)
-        {
-            path.assign(url.begin()+url.find("/extras/"), url.begin()+url.find_first_of("?"));
-            path = "/" + gamename + path;
-        }
-        else
-        {
-            path.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
-            path = "/" + gamename + "/extras/" + path;
-        }
-
-        // Get filename
-        std::string filename;
-        filename.assign(path.begin()+path.find_last_of("/")+1,path.end());
-
-        // Use filename if name was not specified
-        if (name.empty())
-            name = filename;
-
-        if (name.empty())
-        {
-            #ifdef DEBUG
-                std::cerr << "DEBUG INFO (getExtrasFromJSON)" << std::endl;
-                std::cerr << "Skipped file without a name (game: " << gamename << ", fileid: " << id << ")" << std::endl;
-            #endif
-            continue;
-        }
-
-        if (filename.empty())
-        {
-            #ifdef DEBUG
-                std::cerr << "DEBUG INFO (getExtrasFromJSON)" << std::endl;
-                std::cerr << "Skipped file without a filename (game: " << gamename << ", fileid: " << id << ", name: " << name << ")" << std::endl;
-            #endif
-            continue;
-        }
-
-        gameFile gf;
-        gf.type = GFTYPE_EXTRA;
-        gf.gamename = gamename;
-        gf.updated = false;
-        gf.id = id;
-        gf.name = name;
-        gf.path = path;
-
-        extras.push_back(gf);
-    }
-    delete api;
-
-    return extras;
 }
 
 std::string Downloader::getSerialsFromJSON(const Json::Value& json)

@@ -6,7 +6,6 @@
 
 #include "blacklist.h"
 #include "config.h"
-#include "api.h"
 #include "util.h"
 
 #include <iostream>

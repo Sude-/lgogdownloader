@@ -578,7 +578,6 @@ int ZipUtil::extractStream(std::istream* input_stream, std::ostream* output_stre
     if (cd.compression_method == boost::iostreams::zlib::deflated)
         in.push(boost::iostreams::zlib_decompressor(p));
 
-    //in.push(compressed);
     in.push(*input_stream);
     try
     {

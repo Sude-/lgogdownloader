@@ -50,7 +50,6 @@ find_package(ZLIB REQUIRED)
 
 file(GLOB SRC_FILES
   main.cpp
-  src/api.cpp
   src/website.cpp
   src/downloader.cpp
   src/progressbar.cpp

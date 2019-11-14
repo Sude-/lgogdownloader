@@ -167,7 +167,6 @@ int main(int argc, char *argv[])
         bool bNoRemoteXML = false;
         bool bNoSubDirectories = false;
         bool bNoPlatformDetection = false;
-        bool bLogin = false;
         bool bNoGalaxyDependencies = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
@@ -182,7 +181,7 @@ int main(int argc, char *argv[])
         options_cli_no_cfg.add_options()
             ("help,h", "Print help message")
             ("version", "Print version information")
-            ("login", bpo::value<bool>(&bLogin)->zero_tokens()->default_value(false), "Login")
+            ("login", bpo::value<bool>(&Globals::globalConfig.bLogin)->zero_tokens()->default_value(false), "Login")
             ("list", bpo::value<bool>(&Globals::globalConfig.bList)->zero_tokens()->default_value(false), "List games")
             ("list-details", bpo::value<bool>(&Globals::globalConfig.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
@@ -202,8 +201,6 @@ int main(int argc, char *argv[])
             ("download-file", bpo::value<std::string>(&Globals::globalConfig.sFileIdString)->default_value(""), "Download files using fileid\n\nFormat:\n\"gamename/fileid\"\nor: \"gogdownloader://gamename/fileid\"\n\nMultiple files:\n\"gamename1/fileid1,gamename2/fileid2\"\nor: \"gogdownloader://gamename1/fileid1,gamename2/fileid2\"\n\nThis option ignores all subdir options. The files are downloaded to directory specified with --directory option.")
             ("output-file,o", bpo::value<std::string>(&Globals::globalConfig.sOutputFilename)->default_value(""), "Set filename of file downloaded with --download-file.")
             ("wishlist", bpo::value<bool>(&Globals::globalConfig.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
-            ("login-api", bpo::value<bool>(&Globals::globalConfig.bLoginAPI)->zero_tokens()->default_value(false), "Login (API only)")
-            ("login-website", bpo::value<bool>(&Globals::globalConfig.bLoginHTTP)->zero_tokens()->default_value(false), "Login (website only)")
             ("cacert", bpo::value<std::string>(&Globals::globalConfig.curlConf.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
             ("respect-umask", bpo::value<bool>(&Globals::globalConfig.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
             ("user-agent", bpo::value<std::string>(&Globals::globalConfig.curlConf.sUserAgent)->default_value(DEFAULT_USER_AGENT), "Set user agent")
@@ -410,7 +407,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (bLogin || Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP)
+        if (Globals::globalConfig.bLogin)
         {
             std::string login_conf = Globals::globalConfig.sConfigDirectory + "/login.txt";
             if (boost::filesystem::exists(login_conf))
@@ -489,12 +486,6 @@ int main(int argc, char *argv[])
         {
             std::cerr << "Cannot specify an output file name when downloading multiple files." << std::endl;
             return 1;
-        }
-
-        if (bLogin)
-        {
-            Globals::globalConfig.bLoginAPI = true;
-            Globals::globalConfig.bLoginHTTP = true;
         }
 
         if (Globals::globalConfig.sXMLFile == "automatic")
@@ -605,19 +596,13 @@ int main(int argc, char *argv[])
     ssl_thread_setup();
     curl_global_init(CURL_GLOBAL_ALL);
 
-    if (Globals::globalConfig.bLoginAPI)
-    {
-        Globals::globalConfig.apiConf.sToken = "";
-        Globals::globalConfig.apiConf.sSecret = "";
-    }
-
     Downloader downloader;
 
     int iLoginTries = 0;
     bool bLoginOK = false;
 
     // Login because --login, --login-api or --login-website was used
-    if (Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP)
+    if (Globals::globalConfig.bLogin)
         bLoginOK = downloader.login();
 
     bool bIsLoggedin = downloader.isLoggedIn();
@@ -650,11 +635,6 @@ int main(int argc, char *argv[])
 
     if (Globals::globalConfig.bSaveConfig || bLoginOK)
     {
-        if (bLoginOK)
-        {
-            set_vm_value(vm, "token", Globals::globalConfig.apiConf.sToken);
-            set_vm_value(vm, "secret", Globals::globalConfig.apiConf.sSecret);
-        }
         std::ofstream ofs(Globals::globalConfig.sConfigFilePath.c_str());
         if (ofs)
         {
@@ -803,7 +783,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        if (!(Globals::globalConfig.bLoginAPI || Globals::globalConfig.bLoginHTTP))
+        if (!Globals::globalConfig.bLogin)
         {
             // Show help message
             std::cerr   << Globals::globalConfig.sVersionString << std::endl

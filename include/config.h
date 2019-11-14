@@ -211,8 +211,7 @@ class Config
         virtual ~Config() {};
 
         // Booleans
-        bool bLoginHTTP;
-        bool bLoginAPI;
+        bool bLogin;
         bool bSaveConfig;
         bool bResetConfig;
 

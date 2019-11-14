@@ -22,7 +22,6 @@
 #endif
 
 #include "config.h"
-#include "api.h"
 #include "progressbar.h"
 #include "website.h"
 #include "threadsafequeue.h"
@@ -124,7 +123,6 @@ class Downloader
         int loadGameDetailsCache();
         int saveGameDetailsCache();
         std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);
-        static std::vector<gameFile> getExtrasFromJSON(const Json::Value& json, const std::string& gamename, const Config& config);
         static std::string getSerialsFromJSON(const Json::Value& json);
         void saveSerials(const std::string& serials, const std::string& filepath);
         static std::string getChangelogFromJSON(const Json::Value& json);
@@ -149,7 +147,6 @@ class Downloader
         std::vector<galaxyDepotItem> galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
 
         Website *gogWebsite;
-        API *gogAPI;
         galaxyAPI *gogGalaxy;
         std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;
