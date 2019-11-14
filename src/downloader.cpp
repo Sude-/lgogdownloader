@@ -2451,22 +2451,34 @@ void Downloader::saveChangelog(const std::string& changelog, const std::string& 
 
 int Downloader::downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath)
 {
-    if (!gogAPI->isLoggedIn())
+    if (gogGalaxy->isTokenExpired())
     {
-        std::cout << "API not logged in. This feature doesn't work without valid API login." << std::endl;
-        std::cout << "Try to login with --login-api" << std::endl;
-        exit(1);
+        if (!gogGalaxy->refreshLogin())
+        {
+            std::cerr << "Galaxy API failed to refresh login" << std::endl;
+            return 0;
+        }
     }
 
-    int res = 1;
+    DownloadConfig dlConf = Globals::globalConfig.dlConf;
+    dlConf.bInstallers = true;
+    dlConf.bExtras = true;
+    dlConf.bPatches = true;
+    dlConf.bLanguagePacks = true;
+    dlConf.bDLC = true;
+    dlConf.bDuplicateHandler = false; // Disable duplicate handler
+
+    int res = 0;
+    CURLcode result = CURLE_RECV_ERROR; // assume network error
+
     size_t pos = fileid_string.find("/");
     if (pos == std::string::npos)
     {
-        std::cout << "Invalid file id " << fileid_string << ": could not find separator \"/\"" << std::endl;
+        std::cerr << "Invalid file id " << fileid_string << ": could not find separator \"/\"" << std::endl;
     }
     else if (!output_filepath.empty() && boost::filesystem::is_directory(output_filepath))
     {
-        std::cout << "Failed to create the file " << output_filepath << ": Is a directory" << std::endl;
+        std::cerr << "Failed to create the file " << output_filepath << ": Is a directory" << std::endl;
     }
     else
     {
@@ -2474,33 +2486,95 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         gamename.assign(fileid_string.begin(), fileid_string.begin()+pos);
         fileid.assign(fileid_string.begin()+pos+1, fileid_string.end());
 
-        if (fileid.find("installer") != std::string::npos)
-            url = gogAPI->getInstallerLink(gamename, fileid);
-        else if (fileid.find("patch") != std::string::npos)
-            url = gogAPI->getPatchLink(gamename, fileid);
-        else if (fileid.find("langpack") != std::string::npos)
-            url = gogAPI->getLanguagePackLink(gamename, fileid);
-        else
-            url = gogAPI->getExtraLink(gamename, fileid);
+        std::string product_id;
+        if(this->galaxySelectProductIdHelper(gamename, product_id))
+        {
+            if (product_id.empty())
+            {
+                std::cerr << "Failed to get numerical product id" << std::endl;
+                return 0;
+            }
+        }
 
-        if (!gogAPI->getError())
+        Json::Value productInfo = gogGalaxy->getProductInfo(product_id);
+        if (productInfo.empty())
         {
-            std::string filename, filepath;
-            filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
-            if (output_filepath.empty())
-                filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gamename);
-            else
-                filepath = output_filepath;
-            std::cout << "Downloading: " << filepath << std::endl;
-            res = this->downloadFile(url, filepath, std::string(), gamename);
-            std::cout << std::endl;
+            std::cerr << "Failed to get product info" << std::endl;
+            return 0;
+        }
+
+        gameDetails gd = gogGalaxy->productInfoJsonToGameDetails(productInfo, dlConf);
+
+
+        auto vFiles = gd.getGameFileVector();
+        gameFile gf;
+        bool bFoundMatchingFile = false;
+        for (auto f : vFiles)
+        {
+            if (f.id == fileid)
+            {
+                gf = f;
+                bFoundMatchingFile = true;
+                break;
+            }
+        }
+
+        if (!bFoundMatchingFile)
+        {
+            std::cerr << "Failed to find file info (product id: " << product_id << " / file id: " << fileid << ")" << std::endl;
+            return 0;
+        }
+
+        Json::Value downlinkJson = gogGalaxy->getResponseJson(gf.galaxy_downlink_json_url);
+
+        if (downlinkJson.empty())
+        {
+            std::cerr << "Empty JSON response" << std::endl;
+            return 0;
+        }
+
+        if (downlinkJson.isMember("downlink"))
+        {
+            url = downlinkJson["downlink"].asString();
         }
         else
         {
-            std::cout << gogAPI->getErrorMessage() << std::endl;
-            gogAPI->clearError();
+            std::cerr << "Invalid JSON response" << std::endl;
+            return 0;
         }
+
+        std::string xml_url;
+        if (downlinkJson.isMember("checksum"))
+        {
+            if (!downlinkJson["checksum"].empty())
+                xml_url = downlinkJson["checksum"].asString();
+        }
+
+        // Get XML data
+        std::string xml_data;
+        if (!xml_url.empty())
+        {
+            xml_data = gogGalaxy->getResponse(xml_url);
+            if (xml_data.empty())
+            {
+                std::cerr << "Failed to get XML data" << std::endl;
+            }
+        }
+
+
+        std::string filename, filepath;
+        filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
+        if (output_filepath.empty())
+            filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gamename);
+        else
+            filepath = output_filepath;
+        std::cout << "Downloading: " << filepath << std::endl;
+        result = this->downloadFile(url, filepath, xml_data, gamename);
+        std::cout << std::endl;
     }
+
+    if (result == CURLE_OK)
+        res = 1;
 
     return res;
 }
