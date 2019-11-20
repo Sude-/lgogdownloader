@@ -10,7 +10,7 @@ pkg_check_modules(PC_JSONCPP REQUIRED jsoncpp)
 
 find_path(JSONCPP_INCLUDE_DIR
   NAMES
-    json/features.h
+    json/allocator.h
   HINTS
     ${PC_JSONCPP_INCLUDEDIR}
     ${PC_JSONCPP_INCLUDEDIRS}
