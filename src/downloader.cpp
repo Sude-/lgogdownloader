@@ -1268,10 +1268,17 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             std::cout << "Downloading: " << filepath << std::endl;
             CURLcode result = this->downloadFile(url, filepath, xml_data, gamename);
             std::cout << std::endl;
+            long int response_code = 0;
+            if (result == CURLE_HTTP_RETURNED_ERROR)
+            {
+                curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+            }
             if  (
-                    (!bFileExists && result == CURLE_OK) || /* File doesn't exist so only accept if everything was OK */
-                    (bFileExists && (result == CURLE_OK || result == CURLE_RANGE_ERROR ))   /* File exists so accept also CURLE_RANGE_ERROR because curl will return CURLE_RANGE_ERROR */
-                )                                                                           /* if the file is already fully downloaded and we want to resume it */
+                    /* File doesn't exist so only accept if everything was OK */
+                    (!bFileExists && result == CURLE_OK) ||
+                    /* File exists so also accept CURLE_RANGE_ERROR and response code 416 */
+                    (bFileExists && (result == CURLE_OK || result == CURLE_RANGE_ERROR || response_code == 416))
+                )
             {
                 bLocalXMLExists = boost::filesystem::exists(xml_file); // Check to see if downloadFile saved XML data
 
