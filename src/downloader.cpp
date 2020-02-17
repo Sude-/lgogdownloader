@@ -430,7 +430,7 @@ int Downloader::getGameDetails()
         }
 
         // Create threads
-        unsigned int threads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(gameItemQueue.size()));
+        unsigned int threads = std::min(Globals::globalConfig.iInfoThreads, static_cast<unsigned int>(gameItemQueue.size()));
         std::vector<std::thread> vThreads;
         for (unsigned int i = 0; i < threads; ++i)
         {
@@ -446,7 +446,7 @@ int Downloader::getGameDetails()
             dl_status = DLSTATUS_NOTSTARTED;
 
             // Print progress information once per 100ms
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(Globals::globalConfig.iProgressInterval));
             std::cerr << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
 
             // Print messages from message queue first

@@ -283,6 +283,7 @@ class Config
         // Integers
         int iRetries;
         unsigned int iThreads;
+        unsigned int iInfoThreads;
         int iWait;
         size_t iChunkSize;
         int iProgressInterval;
