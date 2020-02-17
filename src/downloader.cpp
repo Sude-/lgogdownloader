@@ -1743,11 +1743,25 @@ static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path&
 void Downloader::checkOrphans()
 {
     // Always check everything when checking for orphaned files
+    Globals::globalConfig.dlConf.bInstallers = true;
+    Globals::globalConfig.dlConf.bExtras = true;
+    Globals::globalConfig.dlConf.bPatches = true;
+    Globals::globalConfig.dlConf.bLanguagePacks = true;
+    Globals::globalConfig.dlConf.bDLC = true;
+    Globals::globalConfig.dlConf.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
+    Globals::globalConfig.dlConf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
+    Globals::globalConfig.dlConf.vLanguagePriority.clear();
+    Globals::globalConfig.dlConf.vPlatformPriority.clear();
     Config config = Globals::globalConfig;
-    config.dlConf.bInstallers = true;
-    config.dlConf.bExtras = true;
-    config.dlConf.bPatches = true;
-    config.dlConf.bLanguagePacks = true;
+
+    // Checking orphans after download.
+    // Game details have already been retrieved but possibly filtered.
+    // Therefore we need to clear game details and get them again.
+    if (config.bDownload)
+    {
+        this->gameItems.clear();
+        this->games.clear();
+    }
 
     if (this->games.empty())
         this->getGameDetails();
