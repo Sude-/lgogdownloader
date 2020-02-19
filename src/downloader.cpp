@@ -4193,6 +4193,49 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         std::vector<zipFileEntry> vZipFiles;
         std::vector<zipFileEntry> vZipFilesSymlink;
         std::vector<zipFileEntry> vZipFilesSplit;
+
+        // Determine if installer contains split files and get list of base file paths
+        std::vector<std::string> vSplitFileBasePaths;
+        for (const auto& zfe : zipFileEntries)
+        {
+            std::string noarch = "data/noarch/";
+            std::string split_files = noarch + "support/split_files";
+            if (zfe.filepath.find(split_files) != std::string::npos)
+            {
+                std::cout << "Getting info about split files" << std::endl;
+                std::string url = zfe.installer_url;
+                std::string dlrange = std::to_string(zfe.start_offset_mojosetup) + "-" + std::to_string(zfe.end_offset);
+                curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+
+                std::stringstream splitfiles_compressed;
+                std::stringstream splitfiles_uncompressed;
+
+                CURLcode result = CURLE_RECV_ERROR;
+                curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+                curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &splitfiles_compressed);
+                curl_easy_setopt(curlhandle, CURLOPT_RANGE, dlrange.c_str());
+                result = curl_easy_perform(curlhandle);
+                curl_easy_setopt(curlhandle, CURLOPT_RANGE, NULL);
+
+                if (result == CURLE_OK)
+                {
+                    if (ZipUtil::extractStream(&splitfiles_compressed, &splitfiles_uncompressed) == 0)
+                    {
+                        std::string path;
+                        while (std::getline(splitfiles_uncompressed, path))
+                        {
+                            // Replace the leading "./" in base file path with install path
+                            Util::replaceString(path, "./", install_path);
+                            while (Util::replaceString(path, "//", "/")); // Replace any double slashes with single slash
+                            vSplitFileBasePaths.push_back(path);
+                        }
+                    }
+                }
+            }
+        }
+
+        bool bContainsSplitFiles = !vSplitFileBasePaths.empty();
+
         for (std::uintmax_t i = 0; i < zipFileEntries.size(); ++i)
         {
             // Ignore all files and directories that are not in "data/noarch/" directory
@@ -4211,14 +4254,37 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
             else
             {
                 // Check for split files
-                boost::regex expression("^(.*)(\\.split\\d+)$");
-                boost::match_results<std::string::const_iterator> what;
-                if (boost::regex_search(zfe.filepath, what, expression))
+                if (bContainsSplitFiles)
                 {
-                    zfe.isSplitFile = true;
-                    zfe.splitFileBasePath = what[1];
-                    zfe.splitFilePartExt = what[2];
-                    vZipFilesSplit.push_back(zfe);
+                    boost::regex expression("^(.*)(\\.split\\d+)$");
+                    boost::match_results<std::string::const_iterator> what;
+                    if (boost::regex_search(zfe.filepath, what, expression))
+                    {
+                        std::string basePath = what[1];
+                        std::string partExt = what[2];
+
+                        // Check against list of base file paths read from "data/noarch/support/split_files"
+                        if (
+                            std::any_of(
+                                vSplitFileBasePaths.begin(),
+                                vSplitFileBasePaths.end(),
+                                [basePath](const std::string& path)
+                                {
+                                    return path == basePath;
+                                }
+                            )
+                        )
+                        {
+                            zfe.isSplitFile = true;
+                            zfe.splitFileBasePath = basePath;
+                            zfe.splitFilePartExt = partExt;
+                        }
+                    }
+
+                    if (zfe.isSplitFile)
+                        vZipFilesSplit.push_back(zfe);
+                    else
+                        vZipFiles.push_back(zfe);
                 }
                 else
                 {
