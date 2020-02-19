@@ -68,18 +68,27 @@ struct ChunkMemoryStruct
 
 typedef struct
 {
-	std::string filepath;
-	off_t comp_size;
-	off_t uncomp_size;
-	off_t start_offset_zip;
-	off_t start_offset_mojosetup;
-	off_t end_offset;
-	uint16_t file_attributes;
-	uint32_t crc32;
-	time_t timestamp;
+    std::string filepath;
+    off_t comp_size;
+    off_t uncomp_size;
+    off_t start_offset_zip;
+    off_t start_offset_mojosetup;
+    off_t end_offset;
+    uint16_t file_attributes;
+    uint32_t crc32;
+    time_t timestamp;
 
-	std::string installer_url;
+    std::string installer_url;
+
+    // For split file handling
+    bool isSplitFile = false;
+    std::string splitFileBasePath;
+    std::string splitFilePartExt;
+    off_t splitFileStartOffset;
+    off_t splitFileEndOffset;
 } zipFileEntry;
+
+typedef std::map<std::string,std::vector<zipFileEntry>> splitFilesMap;
 
 class Downloader
 {
@@ -140,6 +149,7 @@ class Downloader
         std::vector<std::string> galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path);
         static void processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid);
         void galaxyInstallGame_MojoSetupHack(const std::string& product_id);
+        void galaxyInstallGame_MojoSetupHack_CombineSplitFiles(const splitFilesMap& mSplitFiles, const bool& bAppendtoFirst = false);
         static void processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid);
         int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
         std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
