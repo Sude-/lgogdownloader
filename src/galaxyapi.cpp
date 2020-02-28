@@ -390,36 +390,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 continue;
 
             std::string downlink_url = downlinkJson["downlink"].asString();
-            std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
-            std::string path;
-
-            // GOG has changed the url formatting few times between 2 different formats.
-            // Try to get proper file name in both cases.
-            size_t filename_end_pos;
-            if (downlink_url_unescaped.find("?path=") != std::string::npos)
-                filename_end_pos = downlink_url_unescaped.find_first_of("&");
-            else
-                filename_end_pos = downlink_url_unescaped.find_first_of("?");
-
-            if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
-            {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
-            }
-            else
-            {
-                path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
-                path = "/" + gamename + "/" + path;
-            }
-
-            // Workaround for filename issue caused by different (currently unknown) url formatting scheme
-            // https://github.com/Sude-/lgogdownloader/issues/126
-            if (path.find("?") != std::string::npos)
-            {
-                if (path.find_last_of("?") > path.find_last_of("/"))
-                {
-                    path.assign(path.begin(), path.begin()+path.find_last_of("?"));
-                }
-            }
+            std::string path = this->getPathFromDownlinkUrl(downlink_url, gamename);
 
             gameFile gf;
             gf.gamename = gamename;
@@ -533,4 +504,51 @@ std::vector<galaxyDepotItem> galaxyAPI::getFilteredDepotItemsVectorFromJson(cons
     }
 
     return items;
+}
+
+std::string galaxyAPI::getPathFromDownlinkUrl(const std::string& downlink_url, const std::string& gamename)
+{
+    std::string path;
+    std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
+
+    // GOG has changed the url formatting few times between 2 different formats.
+    // Try to get proper file name in both cases.
+    size_t filename_end_pos;
+    if (downlink_url_unescaped.find("?path=") != std::string::npos)
+    {
+        size_t token_pos = downlink_url_unescaped.find("&token=");
+        size_t access_token_pos = downlink_url_unescaped.find("&access_token=");
+        if ((token_pos != std::string::npos) && (access_token_pos != std::string::npos))
+        {
+            filename_end_pos = std::min(token_pos, access_token_pos);
+        }
+        else
+        {
+            filename_end_pos = downlink_url_unescaped.find_first_of("&");
+        }
+    }
+    else
+        filename_end_pos = downlink_url_unescaped.find_first_of("?");
+
+    if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
+    {
+        path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
+    }
+    else
+    {
+        path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
+        path = "/" + gamename + "/" + path;
+    }
+
+    // Workaround for filename issue caused by different (currently unknown) url formatting scheme
+    // https://github.com/Sude-/lgogdownloader/issues/126
+    if (path.find("?") != std::string::npos)
+    {
+        if (path.find_last_of("?") > path.find_last_of("/"))
+        {
+            path.assign(path.begin(), path.begin()+path.find_last_of("?"));
+        }
+    }
+
+    return path;
 }

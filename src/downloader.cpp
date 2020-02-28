@@ -2402,7 +2402,6 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
 
         gameDetails gd = gogGalaxy->productInfoJsonToGameDetails(productInfo, dlConf);
 
-
         auto vFiles = gd.getGameFileVector();
         gameFile gf;
         bool bFoundMatchingFile = false;
@@ -2458,15 +2457,14 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
             }
         }
 
-
         std::string filename, filepath;
-        filename.assign(url.begin()+url.find_last_of("/")+1, url.begin()+url.find_first_of("?"));
+        filename = gogGalaxy->getPathFromDownlinkUrl(url, gf.gamename);
         if (output_filepath.empty())
-            filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gamename);
+            filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gf.gamename);
         else
             filepath = output_filepath;
         std::cout << "Downloading: " << filepath << std::endl;
-        result = this->downloadFile(url, filepath, xml_data, gamename);
+        result = this->downloadFile(url, filepath, xml_data, gf.gamename);
         std::cout << std::endl;
     }
 
