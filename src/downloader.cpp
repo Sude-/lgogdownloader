@@ -4192,6 +4192,50 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         std::vector<zipFileEntry> vZipDirectories;
         std::vector<zipFileEntry> vZipFiles;
         std::vector<zipFileEntry> vZipFilesSymlink;
+        std::vector<zipFileEntry> vZipFilesSplit;
+
+        // Determine if installer contains split files and get list of base file paths
+        std::vector<std::string> vSplitFileBasePaths;
+        for (const auto& zfe : zipFileEntries)
+        {
+            std::string noarch = "data/noarch/";
+            std::string split_files = noarch + "support/split_files";
+            if (zfe.filepath.find(split_files) != std::string::npos)
+            {
+                std::cout << "Getting info about split files" << std::endl;
+                std::string url = zfe.installer_url;
+                std::string dlrange = std::to_string(zfe.start_offset_mojosetup) + "-" + std::to_string(zfe.end_offset);
+                curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+
+                std::stringstream splitfiles_compressed;
+                std::stringstream splitfiles_uncompressed;
+
+                CURLcode result = CURLE_RECV_ERROR;
+                curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+                curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &splitfiles_compressed);
+                curl_easy_setopt(curlhandle, CURLOPT_RANGE, dlrange.c_str());
+                result = curl_easy_perform(curlhandle);
+                curl_easy_setopt(curlhandle, CURLOPT_RANGE, NULL);
+
+                if (result == CURLE_OK)
+                {
+                    if (ZipUtil::extractStream(&splitfiles_compressed, &splitfiles_uncompressed) == 0)
+                    {
+                        std::string path;
+                        while (std::getline(splitfiles_uncompressed, path))
+                        {
+                            // Replace the leading "./" in base file path with install path
+                            Util::replaceString(path, "./", install_path);
+                            while (Util::replaceString(path, "//", "/")); // Replace any double slashes with single slash
+                            vSplitFileBasePaths.push_back(path);
+                        }
+                    }
+                }
+            }
+        }
+
+        bool bContainsSplitFiles = !vSplitFileBasePaths.empty();
+
         for (std::uintmax_t i = 0; i < zipFileEntries.size(); ++i)
         {
             // Ignore all files and directories that are not in "data/noarch/" directory
@@ -4208,7 +4252,45 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
             else if (ZipUtil::isSymlink(zfe.file_attributes))
                 vZipFilesSymlink.push_back(zfe);
             else
-                vZipFiles.push_back(zfe);
+            {
+                // Check for split files
+                if (bContainsSplitFiles)
+                {
+                    boost::regex expression("^(.*)(\\.split\\d+)$");
+                    boost::match_results<std::string::const_iterator> what;
+                    if (boost::regex_search(zfe.filepath, what, expression))
+                    {
+                        std::string basePath = what[1];
+                        std::string partExt = what[2];
+
+                        // Check against list of base file paths read from "data/noarch/support/split_files"
+                        if (
+                            std::any_of(
+                                vSplitFileBasePaths.begin(),
+                                vSplitFileBasePaths.end(),
+                                [basePath](const std::string& path)
+                                {
+                                    return path == basePath;
+                                }
+                            )
+                        )
+                        {
+                            zfe.isSplitFile = true;
+                            zfe.splitFileBasePath = basePath;
+                            zfe.splitFilePartExt = partExt;
+                        }
+                    }
+
+                    if (zfe.isSplitFile)
+                        vZipFilesSplit.push_back(zfe);
+                    else
+                        vZipFiles.push_back(zfe);
+                }
+                else
+                {
+                     vZipFiles.push_back(zfe);
+                }
+            }
         }
 
         // Create directories
@@ -4222,6 +4304,42 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
                     return;
                 }
             }
+        }
+
+        // Set start and end offsets for split files
+        // Create map of split files for combining them later
+        splitFilesMap mSplitFiles;
+        if (!vZipFilesSplit.empty())
+        {
+            std::sort(vZipFilesSplit.begin(), vZipFilesSplit.end(), [](const zipFileEntry& i, const zipFileEntry& j) -> bool { return i.filepath < j.filepath; });
+
+            std::string prevBasePath = "";
+            off_t prevEndOffset = 0;
+            for (auto& zfe : vZipFilesSplit)
+            {
+                if (zfe.splitFileBasePath == prevBasePath)
+                    zfe.splitFileStartOffset = prevEndOffset;
+                else
+                    zfe.splitFileStartOffset = 0;
+
+                zfe.splitFileEndOffset = zfe.splitFileStartOffset + zfe.uncomp_size;
+
+                prevBasePath = zfe.splitFileBasePath;
+                prevEndOffset = zfe.splitFileEndOffset;
+
+                if (mSplitFiles.count(zfe.splitFileBasePath) > 0)
+                {
+                    mSplitFiles[zfe.splitFileBasePath].push_back(zfe);
+                }
+                else
+                {
+                    std::vector<zipFileEntry> vec;
+                    vec.push_back(zfe);
+                    mSplitFiles[zfe.splitFileBasePath] = vec;
+                }
+            }
+
+            vZipFiles.insert(std::end(vZipFiles), std::begin(vZipFilesSplit), std::end(vZipFilesSplit));
         }
 
         // Add files to download queue
@@ -4259,11 +4377,137 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
 
         vThreads.clear();
         vDownloadInfo.clear();
+
+        // Combine split files
+        if (!mSplitFiles.empty())
+        {
+            this->galaxyInstallGame_MojoSetupHack_CombineSplitFiles(mSplitFiles, true);
+        }
     }
     else
     {
         std::cout << "No installers found" << std::endl;
     }
+}
+
+void Downloader::galaxyInstallGame_MojoSetupHack_CombineSplitFiles(const splitFilesMap& mSplitFiles, const bool& bAppendToFirst)
+{
+    for (const auto& baseFile : mSplitFiles)
+    {
+        // Check that all parts exist
+        bool bAllPartsExist = true;
+        for (const auto& splitFile : baseFile.second)
+        {
+            if (!boost::filesystem::exists(splitFile.filepath))
+            {
+                bAllPartsExist = false;
+                break;
+            }
+        }
+
+        bool bBaseFileExists = boost::filesystem::exists(baseFile.first);
+
+        if (!bAllPartsExist)
+        {
+            if (bBaseFileExists)
+            {
+                // Base file exist and we're missing parts.
+                // This should mean that we already have complete file.
+                // So we can safely skip this file without informing the user
+                continue;
+            }
+            else
+            {
+                // Base file doesn't exist and we're missing parts. Print message about it before skipping file.
+                std::cout << baseFile.first << " is missing parts. Skipping this file." << std::endl;
+                continue;
+            }
+        }
+
+        // Delete base file if it already exists
+        if (bBaseFileExists)
+        {
+            std::cout << baseFile.first << " already exists. Deleting old file." << std::endl;
+            if (!boost::filesystem::remove(baseFile.first))
+            {
+                std::cout << baseFile.first << ": Failed to delete" << std::endl;
+                continue;
+            }
+        }
+
+        std::cout << "Beginning to combine " << baseFile.first << std::endl;
+        std::ofstream ofs;
+
+        // Create base file for appending if we aren't appending to first part
+        if (!bAppendToFirst)
+        {
+            ofs.open(baseFile.first, std::ios_base::binary | std::ios_base::app);
+            if (!ofs.is_open())
+            {
+                std::cout << "Failed to create " << baseFile.first << std::endl;
+                continue;
+            }
+        }
+
+        for (const auto& splitFile : baseFile.second)
+        {
+            std::cout << "\t" << splitFile.filepath << std::endl;
+
+            // Append to first file is set and current file is first in vector.
+            // Open file for appending and continue to next file
+            if (bAppendToFirst && (&splitFile == &baseFile.second.front()))
+            {
+                ofs.open(splitFile.filepath, std::ios_base::binary | std::ios_base::app);
+                if (!ofs.is_open())
+                {
+                    std::cout << "Failed to open " << splitFile.filepath << std::endl;
+                    break;
+                }
+                continue;
+            }
+
+            std::ifstream ifs(splitFile.filepath, std::ios_base::binary);
+            if (!ifs)
+            {
+                std::cout << "Failed to open " << splitFile.filepath << ". Deleting incomplete file." << std::endl;
+
+                ofs.close();
+                if (!boost::filesystem::remove(baseFile.first))
+                {
+                    std::cout << baseFile.first << ": Failed to delete" << std::endl;
+                }
+                break;
+            }
+
+            ofs << ifs.rdbuf();
+            ifs.close();
+
+            // Delete split file
+            if (!boost::filesystem::remove(splitFile.filepath))
+            {
+                std::cout << splitFile.filepath << ": Failed to delete" << std::endl;
+            }
+        }
+
+        if (ofs)
+            ofs.close();
+
+        // Appending to first file so we must rename it
+        if (bAppendToFirst)
+        {
+            boost::filesystem::path splitFilePath = baseFile.second.front().filepath;
+            boost::filesystem::path baseFilePath = baseFile.first;
+
+            boost::system::error_code ec;
+            boost::filesystem::rename(splitFilePath, baseFilePath, ec);
+            if (ec)
+            {
+                std::cout << "Failed to rename " << splitFilePath.string() << "to " << baseFilePath.string();
+            }
+        }
+    }
+
+    return;
 }
 
 void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid)
@@ -4345,6 +4589,25 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
         }
         else
         {
+            if (zfe.isSplitFile)
+            {
+                if (boost::filesystem::exists(zfe.splitFileBasePath))
+                {
+                    msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file exists. Checking if it is same version.", MSGTYPE_INFO, msg_prefix));
+
+                    std::string crc32 = Util::getFileHashRange(zfe.splitFileBasePath, RHASH_CRC32, zfe.splitFileStartOffset, zfe.splitFileEndOffset);
+                    if (crc32 == Util::formattedString("%08x", zfe.crc32))
+                    {
+                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is same version. Skipping file.", MSGTYPE_INFO, msg_prefix));
+                        continue;
+                    }
+                    else
+                    {
+                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is different version. Continuing to download file.", MSGTYPE_INFO, msg_prefix));
+                    }
+                }
+            }
+
             if (boost::filesystem::exists(path))
             {
                 if (conf.bVerbose)

@@ -70,6 +70,70 @@ std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
     return result;
 }
 
+std::string Util::getFileHashRange(const std::string& filepath, unsigned hash_id, off_t range_start, off_t range_end)
+{
+    char result[rhash_get_hash_length(hash_id) + 1];
+
+    if (!boost::filesystem::exists(filepath))
+        return result;
+
+    off_t filesize = boost::filesystem::file_size(filepath);
+
+    if (range_end == 0 || range_end > filesize)
+        range_end = filesize;
+
+    if (range_end < range_start)
+    {
+        off_t tmp = range_start;
+        range_start = range_end;
+        range_end = tmp;
+    }
+
+    off_t chunk_size = 10 << 20; // 10MB
+    off_t rangesize = range_end - range_start;
+    off_t remaining = rangesize % chunk_size;
+    int chunks = (remaining == 0) ? rangesize/chunk_size : (rangesize/chunk_size)+1;
+
+    rhash rhash_context;
+    rhash_context = rhash_init(hash_id);
+
+    FILE *infile = fopen(filepath.c_str(), "r");
+
+    for (int i = 0; i < chunks; i++)
+    {
+        off_t chunk_begin = range_start + i*chunk_size;
+        fseek(infile, chunk_begin, SEEK_SET);
+        if ((i == chunks-1) && (remaining != 0))
+            chunk_size = remaining;
+
+        unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+        if (chunk == NULL)
+        {
+            std::cerr << "Memory error" << std::endl;
+            fclose(infile);
+            return result;
+        }
+        off_t size = fread(chunk, 1, chunk_size, infile);
+        if (size != chunk_size)
+        {
+            std::cerr << "Read error" << std::endl;
+            free(chunk);
+            fclose(infile);
+            return result;
+        }
+
+        rhash_update(rhash_context, chunk, chunk_size);
+        free(chunk);
+    }
+    fclose(infile);
+
+    rhash_final(rhash_context, NULL);
+    rhash_print(result, rhash_context, hash_id, RHPR_HEX);
+    rhash_free(rhash_context);
+
+    return result;
+}
+
 std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
