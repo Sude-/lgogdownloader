@@ -3,7 +3,7 @@
 [\fIOPTION\fP]...
 
 [description]
-An open-source GOG.com downloader for Linux users which uses the same API as the official GOGDownloader.
+An open-source GOG.com downloader for Linux users which uses the same API as GOG Galaxy.
 .PP
 LGOGDownloader can download purchased games, query GOG.com to see if game files have changed, as well as downloading extras such as artwork and manuals. It is capable of downloading language-specific installers for games where they exist.
 

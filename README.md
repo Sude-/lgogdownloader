@@ -1,6 +1,7 @@
-# GOG Downloader
+# LGOGDownloader
 
-This repository contains the code of unofficial [GOG](http://www.gog.com/) downloader.
+This repository contains the code of LGOGDownloader which is unoffcial open source downloader for [GOG.com](https://www.gog.com/).
+It uses the same API as GOG Galaxy which doesn't have Linux support at the moment.
 
 ## Dependencies
 
@@ -36,9 +37,40 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
     $ make
     # sudo make install
 
-## Use
+## Usage examples
 
-    man lgogdownloader
+- **Login**
+
+        lgogdownloader --login
+
+- **Listing games and details for specific games**
+
+        lgogdownloader --list
+        lgogdownloader --list-details --game witcher
+
+
+- **Downloading files**
+
+        lgogdownloader --download
+        lgogdownloader --download --game stardew_valley --exclude extras
+        lgogdownloader --download --threads 6 --platform linux --language en+de,fr
+        lgogdownloader --download-file tyrian_2000/9543
+
+- **Repairing files**
+
+        lgogdownloader --repair --game beneath_a_steel_sky
+        lgogdownloader --repair --download --game "^a"
+
+- **Using Galaxy API for listing and installing game builds**
+
+        lgogdownloader --galaxy-platform windows --galaxy-show-builds stardew_valley
+        lgogdownloader --galaxy-platform windows --galaxy-install stardew_valley/0
+        lgogdownloader --galaxy-platform windows --galaxy-install beneath_a_steel_sky/0 --galaxy-no-dependencies
+
+- **See man page or help text for more**
+
+        lgogdownloader --help
+        man lgogdownloader
 
 ## Links
 - [LGOGDownloader website](https://sites.google.com/site/gogdownloader/)
@@ -47,3 +79,5 @@ This repository contains the code of unofficial [GOG](http://www.gog.com/) downl
 - [LGOGDownloader @ AUR (git version)](https://aur.archlinux.org/packages/lgogdownloader-git/)
 - [LGOGDownloader @ Debian](https://tracker.debian.org/lgogdownloader)
 - [LGOGDownloader @ Ubuntu](https://launchpad.net/ubuntu/+source/lgogdownloader)
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PT95NXVLQU6WG&source=url)
