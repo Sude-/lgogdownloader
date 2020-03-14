@@ -2865,7 +2865,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
         else
         {
-            msgQueue.push(Message("Download complete (" + static_cast<std::string>(curl_easy_strerror(result)) + "): " + filepath.filename().string(), MSGTYPE_WARNING, msg_prefix));
+            std::string msg = "Download complete (" + static_cast<std::string>(curl_easy_strerror(result));
+            if (response_code > 0)
+                msg += " (" + std::to_string(response_code) + ")";
+            msg += "): " + filepath.filename().string();
+            msgQueue.push(Message(msg, MSGTYPE_WARNING, msg_prefix));
 
             // Delete the file if download failed and was not a resume attempt or the result is zero length file
             if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
