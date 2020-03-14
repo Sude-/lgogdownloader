@@ -3048,8 +3048,25 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
             {
                 bptime::time_duration eta(bptime::seconds((long)(total_remaining / total_rate)));
                 eta += eta_total_seconds;
-                total_eta_str = Util::makeEtaString(eta);
-                total_eta_str = Util::formattedString(" (%0.2fMB) ETA: %s", static_cast<double>(total_remaining)/1024/1024, total_eta_str.c_str());
+                std::string eta_str = Util::makeEtaString(eta);
+
+                double total_remaining_double = static_cast<double>(total_remaining)/1048576;
+                std::string total_remaining_unit = "MB";
+                std::vector<std::string> units = { "GB", "TB", "PB" };
+
+                if (total_remaining_double > 1024)
+                {
+                    for (const auto& unit : units)
+                    {
+                        total_remaining_double /= 1024;
+                        total_remaining_unit = unit;
+
+                        if (total_remaining_double < 1024)
+                            break;
+                    }
+                }
+
+                total_eta_str = Util::formattedString(" (%0.2f%s) ETA: %s", total_remaining_double, total_remaining_unit.c_str(), eta_str.c_str());
             }
 
             std::ostringstream ss;
