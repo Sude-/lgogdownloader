@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
-project (lgogdownloader LANGUAGES C CXX VERSION 3.5)
+project (lgogdownloader LANGUAGES C CXX VERSION 3.6)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(LINK_LIBCRYPTO 0)
