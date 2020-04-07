@@ -2353,7 +2353,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         if (!gogGalaxy->refreshLogin())
         {
             std::cerr << "Galaxy API failed to refresh login" << std::endl;
-            return 0;
+            return 1;
         }
     }
 
@@ -2365,7 +2365,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
     dlConf.bDLC = true;
     dlConf.bDuplicateHandler = false; // Disable duplicate handler
 
-    int res = 0;
+    int res = 1;
     CURLcode result = CURLE_RECV_ERROR; // assume network error
 
     size_t pos = fileid_string.find("/");
@@ -2389,7 +2389,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
             if (product_id.empty())
             {
                 std::cerr << "Failed to get numerical product id" << std::endl;
-                return 0;
+                return 1;
             }
         }
 
@@ -2397,7 +2397,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         if (productInfo.empty())
         {
             std::cerr << "Failed to get product info" << std::endl;
-            return 0;
+            return 1;
         }
 
         gameDetails gd = gogGalaxy->productInfoJsonToGameDetails(productInfo, dlConf);
@@ -2418,7 +2418,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         if (!bFoundMatchingFile)
         {
             std::cerr << "Failed to find file info (product id: " << product_id << " / file id: " << fileid << ")" << std::endl;
-            return 0;
+            return 1;
         }
 
         Json::Value downlinkJson = gogGalaxy->getResponseJson(gf.galaxy_downlink_json_url);
@@ -2426,7 +2426,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         if (downlinkJson.empty())
         {
             std::cerr << "Empty JSON response" << std::endl;
-            return 0;
+            return 1;
         }
 
         if (downlinkJson.isMember("downlink"))
@@ -2436,7 +2436,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         else
         {
             std::cerr << "Invalid JSON response" << std::endl;
-            return 0;
+            return 1;
         }
 
         std::string xml_url;
@@ -2469,7 +2469,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
     }
 
     if (result == CURLE_OK)
-        res = 1;
+        res = 0;
 
     return res;
 }
