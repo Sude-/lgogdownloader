@@ -2778,8 +2778,12 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         std::string url = downlinkJson["downlink"].asString();
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
+        long int response_code = 0;
+        bool bShouldRetry = false;
         do
         {
+            response_code = 0; // Make sure that response code is reset
+
             if (iRetryCount != 0)
                 msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
 
@@ -2820,20 +2824,36 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             result = curl_easy_perform(dlhandle);
             fclose(outfile);
 
-            if (result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR)
+            switch (result)
+            {
+                // Retry on these errors
+                case CURLE_PARTIAL_FILE:
+                case CURLE_OPERATION_TIMEDOUT:
+                case CURLE_RECV_ERROR:
+                    bShouldRetry = true;
+                    break;
+                // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "416 Range Not Satisfiable"
+                case CURLE_HTTP_RETURNED_ERROR:
+                    curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                    if (response_code == 416)
+                        bShouldRetry = false;
+                    else
+                        bShouldRetry = true;
+                    break;
+                default:
+                    bShouldRetry = false;
+                    break;
+            }
+
+            if (bShouldRetry)
             {
                 iRetryCount++;
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                     bResume = true;
             }
 
-        } while ((result == CURLE_PARTIAL_FILE || result == CURLE_OPERATION_TIMEDOUT || result == CURLE_RECV_ERROR) && (iRetryCount <= conf.iRetries));
+        } while (bShouldRetry && (iRetryCount <= conf.iRetries));
 
-        long int response_code = 0;
-        if (result == CURLE_HTTP_RETURNED_ERROR)
-        {
-            curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-        }
         if (result == CURLE_OK || result == CURLE_RANGE_ERROR || (result == CURLE_HTTP_RETURNED_ERROR && response_code == 416))
         {
             // Set timestamp for downloaded file to same value as file on server
