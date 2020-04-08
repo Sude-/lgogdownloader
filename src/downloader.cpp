@@ -2384,13 +2384,12 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         fileid.assign(fileid_string.begin()+pos+1, fileid_string.end());
 
         std::string product_id;
-        if(this->galaxySelectProductIdHelper(gamename, product_id))
+        bool bSelectOK = this->galaxySelectProductIdHelper(gamename, product_id);
+
+        if (!bSelectOK || product_id.empty())
         {
-            if (product_id.empty())
-            {
-                std::cerr << "Failed to get numerical product id" << std::endl;
-                return 1;
-            }
+            std::cerr << "Failed to get numerical product id" << std::endl;
+            return 1;
         }
 
         Json::Value productInfo = gogGalaxy->getProductInfo(product_id);
