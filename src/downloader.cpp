@@ -2782,6 +2782,9 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         bool bShouldRetry = false;
         do
         {
+            if (conf.iWait > 0)
+                usleep(conf.iWait); // Wait before continuing
+
             response_code = 0; // Make sure that response code is reset
 
             if (iRetryCount != 0)
