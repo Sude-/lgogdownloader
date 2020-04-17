@@ -246,6 +246,7 @@ int Downloader::login()
 {
     std::string email;
     std::string password;
+    bool headless = false;
 
     if (!Globals::globalConfig.sEmail.empty() && !Globals::globalConfig.sPassword.empty())
     {
@@ -256,12 +257,14 @@ int Downloader::login()
     {
         if (!isatty(STDIN_FILENO)) {
             /* Attempt to read this stuff from elsewhere */
-            bool cookie_gone = boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath);
-            bool tokens_gone = boost::filesystem::exists(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
+            bool cookie_gone = !(boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath));
+            bool tokens_gone = !(boost::filesystem::exists(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json"));
+            std::cout << Globals::globalConfig.curlConf.sCookiePath << std::endl;
+            std::cout << (Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json") << std::endl;
             if(cookie_gone || tokens_gone) {
                 std::cerr << "Unable to read email and password" << std::endl;
                 return 0;
-            }
+            } else headless = true;
         } else {
             std::cerr << "Email: ";
             std::getline(std::cin,email);
@@ -278,7 +281,7 @@ int Downloader::login()
         }
     }
 
-    if (email.empty() || password.empty())
+    if ((email.empty() || password.empty()) && !headless)
     {
         std::cerr << "Email and/or password empty" << std::endl;
         return 0;
