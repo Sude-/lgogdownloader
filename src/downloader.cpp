@@ -2331,6 +2331,22 @@ void Downloader::saveChangelog(const std::string& changelog, const std::string& 
         }
     }
 
+    // Check if changelog matches current changelog
+    if (boost::filesystem::exists(filepath))
+    {
+        std::ifstream ifs(filepath);
+        if (ifs)
+        {
+            std::string current_changelog((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            ifs.close();
+            if (changelog == current_changelog)
+            {
+                std::cout << "Changelog unchanged. Skipping: " << filepath << std::endl;
+                return;
+            }
+        }
+    }
+
     std::ofstream ofs(filepath);
     if (ofs)
     {
