@@ -732,3 +732,119 @@ std::string Util::makeEtaString(const boost::posix_time::time_duration& duration
 
     return etastr;
 }
+
+void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
+{
+    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, conf.sUserAgent.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
+    curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
+    curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, conf.sCookiePath.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, conf.sCookiePath.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
+    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, conf.bVerbose);
+    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.iDownloadRate);
+
+    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, conf.iLowSpeedTimeout);
+    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.iLowSpeedTimeoutRate);
+
+    if (!conf.sCACertPath.empty())
+        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, conf.sCACertPath.c_str());
+}
+
+CURLcode Util::CurlGetResponse(const std::string& url, std::string& response, int max_retries)
+{
+    CURLcode result;
+    CURL *handle = curl_easy_init();
+    Util::CurlHandleSetDefaultOptions(handle, Globals::globalConfig.curlConf);
+    curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
+
+    result = Util::CurlHandleGetResponse(handle, response, max_retries);
+
+    curl_easy_cleanup(handle);
+
+    return result;
+}
+
+CURLcode Util::CurlHandleGetResponse(CURL* curlhandle, std::string& response, int max_retries)
+{
+    CURLcode result;
+    int retries = 0;
+    std::ostringstream memory;
+    bool bShouldRetry = false;
+    long int response_code = 0;
+    if (max_retries < 0)
+        max_retries = Globals::globalConfig.iRetries;
+
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+
+    do
+    {
+        if (bShouldRetry)
+            retries++;
+
+        if (Globals::globalConfig.iWait > 0)
+            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
+        result = curl_easy_perform(curlhandle);
+        response = memory.str();
+        memory.str(std::string());
+
+        switch (result)
+        {
+            // Retry on these errors
+            case CURLE_PARTIAL_FILE:
+            case CURLE_OPERATION_TIMEDOUT:
+            case CURLE_RECV_ERROR:
+                bShouldRetry = true;
+                break;
+            // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "404 Not Found"
+            case CURLE_HTTP_RETURNED_ERROR:
+                curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                if (response_code == 404)
+                    bShouldRetry = false;
+                else
+                    bShouldRetry = true;
+                break;
+            default:
+                bShouldRetry = false;
+                break;
+        }
+        if (retries >= max_retries)
+            bShouldRetry = false;
+    } while (bShouldRetry);
+
+    return result;
+}
+
+curl_off_t Util::CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp)
+{
+    std::ostringstream *stream = (std::ostringstream*)userp;
+    std::streamsize count = (std::streamsize) size * nmemb;
+    stream->write(ptr, count);
+    return count;
+}
+
+curl_off_t Util::CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp)
+{
+    curl_off_t realsize = size * nmemb;
+    ChunkMemoryStruct *mem = (ChunkMemoryStruct *)userp;
+
+    mem->memory = (char *) realloc(mem->memory, mem->size + realsize + 1);
+    if(mem->memory == NULL)
+    {
+        std::cout << "Not enough memory (realloc returned NULL)" << std::endl;
+        return 0;
+    }
+
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+
+    return realsize;
+}

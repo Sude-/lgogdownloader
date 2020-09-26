@@ -27,6 +27,7 @@
 #include "threadsafequeue.h"
 #include "galaxyapi.h"
 #include "globals.h"
+#include "util.h"
 
 #include <curl/curl.h>
 #include <json/json.h>
@@ -58,12 +59,6 @@ struct xferInfo
     Timer timer;
     std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
     curl_off_t offset;
-};
-
-struct ChunkMemoryStruct
-{
-    char *memory;
-    curl_off_t size;
 };
 
 typedef struct
@@ -142,7 +137,6 @@ class Downloader
         static void getGameDetailsThread(Config config, const unsigned int& tid);
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-        static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 

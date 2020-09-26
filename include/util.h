@@ -23,6 +23,13 @@
 #include <boost/regex.hpp>
 #include <json/json.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <curl/curl.h>
+
+typedef struct
+{
+    char *memory;
+    curl_off_t size;
+} ChunkMemoryStruct;
 
 struct gameItem
 {
@@ -77,6 +84,11 @@ namespace Util
     std::string getStrippedString(std::string str);
     std::string makeEtaString(const unsigned long long& iBytesRemaining, const double& dlRate);
     std::string makeEtaString(const boost::posix_time::time_duration& duration);
+    void CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf);
+    CURLcode CurlGetResponse(const std::string& url, std::string& response, int max_retries = -1);
+    CURLcode CurlHandleGetResponse(CURL* curlhandle, std::string& response, int max_retries = -1);
+    curl_off_t CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp);
+    curl_off_t CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {

@@ -50,25 +50,6 @@ ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 std::atomic<unsigned long long> iTotalRemainingBytes(0);
 
-static curl_off_t WriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp)
-{
-    curl_off_t realsize = size * nmemb;
-    struct ChunkMemoryStruct *mem = (struct ChunkMemoryStruct *)userp;
-
-    mem->memory = (char *) realloc(mem->memory, mem->size + realsize + 1);
-    if(mem->memory == NULL)
-    {
-        std::cout << "Not enough memory (realloc returned NULL)" << std::endl;
-        return 0;
-    }
-
-    memcpy(&(mem->memory[mem->size]), contents, realsize);
-    mem->size += realsize;
-    mem->memory[mem->size] = 0;
-
-    return realsize;
-}
-
 Downloader::Downloader()
 {
     if (Globals::globalConfig.bLogin)
@@ -86,26 +67,13 @@ Downloader::Downloader()
 
     // Initialize curl and set curl options
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.curlConf.sUserAgent.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
-    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
-    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, Globals::globalConfig.curlConf.iDownloadRate);
+    Util::CurlHandleSetDefaultOptions(curlhandle, Globals::globalConfig.curlConf);
     curl_easy_setopt(curlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallback);
     curl_easy_setopt(curlhandle, CURLOPT_XFERINFODATA, this);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
+    curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, Downloader::readData);
 
-    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, Globals::globalConfig.curlConf.iLowSpeedTimeout);
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, Globals::globalConfig.curlConf.iLowSpeedTimeoutRate);
 
-    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
-        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
 
     // Create new GOG website handle
     gogWebsite = new Website();
@@ -1513,21 +1481,9 @@ std::string Downloader::getResponse(const std::string& url)
     std::string response;
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeMemoryCallback);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
 
-    CURLcode result;
-    do
-    {
-        if (Globals::globalConfig.iWait > 0)
-            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
-        result = curl_easy_perform(curlhandle);
-        response = memory.str();
-        memory.str(std::string());
-    }
-    while ((result != CURLE_OK) && response.empty() && (this->retries++ < Globals::globalConfig.iRetries));
-    this->retries = 0; // reset retries counter
+    int max_retries = std::min(3, Globals::globalConfig.iRetries);
+    CURLcode result = Util::CurlHandleGetResponse(curlhandle, response, max_retries);
 
     curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
@@ -1643,13 +1599,6 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
     }
 
     return 0;
-}
-
-size_t Downloader::writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp) {
-    std::ostringstream *stream = (std::ostringstream*)userp;
-    size_t count = size * nmemb;
-    stream->write(ptr, count);
-    return count;
 }
 
 size_t Downloader::writeData(void *ptr, size_t size, size_t nmemb, FILE *stream)
@@ -2552,26 +2501,11 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     }
 
     CURL* dlhandle = curl_easy_init();
-    curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
+    Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
-
-    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
-    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.curlConf.bVerbose);
     curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
     curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
-
-    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, conf.curlConf.iLowSpeedTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.curlConf.iLowSpeedTimeoutRate);
-
-    if (!conf.curlConf.sCACertPath.empty())
-        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
 
     xferInfo xferinfo;
     xferinfo.tid = tid;
@@ -2804,6 +2738,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
         long int response_code = 0;
         bool bShouldRetry = false;
+        std::string retry_reason;
         do
         {
             if (conf.iWait > 0)
@@ -2812,7 +2747,13 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             response_code = 0; // Make sure that response code is reset
 
             if (iRetryCount != 0)
-                msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
+            {
+                std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string();
+                if (!retry_reason.empty())
+                    retry_msg += " (" + retry_reason + ")";
+                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+            }
+            retry_reason = ""; // reset retry reason
 
             FILE* outfile;
             // File exists, resume
@@ -2875,6 +2816,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (bShouldRetry)
             {
                 iRetryCount++;
+                retry_reason = std::string(curl_easy_strerror(result));
                 if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
                     bResume = true;
             }
@@ -3649,26 +3591,11 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
     }
 
     CURL* dlhandle = curl_easy_init();
-    curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
+    Util::CurlHandleSetDefaultOptions(dlhandle, Globals::globalConfig.curlConf);
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
-
-    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
-    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.curlConf.bVerbose);
     curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
     curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
-
-    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, conf.curlConf.iLowSpeedTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.curlConf.iLowSpeedTimeoutRate);
-
-    if (!conf.curlConf.sCACertPath.empty())
-        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
 
     xferInfo xferinfo;
     xferinfo.tid = tid;
@@ -3829,10 +3756,6 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         std::time_t timestamp = -1;
         for (unsigned int j = start_chunk; j < item.chunks.size(); ++j)
         {
-            ChunkMemoryStruct chunk;
-            chunk.memory = (char *) malloc(1);
-            chunk.size = 0;
-
             // Refresh Galaxy login if token is expired
             if (galaxy->isTokenExpired())
             {
@@ -3840,7 +3763,6 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 {
                     msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
                     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-                    free(chunk.memory);
                     delete galaxy;
                     return;
                 }
@@ -3857,7 +3779,6 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 bChunkFailure = true;
                 std::string error_message = path.string() + ": Empty JSON response (product: " + item.product_id + ", chunk #"+ std::to_string(j) + ": " + item.chunks[j].md5_compressed + ")";
                 msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix));
-                free(chunk.memory);
                 break;
             }
 
@@ -3925,7 +3846,6 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             {
                 bChunkFailure = true;
                 msgQueue.push(Message(path.string() + ": Failed to get download url", MSGTYPE_ERROR, msg_prefix));
-                free(chunk.memory);
                 break;
             }
 
@@ -3940,25 +3860,78 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             // Select url with lowest priority score
             std::string url = cdnUrls[0].url;
 
+            ChunkMemoryStruct chunk;
+            chunk.memory = (char *) malloc(1);
+            chunk.size = 0;
+
             curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
             curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
-            curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, WriteChunkMemoryCallback);
+            curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteChunkMemoryCallback);
             curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, &chunk);
             curl_easy_setopt(dlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallbackForThread);
             curl_easy_setopt(dlhandle, CURLOPT_XFERINFODATA, &xferinfo);
             curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
+            curl_easy_setopt(dlhandle, CURLOPT_RESUME_FROM_LARGE, 0);
 
             std::string filepath_and_chunk = path.string() + " (chunk " + std::to_string(j + 1) + "/" + std::to_string(item.chunks.size()) + ")";
             vDownloadInfo[tid].setFilename(filepath_and_chunk);
 
-            if (Globals::globalConfig.iWait > 0)
-                usleep(Globals::globalConfig.iWait); // Delay the request by specified time
+            CURLcode result;
+            int iRetryCount = 0;
+            long int response_code = 0;
+            bool bShouldRetry = false;
+            std::string retry_reason;
+            do
+            {
+                if (Globals::globalConfig.iWait > 0)
+                    usleep(Globals::globalConfig.iWait); // Delay the request by specified time
 
-            xferinfo.offset = 0;
-            xferinfo.timer.reset();
-            xferinfo.TimeAndSize.clear();
+                response_code = 0; // Make sure that response code is reset
 
-            CURLcode result = curl_easy_perform(dlhandle);
+                if (iRetryCount != 0)
+                {
+                    std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath_and_chunk;
+                    if (!retry_reason.empty())
+                        retry_msg += " (" + retry_reason + ")";
+                    msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+
+                    curl_easy_setopt(dlhandle, CURLOPT_RESUME_FROM_LARGE, chunk.size);
+                }
+                retry_reason = ""; // reset retry reason
+
+                xferinfo.offset = chunk.size;
+                xferinfo.timer.reset();
+                xferinfo.TimeAndSize.clear();
+                result = curl_easy_perform(dlhandle);
+
+                switch (result)
+                {
+                    // Retry on these errors
+                    case CURLE_PARTIAL_FILE:
+                    case CURLE_OPERATION_TIMEDOUT:
+                    case CURLE_RECV_ERROR:
+                        bShouldRetry = true;
+                        break;
+                    // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "416 Range Not Satisfiable"
+                    case CURLE_HTTP_RETURNED_ERROR:
+                        curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                        if (response_code == 416)
+                            bShouldRetry = false;
+                        else
+                            bShouldRetry = true;
+                        break;
+                    default:
+                        bShouldRetry = false;
+                        break;
+                }
+
+                if (bShouldRetry)
+                {
+                    iRetryCount++;
+                    retry_reason = std::string(curl_easy_strerror(result));
+                }
+
+            } while (bShouldRetry && (iRetryCount <= conf.iRetries));
 
             curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
             curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
@@ -4277,7 +4250,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
                 std::stringstream splitfiles_uncompressed;
 
                 CURLcode result = CURLE_RECV_ERROR;
-                curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+                curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
                 curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &splitfiles_compressed);
                 curl_easy_setopt(curlhandle, CURLOPT_RANGE, dlrange.c_str());
                 result = curl_easy_perform(curlhandle);
@@ -4581,26 +4554,11 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
     CURL* dlhandle = curl_easy_init();
-    curl_easy_setopt(dlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(dlhandle, CURLOPT_USERAGENT, conf.curlConf.sUserAgent.c_str());
+    Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(dlhandle, CURLOPT_NOSIGNAL, 1);
-
-    curl_easy_setopt(dlhandle, CURLOPT_CONNECTTIMEOUT, conf.curlConf.iTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(dlhandle, CURLOPT_SSL_VERIFYPEER, conf.curlConf.bVerifyPeer);
-    curl_easy_setopt(dlhandle, CURLOPT_VERBOSE, conf.curlConf.bVerbose);
     curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Downloader::writeData);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Downloader::readData);
-    curl_easy_setopt(dlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.curlConf.iDownloadRate);
     curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
-
-    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_TIME, conf.curlConf.iLowSpeedTimeout);
-    curl_easy_setopt(dlhandle, CURLOPT_LOW_SPEED_LIMIT, conf.curlConf.iLowSpeedTimeoutRate);
-
-    if (!conf.curlConf.sCACertPath.empty())
-        curl_easy_setopt(dlhandle, CURLOPT_CAINFO, conf.curlConf.sCACertPath.c_str());
 
     xferInfo xferinfo;
     xferinfo.tid = tid;
@@ -4743,7 +4701,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             std::string link_target;
 
             CURLcode result = CURLE_RECV_ERROR;
-            curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+            curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
             curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, &symlink_compressed);
             curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
 
@@ -4826,7 +4784,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
 
                 std::stringstream data_compressed;
                 vDownloadInfo[tid].setFilename(path.string());
-                curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+                curl_easy_setopt(dlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
                 curl_easy_setopt(dlhandle, CURLOPT_WRITEDATA, &data_compressed);
                 curl_easy_setopt(dlhandle, CURLOPT_RANGE, dlrange.c_str());
 
@@ -5111,7 +5069,7 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
     std::stringstream head;
     curl_easy_setopt(curlhandle, CURLOPT_URL, installer_url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &head);
     curl_easy_setopt(curlhandle, CURLOPT_RANGE, head_range.c_str());
     result = curl_easy_perform(curlhandle);
@@ -5142,7 +5100,7 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
     // Get tail
     std::stringstream tail;
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &tail);
     curl_easy_setopt(curlhandle, CURLOPT_RANGE, tail_range.c_str());
     result = curl_easy_perform(curlhandle);
@@ -5186,7 +5144,7 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
         tail.str(std::string());
         tail_range = std::to_string(mojosetup_cd_offset) + "-" + std::to_string(file_size);
         curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, writeMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
         curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &tail);
         curl_easy_setopt(curlhandle, CURLOPT_RANGE, tail_range.c_str());
         result = curl_easy_perform(curlhandle);

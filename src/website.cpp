@@ -19,24 +19,7 @@ Website::Website()
     this->retries = 0;
 
     curlhandle = curl_easy_init();
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, Globals::globalConfig.curlConf.sUserAgent.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, Globals::globalConfig.curlConf.iTimeout);
-    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, Globals::globalConfig.curlConf.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, Globals::globalConfig.curlConf.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, Globals::globalConfig.curlConf.bVerifyPeer);
-    curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, Globals::globalConfig.curlConf.bVerbose);
-    curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, Globals::globalConfig.curlConf.iDownloadRate);
-
-    // Assume that we have connection error and abort transfer with CURLE_OPERATION_TIMEDOUT if download speed is less than 200 B/s for 30 seconds
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_TIME, 30);
-    curl_easy_setopt(curlhandle, CURLOPT_LOW_SPEED_LIMIT, 200);
-
-    if (!Globals::globalConfig.curlConf.sCACertPath.empty())
-        curl_easy_setopt(curlhandle, CURLOPT_CAINFO, Globals::globalConfig.curlConf.sCACertPath.c_str());
+    Util::CurlHandleSetDefaultOptions(curlhandle, Globals::globalConfig.curlConf);
 }
 
 Website::~Website()
@@ -44,34 +27,14 @@ Website::~Website()
     curl_easy_cleanup(curlhandle);
 }
 
-size_t Website::writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp)
-{
-    std::ostringstream *stream = (std::ostringstream*)userp;
-    size_t count = size * nmemb;
-    stream->write(ptr, count);
-    return count;
-}
-
 std::string Website::getResponse(const std::string& url)
 {
-    std::ostringstream memory;
     std::string response;
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
+    int max_retries = std::min(3, Globals::globalConfig.iRetries);
 
-    CURLcode result;
-    do
-    {
-        if (Globals::globalConfig.iWait > 0)
-            usleep(Globals::globalConfig.iWait); // Delay the request by specified time
-        result = curl_easy_perform(curlhandle);
-        response = memory.str();
-        memory.str(std::string());
-    }
-    while ((result != CURLE_OK) && response.empty() && (this->retries++ < Globals::globalConfig.iRetries));
-    this->retries = 0; // reset retries counter
+    CURLcode result = Util::CurlHandleGetResponse(curlhandle, response, max_retries);
 
     if (result != CURLE_OK)
     {
@@ -373,7 +336,7 @@ int Website::Login(const std::string& email, const std::string& password)
         curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login_check");
         curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
         curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
-        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
         curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
         curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
         curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
@@ -443,7 +406,7 @@ int Website::Login(const std::string& email, const std::string& password)
             curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
             curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
             curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
-            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
+            curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
             curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
             curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
             curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, 0);
@@ -597,7 +560,7 @@ bool Website::IsloggedInSimple()
 
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
-    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Website::writeMemoryCallback);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &memory);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
     curl_easy_perform(curlhandle);

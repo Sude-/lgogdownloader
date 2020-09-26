@@ -27,7 +27,6 @@ class Website
         virtual ~Website();
     protected:
     private:
-        static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         CURL* curlhandle;
         bool IsloggedInSimple();
         bool IsLoggedInComplex(const std::string& email);
