@@ -332,6 +332,9 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
         Json::Value infoNode = json[i];
         unsigned int iFiles = infoNode["files"].size();
         std::string name = infoNode["name"].asString();
+        std::string version = "";
+        if (!infoNode["version"].empty())
+            version = infoNode["version"].asString();
 
         unsigned int iPlatform = GlobalConstants::PLATFORM_WINDOWS;
         unsigned int iLanguage = GlobalConstants::LANGUAGE_EN;
@@ -368,6 +371,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);
             gf.updated = 0; // assume not updated
             gf.galaxy_downlink_json_url = downlink;
+            gf.version = version;
 
             if (!(type & GFTYPE_EXTRA))
             {

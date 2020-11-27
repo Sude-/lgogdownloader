@@ -12,7 +12,7 @@
 
 namespace GlobalConstants
 {
-    const int GAMEDETAILS_CACHE_VERSION = 3;
+    const int GAMEDETAILS_CACHE_VERSION = 4;
     const int ZLIB_WINDOW_SIZE = 15;
 
     struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};

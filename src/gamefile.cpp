@@ -12,6 +12,7 @@ gameFile::gameFile()
     this->language = GlobalConstants::LANGUAGE_EN;
     this->silent = 0;
     this->type = 0;
+    this->version = "";
 }
 
 gameFile::~gameFile()
@@ -44,6 +45,8 @@ Json::Value gameFile::getAsJson()
     json["gamename"] = this->gamename;
     json["type"] = this->type;
     json["galaxy_downlink_json_url"] = this->galaxy_downlink_json_url;
+    if (!this->version.empty())
+        json["version"] = this->version;
 
     return json;
 }

@@ -510,6 +510,7 @@ int Downloader::listGames()
                                 << "\tsize: " << games[i].installers[j].size << std::endl
                                 << "\tupdated: " << (games[i].installers[j].updated ? "True" : "False") << std::endl
                                 << "\tlanguage: " << languages << std::endl
+                                << "\tversion: " << games[i].installers[j].version << std::endl
                                 << std::endl;
                 }
             }
@@ -556,6 +557,7 @@ int Downloader::listGames()
                                 << "\tsize: " << games[i].patches[j].size << std::endl
                                 << "\tupdated: " << (games[i].patches[j].updated ? "True" : "False") << std::endl
                                 << "\tlanguage: " << languages << std::endl
+                                << "\tversion: " << games[i].patches[j].version << std::endl
                                 << std::endl;
                 }
             }
@@ -608,6 +610,7 @@ int Downloader::listGames()
                                     << "\tpath: " << games[i].dlcs[j].installers[k].path << std::endl
                                     << "\tsize: " << games[i].dlcs[j].installers[k].size << std::endl
                                     << "\tupdated: " << (games[i].dlcs[j].installers[k].updated ? "True" : "False") << std::endl
+                                    << "\tversion: " << games[i].dlcs[j].installers[k].version << std::endl
                                     << std::endl;
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].patches.size(); ++k)
@@ -625,6 +628,7 @@ int Downloader::listGames()
                                     << "\tname: " << games[i].dlcs[j].patches[k].name << std::endl
                                     << "\tpath: " << games[i].dlcs[j].patches[k].path << std::endl
                                     << "\tsize: " << games[i].dlcs[j].patches[k].size << std::endl
+                                    << "\tversion: " << games[i].dlcs[j].patches[k].version << std::endl
                                     << std::endl;
                     }
                     for (unsigned int k = 0; k < games[i].dlcs[j].extras.size(); ++k)
@@ -2162,6 +2166,8 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                         fileDetails.gamename = fileDetailsNode["gamename"].asString();
                         fileDetails.type = fileDetailsNode["type"].asUInt();
                         fileDetails.galaxy_downlink_json_url = fileDetailsNode["galaxy_downlink_json_url"].asString();
+                        if (!fileDetailsNode["version"].empty())
+                            fileDetails.version = fileDetailsNode["version"].asString();
 
                         if (nodeName != "extras" && !(fileDetails.platform & conf.dlConf.iInstallerPlatform))
                             continue;
