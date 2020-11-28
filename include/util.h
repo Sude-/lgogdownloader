@@ -84,6 +84,7 @@ namespace Util
     std::string getStrippedString(std::string str);
     std::string makeEtaString(const unsigned long long& iBytesRemaining, const double& dlRate);
     std::string makeEtaString(const boost::posix_time::time_duration& duration);
+    std::string CurlHandleGetInfoString(CURL* curlhandle, CURLINFO info);
     void CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf);
     CURLcode CurlGetResponse(const std::string& url, std::string& response, int max_retries = -1);
     CURLcode CurlHandleGetResponse(CURL* curlhandle, std::string& response, int max_retries = -1);
