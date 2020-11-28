@@ -354,12 +354,9 @@ int Website::Login(const std::string& email, const std::string& password)
                 std::cout << curl_easy_strerror(result) << std::endl;
         }
 
-        // Get redirect url
-        char *redirect_url;
-        curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
-
         // Handle two step authorization
-        if (std::string(redirect_url).find("two_step") != std::string::npos)
+        std::string redirect_url = Util::CurlHandleGetInfoString(curlhandle, CURLINFO_REDIRECT_URL);
+        if (redirect_url.find("two_step") != std::string::npos)
         {
             std::string security_code;
             std::string tagname_two_step_send = "second_step_authentication[send]";
@@ -370,7 +367,7 @@ int Website::Login(const std::string& email, const std::string& password)
             std::string tagname_two_step_token;
             std::string token_two_step;
             std::string two_step_html = this->getResponse(redirect_url);
-            redirect_url = NULL;
+            redirect_url = "";
 
             tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
             tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
@@ -416,26 +413,25 @@ int Website::Login(const std::string& email, const std::string& password)
             curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 0);
             result = curl_easy_perform(curlhandle);
             memory.str(std::string());
-            curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+            redirect_url = Util::CurlHandleGetInfoString(curlhandle, CURLINFO_REDIRECT_URL);
         }
 
-        if (!std::string(redirect_url).empty())
+        if (!redirect_url.empty())
         {
             long response_code;
             do
             {
-                curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+                curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url.c_str());
                 result = curl_easy_perform(curlhandle);
                 memory.str(std::string());
 
                 result = curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
                 if ((response_code / 100) == 3)
-                    curl_easy_getinfo(curlhandle, CURLINFO_REDIRECT_URL, &redirect_url);
+                    redirect_url = Util::CurlHandleGetInfoString(curlhandle, CURLINFO_REDIRECT_URL);
 
-                std::string redir_url = std::string(redirect_url);
                 boost::regex re(".*code=(.*?)([\?&].*|$)", boost::regex_constants::icase);
                 boost::match_results<std::string::const_iterator> what;
-                if (boost::regex_search(redir_url, what, re))
+                if (boost::regex_search(redirect_url, what, re))
                 {
                     auth_code = what[1];
                     if (!auth_code.empty())
@@ -444,7 +440,7 @@ int Website::Login(const std::string& email, const std::string& password)
             } while (result == CURLE_OK && (response_code / 100) == 3);
         }
 
-        curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url);
+        curl_easy_setopt(curlhandle, CURLOPT_URL, redirect_url.c_str());
         curl_easy_setopt(curlhandle, CURLOPT_HTTPGET, 1);
         curl_easy_setopt(curlhandle, CURLOPT_MAXREDIRS, -1);
         curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);

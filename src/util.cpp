@@ -756,6 +756,12 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
         curl_easy_setopt(curlhandle, CURLOPT_CAINFO, conf.sCACertPath.c_str());
 }
 
+std::string Util::CurlHandleGetInfoString(CURL* curlhandle, CURLINFO info)
+{
+    char* str;
+    return (curl_easy_getinfo(curlhandle, info, &str) == CURLE_OK) ? str : "";
+}
+
 CURLcode Util::CurlGetResponse(const std::string& url, std::string& response, int max_retries)
 {
     CURLcode result;
