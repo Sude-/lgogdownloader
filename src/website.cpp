@@ -270,7 +270,7 @@ int Website::Login(const std::string& email, const std::string& password)
         std::cerr << "DEBUG INFO (Website::Login)" << std::endl;
         std::cerr << login_form_html << std::endl;
     #endif
-    if (login_form_html.find("google.com/recaptcha") != std::string::npos)
+    if (login_form_html.find("class=\"g-recaptcha form__recaptcha\"") != std::string::npos)
     {
         bRecaptcha = true;
         #ifndef USE_QT_GUI_LOGIN
