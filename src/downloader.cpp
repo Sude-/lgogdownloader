@@ -2804,6 +2804,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 case CURLE_PARTIAL_FILE:
                 case CURLE_OPERATION_TIMEDOUT:
                 case CURLE_RECV_ERROR:
+                case CURLE_SSL_CONNECT_ERROR:
                     bShouldRetry = true;
                     break;
                 // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "416 Range Not Satisfiable"
