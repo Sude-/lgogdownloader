@@ -291,7 +291,7 @@ int Downloader::login()
             }
         }
     }
-    return 0;
+    return 1;
 }
 
 void Downloader::checkNotifications()
