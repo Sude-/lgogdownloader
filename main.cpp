@@ -597,11 +597,13 @@ int main(int argc, char *argv[])
     int iLoginTries = 0;
     bool bLoginOK = false;
 
-    // Login because --login, --login-api or --login-website was used
+    // Login because --login was used
     if (Globals::globalConfig.bLogin)
         bLoginOK = downloader.login();
 
     bool bIsLoggedin = downloader.isLoggedIn();
+    if (!bIsLoggedin)
+        Globals::globalConfig.bLogin = true;
 
     // Login because we are not logged in
     while (iLoginTries++ < Globals::globalConfig.iRetries && !bIsLoggedin)

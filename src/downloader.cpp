@@ -133,19 +133,13 @@ Downloader::~Downloader()
 bool Downloader::isLoggedIn()
 {
     bool bIsLoggedIn = false;
-    Globals::globalConfig.bLogin= false;
-
     bool bWebsiteIsLoggedIn = gogWebsite->IsLoggedIn();
-    if (!bWebsiteIsLoggedIn)
-        Globals::globalConfig.bLogin = true;
-
     bool bGalaxyIsLoggedIn = !gogGalaxy->isTokenExpired();
+
     if (!bGalaxyIsLoggedIn)
     {
         if (gogGalaxy->refreshLogin())
             bGalaxyIsLoggedIn = true;
-        else
-            Globals::globalConfig.bLogin = true;
     }
 
     if (bWebsiteIsLoggedIn && bGalaxyIsLoggedIn)
