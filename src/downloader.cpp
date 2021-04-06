@@ -1152,7 +1152,14 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
         if (result == CURLE_OK && filetime >= 0)
         {
             std::time_t timestamp = (std::time_t)filetime;
-            boost::filesystem::last_write_time(filepath, timestamp);
+            try
+            {
+                boost::filesystem::last_write_time(filepath, timestamp);
+            }
+            catch(const boost::filesystem::filesystem_error& e)
+            {
+                std::cerr << e.what() << std::endl;
+            }
         }
     }
     curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
@@ -1457,7 +1464,14 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
     if (result == CURLE_OK && filetime >= 0)
     {
         std::time_t timestamp = (std::time_t)filetime;
-        boost::filesystem::last_write_time(filepath, timestamp);
+        try
+        {
+            boost::filesystem::last_write_time(filepath, timestamp);
+        }
+        catch(const boost::filesystem::filesystem_error& e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
     }
     curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
 
@@ -2832,7 +2846,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (res == CURLE_OK && filetime >= 0)
             {
                 std::time_t timestamp = (std::time_t)filetime;
-                boost::filesystem::last_write_time(filepath, timestamp);
+                try
+                {
+                    boost::filesystem::last_write_time(filepath, timestamp);
+                }
+                catch(const boost::filesystem::filesystem_error& e)
+                {
+                    msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                }
             }
 
             // Average download speed
@@ -3982,7 +4003,16 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
         // Set timestamp for downloaded file to same value as file on server
         if (boost::filesystem::exists(path) && timestamp >= 0)
-            boost::filesystem::last_write_time(path, timestamp);
+        {
+            try
+            {
+                boost::filesystem::last_write_time(path, timestamp);
+            }
+            catch(const boost::filesystem::filesystem_error& e)
+            {
+                msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+            }
+        }
 
         msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix));
     }
@@ -4857,7 +4887,16 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
 
                     // Set timestamp
                     if (zfe.timestamp > 0)
-                        boost::filesystem::last_write_time(path, zfe.timestamp);
+                    {
+                        try
+                        {
+                            boost::filesystem::last_write_time(path, zfe.timestamp);
+                        }
+                        catch(const boost::filesystem::filesystem_error& e)
+                        {
+                            msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                        }
+                    }
                 }
             }
             else // Use temporary file for bigger files
@@ -4926,9 +4965,12 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 {
                     // Extract file
                     int res = ZipUtil::extractFile(path_tmp.string(), path.string());
+                    bool bFailed = false;
                     if (res != 0)
                     {
+                        bFailed = true;
                         std::string msg = "Extraction failed (";
+                        unsigned int msg_type = MSGTYPE_ERROR;
                         switch (res)
                         {
                             case 1:
@@ -4943,23 +4985,28 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                             case 4:
                                 msg += "zlib error";
                                 break;
+                            case 5:
+                                msg += "failed to set timestamp";
+                                msg_type = MSGTYPE_WARNING;
+                                bFailed = false;
+                                break;
                             default:
                                 msg += "unknown error";
                                 break;
                         }
                         msg += ")";
 
-                        msgQueue.push(Message(msg + " " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
-                        continue;
+                        msgQueue.push(Message(msg + " " + path_tmp.string(), msg_type, msg_prefix));
                     }
-                    else
+
+                    if (bFailed)
+                        continue;
+
+                    if (boost::filesystem::exists(path_tmp) && boost::filesystem::is_regular_file(path_tmp))
                     {
-                        if (boost::filesystem::exists(path_tmp) && boost::filesystem::is_regular_file(path_tmp))
+                        if (!boost::filesystem::remove(path_tmp))
                         {
-                            if (!boost::filesystem::remove(path_tmp))
-                            {
-                                msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
-                            }
+                            msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
                         }
                     }
 

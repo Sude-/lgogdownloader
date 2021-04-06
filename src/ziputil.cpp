@@ -481,6 +481,7 @@ zipCDEntry ZipUtil::readZipCDEntry(std::istream *stream)
     returns 2 if compression method is unsupported
     returns 3 if output file could not be created
     returns 4 if zlib error
+    returns 5 if failed to set timestamp
 */
 int ZipUtil::extractFile(const std::string& input_file_path, const std::string& output_file_path)
 {
@@ -533,7 +534,15 @@ int ZipUtil::extractFile(const std::string& input_file_path, const std::string& 
     output_file.close();
 
     if (cd.timestamp > 0)
-        boost::filesystem::last_write_time(output_file_path, cd.timestamp);
+    {
+        boost::system::error_code ec;
+        boost::filesystem::last_write_time(output_file_path, cd.timestamp, ec);
+        if (ec)
+        {
+            // Failed to set timestamp
+            return 5;
+        }
+    }
 
     return 0;
 }
