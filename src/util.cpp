@@ -410,6 +410,16 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
             platform = "no_platform";
     }
 
+    std::string gamename_firstletter;
+    if (!gamename.empty())
+    {
+        if (std::isdigit(gamename.front()))
+            gamename_firstletter = "0";
+        else
+            gamename_firstletter = gamename.front();
+    }
+
+    while (Util::replaceString(str, "%gamename_firstletter%", gamename_firstletter));
     while (Util::replaceString(str, "%gamename%", gamename));
     while (Util::replaceString(str, "%dlcname%", dlcname));
     while (Util::replaceString(str, "%platform%", platform));
