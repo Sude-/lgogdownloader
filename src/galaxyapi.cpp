@@ -257,22 +257,22 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
 
     if (dlConf.bInstallers)
     {
-        gamedetails.installers = this->installerJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], dlConf);
+        gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GFTYPE_INSTALLER, dlConf);
     }
 
     if (dlConf.bExtras)
     {
-        gamedetails.extras = this->extraJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"]);
+        gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GFTYPE_EXTRA, dlConf);
     }
 
     if (dlConf.bPatches)
     {
-        gamedetails.patches = this->patchJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], dlConf);
+        gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GFTYPE_PATCH, dlConf);
     }
 
     if (dlConf.bLanguagePacks)
     {
-        gamedetails.languagepacks = this->languagepackJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], dlConf);
+        gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GFTYPE_LANGPACK, dlConf);
     }
 
     if (dlConf.bDLC)
@@ -303,27 +303,7 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     return gamedetails;
 }
 
-std::vector<gameFile> galaxyAPI::installerJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
-{
-    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_INSTALLER, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-}
-
-std::vector<gameFile> galaxyAPI::patchJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
-{
-    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_PATCH, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-}
-
-std::vector<gameFile> galaxyAPI::languagepackJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const DownloadConfig& dlConf)
-{
-    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_LANGPACK, dlConf.iInstallerPlatform, dlConf.iInstallerLanguage, dlConf.bDuplicateHandler);
-}
-
-std::vector<gameFile> galaxyAPI::extraJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json)
-{
-    return this->fileJsonNodeToGameFileVector(gamename, json, GFTYPE_EXTRA);
-}
-
-std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const unsigned int& platform, const unsigned int& lang, const bool& useDuplicateHandler)
+std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const DownloadConfig& dlConf)
 {
     std::vector<gameFile> gamefiles;
     unsigned int iInfoNodes = json.size();
@@ -343,10 +323,10 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             iPlatform = Util::getOptionValue(infoNode["os"].asString(), GlobalConstants::PLATFORMS);
             iLanguage = Util::getOptionValue(infoNode["language"].asString(), GlobalConstants::LANGUAGES);
 
-            if (!(iPlatform & platform))
+            if (!(iPlatform & dlConf.iInstallerPlatform))
                 continue;
 
-            if (!(iLanguage & lang))
+            if (!(iLanguage & dlConf.iInstallerLanguage))
                 continue;
         }
 
@@ -377,22 +357,23 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             {
                 gf.platform = iPlatform;
                 gf.language = iLanguage;
+            }
 
-                if (useDuplicateHandler)
+            if (dlConf.bDuplicateHandler)
+            {
+                bool bDuplicate = false;
+                for (unsigned int k = 0; k < gamefiles.size(); ++k)
                 {
-                    bool bDuplicate = false;
-                    for (unsigned int k = 0; k < gamefiles.size(); ++k)
+                    if (gamefiles[k].path == gf.path)
                     {
-                        if (gamefiles[k].path == gf.path)
-                        {
+                        if (!(type & GFTYPE_EXTRA))
                             gamefiles[k].language |= gf.language; // Add language code to installer
-                            bDuplicate = true;
-                            break;
-                        }
+                        bDuplicate = true;
+                        break;
                     }
-                    if (bDuplicate)
-                        continue;
                 }
+                if (bDuplicate)
+                    continue;
             }
 
             gamefiles.push_back(gf);
