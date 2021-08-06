@@ -342,6 +342,12 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             std::string downlink_url = downlinkJson["downlink"].asString();
             std::string path = this->getPathFromDownlinkUrl(downlink_url, gamename);
 
+            // Check to see if path ends in "/secure" which means that we got invalid path for some reason
+            boost::regex path_re("/secure$", boost::regex::perl | boost::regex::icase);
+            boost::match_results<std::string::const_iterator> what;
+            if (boost::regex_search(path, what, path_re))
+                continue;
+
             gameFile gf;
             gf.gamename = gamename;
             gf.type = type;
