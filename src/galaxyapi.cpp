@@ -330,6 +330,13 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 continue;
         }
 
+        // Skip file if count and total_size is zero
+        // https://github.com/Sude-/lgogdownloader/issues/200
+        unsigned int count = infoNode["count"].asUInt();
+        uintmax_t total_size = infoNode["total_size"].asLargestUInt();
+        if (count == 0 && total_size == 0)
+            continue;
+
         for (unsigned int j = 0; j < iFiles; ++j)
         {
             Json::Value fileNode = infoNode["files"][j];
