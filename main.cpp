@@ -168,6 +168,7 @@ int main(int argc, char *argv[])
         bool bNoSubDirectories = false;
         bool bNoPlatformDetection = false;
         bool bNoGalaxyDependencies = false;
+        bool bUseDLCList = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
         std::string sIncludeOptions;
@@ -243,6 +244,7 @@ int main(int argc, char *argv[])
             ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
             ("info-threads", bpo::value<unsigned int>(&Globals::globalConfig.iInfoThreads)->default_value(4), "Number of threads for getting product info")
+            ("use-dlc-list", bpo::value<bool>(&bUseDLCList)->zero_tokens()->default_value(false), "Use DLC list specified with --dlc-list")
             ("dlc-list", bpo::value<std::string>(&Globals::globalConfig.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
             ("progress-interval", bpo::value<int>(&Globals::globalConfig.iProgressInterval)->default_value(100), "Set interval for progress bar update (milliseconds)\nValue must be between 1 and 10000")
             ("lowspeed-timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeout)->default_value(30), "Set time in number seconds that the transfer speed should be below the rate set with --lowspeed-rate for it to considered too slow and aborted")
@@ -379,9 +381,12 @@ int main(int argc, char *argv[])
             }
         }
 
+        if (!bUseDLCList)
+            Globals::globalConfig.sGameHasDLCList = "";
+
         if (Globals::globalConfig.sIgnoreDLCCountRegex.empty())
         {
-            if (boost::filesystem::exists(Globals::globalConfig.sGameHasDLCListFilePath))
+            if (boost::filesystem::exists(Globals::globalConfig.sGameHasDLCListFilePath) && bUseDLCList)
             {
                 std::ifstream ifs(Globals::globalConfig.sGameHasDLCListFilePath.c_str());
                 if (!ifs)
