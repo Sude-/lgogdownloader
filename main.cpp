@@ -15,6 +15,7 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <signal.h>
 
 namespace bpo = boost::program_options;
 Config Globals::globalConfig;
@@ -26,6 +27,13 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
 
 int main(int argc, char *argv[])
 {
+    struct sigaction act;
+    act.sa_handler = SIG_IGN;
+    act.sa_flags = SA_RESTART;
+    sigemptyset(&act.sa_mask);
+    if (sigaction(SIGPIPE, &act, NULL) < 0)
+        return 1;
+
     rhash_library_init();
 
     // Constants for option selection with include/exclude
