@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 project (lgogdownloader LANGUAGES C CXX VERSION 3.8)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-set(LINK_LIBCRYPTO 0)
 
 # Disable search for boost-cmake
 # Fixes building with Boost >= 1.70.0
@@ -27,19 +26,6 @@ find_package(Boost
   iostreams
   )
 find_package(CURL 7.32.0 REQUIRED)
-if(CURL_FOUND)
-  execute_process(
-    COMMAND ${READELF} -d ${CURL_LIBRARIES}
-    COMMAND ${GREP} -q "libssl\\|libcrypto"
-    RESULT_VARIABLE READELF_RESULT_VAR
-  )
-  if(READELF_RESULT_VAR EQUAL 0)
-    add_definitions(-DSSL_THREAD_SETUP_OPENSSL=1)
-    find_package(Libcrypto REQUIRED)
-    set(LINK_LIBCRYPTO 1)
-  endif(READELF_RESULT_VAR EQUAL 0)
-endif(CURL_FOUND)
-
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)
@@ -153,12 +139,6 @@ if (NOT ATOMIC_BUILD_SUCCEEDED)
   )
 endif ()
 file(REMOVE ${CMAKE_BINARY_DIR}/test_atomic.cpp)
-
-if(LINK_LIBCRYPTO EQUAL 1)
-  target_link_libraries(${PROJECT_NAME}
-    PRIVATE ${Libcrypto_LIBRARIES}
-  )
-endif(LINK_LIBCRYPTO EQUAL 1)
 
 if(USE_QT_GUI)
   target_link_libraries(${PROJECT_NAME}

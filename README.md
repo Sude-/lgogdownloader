@@ -11,22 +11,19 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [htmlcxx](http://htmlcxx.sourceforge.net/)
 * [tinyxml2](https://github.com/leethomason/tinyxml2)
 * [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options, iostreams)
-* [libcrypto](https://www.openssl.org/) if libcurl is built with OpenSSL
 * [zlib](https://www.zlib.net/)
 * [qtwebengine](https://www.qt.io/) if built with -DUSE_QT_GUI=ON
 
 ## Make dependencies
 * [cmake](https://cmake.org/) >= 3.0.0
 * [help2man](https://www.gnu.org/software/help2man/help2man.html) (optional, man page generation)
-* [grep](https://www.gnu.org/software/grep/)
-* [binutils](https://www.gnu.org/software/binutils/) (readelf)
 
 ### Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
     libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
-    libboost-date-time-dev libboost-iostreams-dev help2man cmake libssl-dev \
+    libboost-date-time-dev libboost-iostreams-dev help2man cmake \
     pkg-config zlib1g-dev qtwebengine5-dev
 
 ## Build and install

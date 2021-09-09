@@ -8,7 +8,6 @@
 #include "config.h"
 #include "util.h"
 #include "globalconstants.h"
-#include "ssl_thread_setup.h"
 #include "galaxyapi.h"
 #include "globals.h"
 
@@ -602,7 +601,6 @@ int main(int argc, char *argv[])
     }
 
     // Init curl globally
-    ssl_thread_setup();
     curl_global_init(CURL_GLOBAL_ALL);
 
     Downloader downloader;
@@ -632,7 +630,6 @@ int main(int argc, char *argv[])
     if (!bLoginOK && !bIsLoggedin)
     {
         curl_global_cleanup();
-        ssl_thread_cleanup();
         return 1;
     }
 
@@ -696,7 +693,6 @@ int main(int argc, char *argv[])
             if (Globals::globalConfig.bSaveConfig)
             {
                 curl_global_cleanup();
-                ssl_thread_cleanup();
                 return 0;
             }
         }
@@ -704,7 +700,6 @@ int main(int argc, char *argv[])
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
             curl_global_cleanup();
-            ssl_thread_cleanup();
             return 1;
         }
     }
@@ -718,14 +713,12 @@ int main(int argc, char *argv[])
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
 
             curl_global_cleanup();
-            ssl_thread_cleanup();
             return 0;
         }
         else
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
             curl_global_cleanup();
-            ssl_thread_cleanup();
             return 1;
         }
     }
@@ -734,7 +727,6 @@ int main(int argc, char *argv[])
     if (!bInitOK)
     {
         curl_global_cleanup();
-        ssl_thread_cleanup();
         return 1;
     }
 
@@ -802,7 +794,6 @@ int main(int argc, char *argv[])
         downloader.checkOrphans();
 
     curl_global_cleanup();
-    ssl_thread_cleanup();
 
     return res;
 }
