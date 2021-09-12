@@ -2638,7 +2638,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (conf.dlConf.bRemoteXML && !xml_url.empty())
                 xml = galaxy->getResponse(xml_url);
 
-            if (!xml.empty())
+            if (!xml.empty() && !Globals::globalConfig.bSizeOnly)
             {
                 std::string localHash = Util::getLocalFileHash(conf.sXMLDirectory, filepath.string(), gf.gamename);
                 // Do version check if local hash exists

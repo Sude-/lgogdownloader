@@ -218,6 +218,7 @@ class Config
         bool bShowWishlist;
         bool bNotifications;
         bool bIncludeHiddenProducts;
+        bool bSizeOnly;
 
         bool bVerbose;
         bool bUnicode; // use Unicode in console output
