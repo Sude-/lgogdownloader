@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
 
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
+    std::string tags;
 
     std::vector<std::string> vFileIdStrings;
     std::vector<std::string> unrecognized_options_cfg;
@@ -215,6 +216,8 @@ int main(int argc, char *argv[])
 #ifdef USE_QT_GUI_LOGIN
             ("enable-login-gui", bpo::value<bool>(&Globals::globalConfig.bEnableLoginGUI)->zero_tokens()->default_value(false), "Enable login GUI when encountering reCAPTCHA on login form")
 #endif
+            ("list-tags", bpo::value<bool>(&Globals::globalConfig.bListTags)->zero_tokens()->default_value(false), "List tags")
+            ("tag", bpo::value<std::string>(&tags)->default_value(""), "Filter using tags. Separate with \",\" to use multiple values")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
@@ -491,6 +494,9 @@ int main(int argc, char *argv[])
             vFileIdStrings = Util::tokenize(Globals::globalConfig.sFileIdString, ",");
         }
 
+        if (!tags.empty())
+            Globals::globalConfig.dlConf.vTags = Util::tokenize(tags, ",");
+
         if (!Globals::globalConfig.sOutputFilename.empty() && vFileIdStrings.size() > 1)
         {
             std::cerr << "Cannot specify an output file name when downloading multiple files." << std::endl;
@@ -754,6 +760,8 @@ int main(int argc, char *argv[])
         downloader.download();
     else if (Globals::globalConfig.bListDetails || Globals::globalConfig.bList) // Detailed list of games/extras
         res = downloader.listGames();
+    else if (Globals::globalConfig.bListTags) // List tags
+        res = downloader.listTags();
     else if (!Globals::globalConfig.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
     else if (Globals::globalConfig.bCheckStatus)

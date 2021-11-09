@@ -36,6 +36,7 @@ struct DownloadConfig
     std::vector<unsigned int> vPlatformPriority;
     std::vector<unsigned int> vLanguagePriority;
     std::vector<unsigned int> vGalaxyCDNPriority;
+    std::vector<std::string> vTags;
     unsigned int iInclude;
     unsigned int iGalaxyPlatform;
     unsigned int iGalaxyLanguage;
@@ -229,6 +230,7 @@ class Config
 #ifdef USE_QT_GUI_LOGIN
         bool bEnableLoginGUI;
 #endif
+        bool bListTags;
 
         // Cache
         bool bUseCache;

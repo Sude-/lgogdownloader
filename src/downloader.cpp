@@ -686,6 +686,22 @@ int Downloader::listGames()
     return 0;
 }
 
+int Downloader::listTags()
+{
+    std::map<std::string, std::string> tags;
+    tags = gogWebsite->getTags();
+
+    if (!tags.empty())
+    {
+        for (auto tag : tags)
+        {
+            std::cout << tag.first  << " = " << tag.second << std::endl;
+        }
+    }
+
+    return 0;
+}
+
 void Downloader::repair()
 {
     if (this->games.empty())

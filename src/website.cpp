@@ -92,10 +92,21 @@ std::vector<gameItem> Website::getGames()
     bool bAllPagesParsed = false;
     int iUpdated = Globals::globalConfig.bUpdated ? 1 : 0;
     int iHidden = 0;
+    std::string tags;
+    for (auto tag : Globals::globalConfig.dlConf.vTags)
+    {
+        if (tags.empty())
+            tags = tag;
+        else
+            tags += "," + tag;
+    }
 
     do
     {
-        std::string response = this->getResponse("https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i));
+        std::string url = "https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i);
+        if (!tags.empty())
+            url += "&tags=" + tags;
+        std::string response = this->getResponse(url);
         std::istringstream json_stream(response);
 
         try {
@@ -679,4 +690,51 @@ std::vector<wishlistItem> Website::getWishlistItems()
     } while (!bAllPagesParsed);
 
     return wishlistItems;
+}
+
+std::map<std::string, std::string> Website::getTags()
+{
+    std::string url = "https://www.gog.com/account/getFilteredProducts?mediaType=1&sortBy=title&system=&page=1";
+    std::string response = this->getResponse(url);
+    std::istringstream json_stream(response);
+    Json::Value json;
+    std::map<std::string, std::string> tags;
+
+    try
+    {
+        // Parse JSON
+        json_stream >> json;
+    }
+    catch (const Json::Exception& exc)
+    {
+        std::cout << exc.what();
+        if (!response.empty())
+        {
+            if(response[0] != '{')
+            {
+                // Response was not JSON. Assume that cookies have expired.
+                std::cerr << "Response was not JSON. Cookies have most likely expired. Try --login first." << std::endl;
+            }
+        }
+        exit(1);
+    }
+
+    tags = this->getTagsFromJson(json["tags"]);
+
+    return tags;
+}
+
+std::map<std::string, std::string> Website::getTagsFromJson(const Json::Value& json)
+{
+    std::map<std::string, std::string> tags;
+
+    if (!json.empty())
+    {
+        for (auto node : json)
+        {
+            tags[node["id"].asString()] = node["name"].asString();
+        }
+    }
+
+    return tags;
 }

@@ -24,12 +24,14 @@ class Website
         std::vector<gameItem> getGames();
         std::vector<wishlistItem> getWishlistItems();
         bool IsLoggedIn();
+        std::map<std::string, std::string> getTags();
         virtual ~Website();
     protected:
     private:
         CURL* curlhandle;
         bool IsloggedInSimple();
         bool IsLoggedInComplex(const std::string& email);
+        std::map<std::string, std::string> getTagsFromJson(const Json::Value& json);
         int retries;
 };
 
