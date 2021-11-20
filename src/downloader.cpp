@@ -1120,7 +1120,9 @@ CURLcode Downloader::downloadFile(const std::string& url, const std::string& fil
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, outfile);
     curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 0);
     res = this->beginDownload();
+    curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
 
     fclose(outfile);
 
