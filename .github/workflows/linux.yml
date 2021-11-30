@@ -41,11 +41,11 @@ jobs:
         env:
           CXX: ${{matrix.cxx_compiler}}
         run: |
-          cmake -S . -B build -D CMAKE_BUILD_TYPE=Release \
-                -D USE_QT_GUI=${{matrix.qt_gui}} -G Ninja
+          cmake -Bbuild -DCMAKE_BUILD_TYPE=Release \
+                -DUSE_QT_GUI=${{matrix.qt_gui}} -GNinja
 
       - name: Build
-        run: ninja -C build
+        run: ninja -Cbuild
 
       - name: Run
         run: cd build && ./lgogdownloader --help
