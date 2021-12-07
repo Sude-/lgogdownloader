@@ -16,6 +16,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 
 ## Make dependencies
 * [cmake](https://cmake.org/) >= 3.0.0
+* [ninja](https://github.com/ninja-build/ninja)
 * [help2man](https://www.gnu.org/software/help2man/help2man.html) (optional, man page generation)
 
 ### Debian/Ubuntu
@@ -24,15 +25,12 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
     libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
     libboost-date-time-dev libboost-iostreams-dev help2man cmake \
-    pkg-config zlib1g-dev qtwebengine5-dev
+    pkg-config zlib1g-dev qtwebengine5-dev ninja-build
 
 ## Build and install
 
-    $ mkdir build
-    $ cd build
-    $ cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON
-    $ make
-    # sudo make install
+    $ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON -GNinja
+    $ ninja -Cbuild install
 
 ## Usage examples
 
