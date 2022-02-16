@@ -5,6 +5,7 @@
  * http://www.wtfpl.net/ for more details. */
 
 #include "galaxyapi.h"
+#include "ziputil.h"
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -79,7 +80,7 @@ bool galaxyAPI::isTokenExpired()
     return res;
 }
 
-std::string galaxyAPI::getResponse(const std::string& url, const bool& zlib_decompress)
+std::string galaxyAPI::getResponse(const std::string& url)
 {
     struct curl_slist *header = NULL;
 
@@ -93,30 +94,22 @@ std::string galaxyAPI::getResponse(const std::string& url, const bool& zlib_deco
     }
     curl_easy_setopt(curlhandle, CURLOPT_HTTPHEADER, header);
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_ACCEPT_ENCODING, "");
 
     int max_retries = std::min(3, Globals::globalConfig.iRetries);
     std::string response;
     Util::CurlHandleGetResponse(curlhandle, response, max_retries);
 
+    curl_easy_setopt(curlhandle, CURLOPT_ACCEPT_ENCODING, NULL);
     curl_easy_setopt(curlhandle, CURLOPT_HTTPHEADER, NULL);
     curl_slist_free_all(header);
-
-    if (zlib_decompress)
-    {
-        std::string response_decompressed;
-        boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
-        in.push(boost::iostreams::zlib_decompressor(GlobalConstants::ZLIB_WINDOW_SIZE));
-        in.push(boost::make_iterator_range(response));
-        boost::iostreams::copy(in, boost::iostreams::back_inserter(response_decompressed));
-        response = response_decompressed;
-    }
 
     return response;
 }
 
-Json::Value galaxyAPI::getResponseJson(const std::string& url, const bool& zlib_decompress)
+Json::Value galaxyAPI::getResponseJson(const std::string& url)
 {
-    std::istringstream response(this->getResponse(url, zlib_decompress));
+    std::istringstream response(this->getResponse(url));
     Json::Value json;
 
     if (!response.str().empty())
@@ -128,6 +121,36 @@ Json::Value galaxyAPI::getResponseJson(const std::string& url, const bool& zlib_
         catch(const Json::Exception& exc)
         {
             // Failed to parse json response
+            // Check for zlib header and decompress if header found
+            response.seekg(0, response.beg);
+            uint16_t header = ZipUtil::readUInt16(&response);
+            std::vector<uint16_t> zlib_headers = { 0x0178, 0x5e78, 0x9c78, 0xda78 };
+            bool is_zlib_compressed = std::any_of(
+                                zlib_headers.begin(), zlib_headers.end(),
+                                [header](uint16_t zlib_header)
+                                {
+                                    return header == zlib_header;
+                                }
+                            );
+
+            if (is_zlib_compressed)
+            {
+                std::string response_compressed = response.str();
+                std::stringstream response_decompressed;
+                boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
+                in.push(boost::iostreams::zlib_decompressor(GlobalConstants::ZLIB_WINDOW_SIZE));
+                in.push(boost::make_iterator_range(response_compressed));
+                boost::iostreams::copy(in, response_decompressed);
+
+                try
+                {
+                    response_decompressed >> json;
+                }
+                catch(const Json::Exception& exc)
+                {
+                    // Failed to parse json
+                }
+            }
         }
     }
 
@@ -164,7 +187,7 @@ Json::Value galaxyAPI::getManifestV2(std::string manifest_hash, const bool& is_d
     else
         url = "https://cdn.gog.com/content-system/v2/meta/" + manifest_hash;
 
-    return this->getResponseJson(url, true);
+    return this->getResponseJson(url);
 }
 
 Json::Value galaxyAPI::getSecureLink(const std::string& product_id, const std::string& path)
@@ -414,7 +437,7 @@ Json::Value galaxyAPI::getDependenciesJson()
         if (repository.isMember("repository_manifest"))
         {
             std::string manifest_url = repository["repository_manifest"].asString();
-            dependencies = this->getResponseJson(manifest_url, true);
+            dependencies = this->getResponseJson(manifest_url);
         }
     }
 
