@@ -577,7 +577,8 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
                     break;
                 }
             }
-            else if (str == options[i].code)
+
+            if (str == options[i].code)
             {
                 value = options[i].id;
                 break;

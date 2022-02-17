@@ -540,3 +540,93 @@ std::string galaxyAPI::getPathFromDownlinkUrl(const std::string& downlink_url, c
 
     return path;
 }
+
+std::vector<std::string> galaxyAPI::cdnUrlTemplatesFromJson(const Json::Value& json, const std::vector<unsigned int>& cdnPriority)
+{
+    // Handle priority of CDNs
+    struct urlPriority
+    {
+        std::string url;
+        int priority;
+    };
+    std::vector<urlPriority> cdnUrls;
+
+    // Build a vector of all urls and their priority score
+    for (unsigned int i = 0; i < json["urls"].size(); ++i)
+    {
+        std::string endpoint_name = json["urls"][i]["endpoint_name"].asString();
+
+        unsigned int score = cdnPriority.size();
+        unsigned int cdn = Util::getOptionValue(endpoint_name, GlobalConstants::GALAXY_CDNS, false);
+        for (unsigned int idx = 0; idx < score; ++idx)
+        {
+            if (cdn & cdnPriority[idx])
+            {
+                score = idx;
+                break;
+            }
+        }
+
+        // Couldn't find a match when assigning score
+        if (score == cdnPriority.size())
+        {
+            // Add index value to score
+            // This way unknown CDNs have priority based on the order they appear in json
+            score += i;
+        }
+
+        // Build url according to url_format
+        std::string link_base_url = json["urls"][i]["parameters"]["base_url"].asString();
+        std::string link_path = json["urls"][i]["parameters"]["path"].asString();
+        std::string link_token = json["urls"][i]["parameters"]["token"].asString();
+
+        // Add our own template to path
+        link_path += "{LGOGDOWNLOADER_GALAXY_PATH}";
+
+        std::string url = json["urls"][i]["url_format"].asString();
+
+        while(Util::replaceString(url, "{base_url}", link_base_url));
+        while(Util::replaceString(url, "{path}", link_path));
+        while(Util::replaceString(url, "{token}", link_token));
+
+        // Highwinds specific
+        std::string link_hw_l= json["urls"][i]["parameters"]["l"].asString();
+        std::string link_hw_source = json["urls"][i]["parameters"]["source"].asString();
+        std::string link_hw_ttl = json["urls"][i]["parameters"]["ttl"].asString();
+        std::string link_hw_gog_token = json["urls"][i]["parameters"]["gog_token"].asString();
+
+        while(Util::replaceString(url, "{l}", link_hw_l));
+        while(Util::replaceString(url, "{source}", link_hw_source));
+        while(Util::replaceString(url, "{ttl}", link_hw_ttl));
+        while(Util::replaceString(url, "{gog_token}", link_hw_gog_token));
+
+        // Lumen specific
+        std::string dirs = json["urls"][i]["parameters"]["dirs"].asString();
+        std::string expires_at = json["urls"][i]["parameters"]["expires_at"].asString();
+
+        while(Util::replaceString(url, "{dirs}", dirs));
+        while(Util::replaceString(url, "{expires_at}", expires_at));
+
+        urlPriority cdnurl;
+        cdnurl.url = url;
+        cdnurl.priority = score;
+        cdnUrls.push_back(cdnurl);
+    }
+
+    if (!cdnUrls.empty())
+    {
+        // Sort urls by priority (lowest score first)
+        std::sort(cdnUrls.begin(), cdnUrls.end(),
+            [](urlPriority a, urlPriority b)
+            {
+                return (a.priority < b.priority);
+            }
+        );
+    }
+
+    std::vector<std::string> cdnUrlTemplates;
+    for (auto cdnurl : cdnUrls)
+        cdnUrlTemplates.push_back(cdnurl.url);
+
+    return cdnUrlTemplates;
+}

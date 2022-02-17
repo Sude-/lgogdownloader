@@ -3645,8 +3645,13 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
     curl_easy_setopt(dlhandle, CURLOPT_XFERINFODATA, &xferinfo);
 
     galaxyDepotItem item;
+    std::string prev_product_id = "";
+    std::vector<std::string> cdnUrlTemplates;
     while (dlQueueGalaxy.try_pop(item))
     {
+        if (item.product_id != prev_product_id)
+            cdnUrlTemplates.clear();
+
         vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
         iTotalRemainingBytes.fetch_sub(item.totalSizeCompressed);
 
@@ -3808,97 +3813,48 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 }
             }
 
-            Json::Value json;
-            if (item.isDependency)
-                json = galaxy->getDependencyLink(galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
-            else
-                json = galaxy->getSecureLink(item.product_id, galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed));
-
-            if (json.empty())
+            std::string galaxyPath = galaxy->hashToGalaxyPath(item.chunks[j].md5_compressed);
+            // Get url templates for cdns
+            // Regular files can re-use these
+            // Dependencies require new url everytime
+            if (cdnUrlTemplates.empty() || item.isDependency)
             {
-                bChunkFailure = true;
-                std::string error_message = path.string() + ": Empty JSON response (product: " + item.product_id + ", chunk #"+ std::to_string(j) + ": " + item.chunks[j].md5_compressed + ")";
-                msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix));
-                break;
-            }
+                Json::Value json;
+                if (item.isDependency)
+                    json = galaxy->getDependencyLink(galaxyPath);
+                else
+                    json = galaxy->getSecureLink(item.product_id, "/");
 
-            // Handle priority of CDNs
-            struct urlPriority
-            {
-                std::string url;
-                int priority;
-            };
-
-            // Build a vector of all urls and their priority score
-            std::vector<urlPriority> cdnUrls;
-            for (unsigned int k = 0; k < json["urls"].size(); ++k)
-            {
-                std::string endpoint_name = json["urls"][k]["endpoint_name"].asString();
-
-                unsigned int score = conf.dlConf.vGalaxyCDNPriority.size();
-                unsigned int cdn = Util::getOptionValue(endpoint_name, GlobalConstants::GALAXY_CDNS, false);
-                for (unsigned int idx = 0; idx < score; ++idx)
+                if (json.empty())
                 {
-                    if (cdn & conf.dlConf.vGalaxyCDNPriority[idx])
-                    {
-                        score = idx;
-                        break;
-                    }
+                    bChunkFailure = true;
+                    std::string error_message = path.string() + ": Empty JSON response (product: " + item.product_id + ", chunk #"+ std::to_string(j) + ": " + item.chunks[j].md5_compressed + ")";
+                    msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix));
+                    break;
                 }
 
-                // Couldn't find a match when assigning score
-                if (score == conf.dlConf.vGalaxyCDNPriority.size())
-                {
-                    // Add index value to score
-                    // This way unknown CDNs have priority based on the order they appear in json
-                    score += k;
-                }
-
-                // Build url according to url_format
-                std::string link_base_url = json["urls"][k]["parameters"]["base_url"].asString();
-                std::string link_path = json["urls"][k]["parameters"]["path"].asString();
-                std::string link_token = json["urls"][k]["parameters"]["token"].asString();
-
-                std::string url = json["urls"][k]["url_format"].asString();
-
-                while(Util::replaceString(url, "{base_url}", link_base_url));
-                while(Util::replaceString(url, "{path}", link_path));
-                while(Util::replaceString(url, "{token}", link_token));
-
-                // Highwinds specific
-                std::string link_hw_l= json["urls"][k]["parameters"]["l"].asString();
-                std::string link_hw_source = json["urls"][k]["parameters"]["source"].asString();
-                std::string link_hw_ttl = json["urls"][k]["parameters"]["ttl"].asString();
-                std::string link_hw_gog_token = json["urls"][k]["parameters"]["gog_token"].asString();
-
-                while(Util::replaceString(url, "{l}", link_hw_l));
-                while(Util::replaceString(url, "{source}", link_hw_source));
-                while(Util::replaceString(url, "{ttl}", link_hw_ttl));
-                while(Util::replaceString(url, "{gog_token}", link_hw_gog_token));
-
-                urlPriority cdnurl;
-                cdnurl.url = url;
-                cdnurl.priority = score;
-                cdnUrls.push_back(cdnurl);
+                cdnUrlTemplates = galaxy->cdnUrlTemplatesFromJson(json, conf.dlConf.vGalaxyCDNPriority);
             }
 
-            if (cdnUrls.empty())
+            if (cdnUrlTemplates.empty())
             {
                 bChunkFailure = true;
                 msgQueue.push(Message(path.string() + ": Failed to get download url", MSGTYPE_ERROR, msg_prefix));
                 break;
             }
 
-            // Sort urls by priority (lowest score first)
-            std::sort(cdnUrls.begin(), cdnUrls.end(),
-                [](urlPriority a, urlPriority b)
-                {
-                    return (a.priority < b.priority);
-                }
-            );
-
-            // Select url with lowest priority score
-            std::string url = cdnUrls[0].url;
+            std::string url = cdnUrlTemplates[0];
+            if (item.isDependency)
+            {
+                while(Util::replaceString(url, "{LGOGDOWNLOADER_GALAXY_PATH}", ""));
+                cdnUrlTemplates.clear(); // Clear templates
+            }
+            else
+            {
+                galaxyPath = "/" + galaxyPath;
+                while(Util::replaceString(url, "{LGOGDOWNLOADER_GALAXY_PATH}", galaxyPath));
+                prev_product_id = item.product_id;
+            }
 
             ChunkMemoryStruct chunk;
             chunk.memory = (char *) malloc(1);

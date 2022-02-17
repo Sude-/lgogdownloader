@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
-            ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,highwinds,gog_cdn"), galaxy_cdn_priority_text.c_str())
+            ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,highwinds,akamai,lumen,gog_cdn"), galaxy_cdn_priority_text.c_str())
             ("galaxy-delete-orphans", bpo::value<bool>(&Globals::globalConfig.dlConf.bGalaxyDeleteOrphans)->zero_tokens()->default_value(false), "Delete orphaned files during --galaxy-install")
         ;
 

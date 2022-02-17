@@ -106,12 +106,16 @@ namespace GlobalConstants
     const unsigned int CDN_EDGECAST  = 1 << 0;
     const unsigned int CDN_HIGHWINDS = 1 << 1;
     const unsigned int CDN_GOG       = 1 << 2;
+    const unsigned int CDN_LUMEN     = 1 << 3;
+    const unsigned int CDN_AKAMAI    = 1 << 4;
 
     const std::vector<optionsStruct> GALAXY_CDNS =
     {
         { CDN_EDGECAST,  "edgecast",   "Edgecast",  "ec|edgecast"             },
         { CDN_HIGHWINDS, "high_winds", "Highwinds", "hw|highwinds|high_winds" },
-        { CDN_GOG,       "gog_cdn",    "GOG",       "gog|gog_cdn"             }
+        { CDN_GOG,       "gog_cdn",    "GOG",       "gog|gog_cdn"             },
+        { CDN_LUMEN,     "lumen",      "Lumen",     "lumen|lumen_cdn"         },
+        { CDN_AKAMAI,    "akamai_edgecast_proxy", "Akamai", "akamai|akamai_cdn|akamai_ec|akamai_edgecast_proxy" }
     };
 }
 
