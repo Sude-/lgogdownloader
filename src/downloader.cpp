@@ -4091,7 +4091,97 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
         return;
     }
 
-    std::cout << json << std::endl;
+    Json::StyledStreamWriter().write(std::cout, json);
+
+    return;
+}
+
+void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int build_index)
+{
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        // Linux is not yet supported for cloud saves
+        return;
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+
+    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
+    {
+        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+
+        std::cout << "Checking for installers that can be used as repository" << std::endl;
+        DownloadConfig dlConf = Globals::globalConfig.dlConf;
+        dlConf.bInstallers = true;
+        dlConf.bExtras = false;
+        dlConf.bLanguagePacks = false;
+        dlConf.bPatches = false;
+        dlConf.bDLC = true;
+        dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
+        dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
+
+        Json::Value product_info = gogGalaxy->getProductInfo(product_id);
+        gameDetails game = gogGalaxy->productInfoJsonToGameDetails(product_info, dlConf);
+
+        std::vector<gameFile> vInstallers;
+        if (!game.installers.empty())
+        {
+            vInstallers.push_back(game.installers[0]);
+            for (unsigned int i = 0; i < game.dlcs.size(); ++i)
+            {
+                if (!game.dlcs[i].installers.empty())
+                    vInstallers.push_back(game.dlcs[i].installers[0]);
+            }
+        }
+
+        if (vInstallers.empty())
+        {
+            std::cout << "No installers found" << std::endl;
+        }
+        else
+        {
+            std::cout << "Using these installers" << std::endl;
+            for (unsigned int i = 0; i < vInstallers.size(); ++i)
+                std::cout << "\t" << vInstallers[i].gamename << "/" << vInstallers[i].id << std::endl;
+        }
+
+        return;
+    }
+
+    build_index = std::max(0, build_index);
+
+    std::string link = json["items"][build_index]["link"].asString();
+
+    if (json["items"][build_index]["generation"].asInt() == 2)
+    {
+        std::string buildHash;
+        buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+        json = gogGalaxy->getManifestV2(buildHash);
+    }
+    else
+    {
+        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    json = gogGalaxy->getCloudPathAsJson(json["clientId"].asString());
+
+    std::string platform;
+    switch(iPlatform) {
+        case GlobalConstants::PLATFORM_MAC:
+            platform = "MacOS";
+            break;
+        default:
+            platform = "Windows";
+    }
+
+    json = json["content"][platform]["cloudStorage"]["locations"];
+    Json::StyledStreamWriter().write(std::cout, json);
 
     return;
 }

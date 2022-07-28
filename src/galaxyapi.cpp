@@ -190,6 +190,12 @@ Json::Value galaxyAPI::getManifestV2(std::string manifest_hash, const bool& is_d
     return this->getResponseJson(url);
 }
 
+Json::Value galaxyAPI::getCloudPathAsJson(const std::string &clientId) {
+    std::string url = "https://remote-config.gog.com/components/galaxy_client/clients/" + clientId + "?component_version=2.0.51";
+
+    return this->getResponseJson(url);
+}
+
 Json::Value galaxyAPI::getSecureLink(const std::string& product_id, const std::string& path)
 {
     std::string url = "https://content-system.gog.com/products/" + product_id + "/secure_link?generation=2&path=" + path + "&_version=2";
