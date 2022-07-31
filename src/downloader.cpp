@@ -50,6 +50,11 @@ ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 std::atomic<unsigned long long> iTotalRemainingBytes(0);
 
+std::string username() {
+    auto user = std::getenv("USER");
+    return user ? user : std::string();
+}
+
 Downloader::Downloader()
 {
     if (Globals::globalConfig.bLogin)
@@ -4096,13 +4101,54 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
     return;
 }
 
+std::string parseLocationHelper(const std::string &location, const std::map<std::string, std::string> &var) {
+    char search_arg[2] {'?', '>'};
+    auto it = std::search(std::begin(location), std::end(location), std::begin(search_arg), std::end(search_arg));
+
+    if(it == std::end(location)) {
+        return location;
+    }
+
+    std::string var_name { std::begin(location) + 2, it };
+    auto relative_path = it + 2;
+
+    auto var_value = var.find(var_name);
+    if(var_value == std::end(var)) {
+        return location;
+    }
+
+    std::string parsedLocation;
+    parsedLocation.insert(std::end(parsedLocation), std::begin(var_value->second), std::end(var_value->second));
+    parsedLocation.insert(std::end(parsedLocation), relative_path, std::end(location));
+
+    return parsedLocation;
+}
+std::string parseLocation(const std::string &location, const std::map<std::string, std::string> &var) {
+    auto parsedLocation = parseLocationHelper(location, var);
+    Util::replaceAllString(parsedLocation, "\\", "/");
+
+    return parsedLocation;
+}
+
+void Downloader::galaxyShowCloudSaves(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyShowCloudSavesById(id, build_index);
+    }
+}
+
 void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int build_index)
 {
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
-    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX) {
         // Linux is not yet supported for cloud saves
+        std::cout << "Cloud saves for Linux builds not yet supported" << std::endl;
         return;
+    }
     else if (iPlatform == GlobalConstants::PLATFORM_MAC)
         sPlatform = "osx";
     else
@@ -4157,11 +4203,12 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
 
     std::string link = json["items"][build_index]["link"].asString();
 
+    Json::Value manifest;
     if (json["items"][build_index]["generation"].asInt() == 2)
     {
         std::string buildHash;
         buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
-        json = gogGalaxy->getManifestV2(buildHash);
+        manifest = gogGalaxy->getManifestV2(buildHash);
     }
     else
     {
@@ -4169,7 +4216,18 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
         return;
     }
 
-    json = gogGalaxy->getCloudPathAsJson(json["clientId"].asString());
+    std::string install_directory;
+    if (Globals::globalConfig.dirConf.bSubDirectories)
+    {
+        install_directory = this->getGalaxyInstallDirectory(gogGalaxy, json);
+    }
+    std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
+    std::string document_path = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/Documents/";
+    std::string appdata_roaming = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/AppData/Roaming/";
+    std::string appdata_local_path = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/AppData/Local/";
+    std::string appdata_local_low_path = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/AppData/LocalLow/";
+    std::string saved_games = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/Save Games/";
+
 
     std::string platform;
     switch(iPlatform) {
@@ -4180,8 +4238,37 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
             platform = "Windows";
     }
 
+    json = gogGalaxy->getCloudPathAsJson(manifest["clientId"].asString());
     json = json["content"][platform]["cloudStorage"]["locations"];
-    Json::StyledStreamWriter().write(std::cout, json);
+
+    struct cloud_save_t {
+        std::string name;
+        std::string location;
+    };
+
+    std::map<std::string, std::string> vars {
+        { "INSTALL", std::move(install_path) },
+        { "DOCUMENTS", std::move(document_path) },
+        { "APPLICATION_DATA_ROAMING", std::move(appdata_roaming)},
+        { "APPLICATION_DATA_LOCAL", std::move(appdata_local_path) },
+        { "APPLICATION_DATA_LOCAL_LOW", std::move(appdata_local_low_path) },
+        { "SAVED_GAMES", std::move(saved_games) },
+    };
+
+    std::vector<cloud_save_t> cloud_saves;
+    for(auto &cloud_save : json) {
+        std::string location = parseLocation(cloud_save["location"].asString(), vars);
+        std::string name = cloud_save["name"].asString();
+        cloud_saves.emplace_back(cloud_save_t { std::move(name), std::move(location) });
+    }
+
+    if(cloud_saves.empty()) {
+        std::cout << "No cloud save locations found" << std::endl;
+    }
+
+    for(auto &cloud_save : cloud_saves) {
+        std::cout << cloud_save.name << "::" << cloud_save.location << std::endl;
+    }
 
     return;
 }

@@ -19,6 +19,7 @@ struct DirectoryConfig
 {
     bool bSubDirectories;
     std::string sDirectory;
+    std::string sWinePrefix;
     std::string sGameSubdir;
     std::string sInstallersSubdir;
     std::string sExtrasSubdir;

@@ -24,6 +24,18 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
     vm[option].value() = boost::any(value);
 }
 
+void ensure_trailing_slash(std::string &path, const char *default_ = nullptr) {
+    if (!path.empty())
+    {
+        if (path.at(path.length()-1)!='/')
+            path += "/";
+    }
+    else
+    {
+        path = default_; // Directory wasn't specified, use current directory
+    }
+}
+
 int main(int argc, char *argv[])
 {
     struct sigaction act;
@@ -223,6 +235,7 @@ int main(int argc, char *argv[])
         // Commandline options (config file)
         options_cli_cfg.add_options()
             ("directory", bpo::value<std::string>(&Globals::globalConfig.dirConf.sDirectory)->default_value("."), "Set download directory")
+            ("wine-prefix", bpo::value<std::string>(&Globals::globalConfig.dirConf.sWinePrefix)->default_value("."), "Set wineprefix directory")
             ("limit-rate", bpo::value<curl_off_t>(&Globals::globalConfig.curlConf.iDownloadRate)->default_value(0), "Limit download rate to value in kB\n0 = unlimited")
             ("xml-directory", bpo::value<std::string>(&Globals::globalConfig.sXMLDirectory), "Set directory for GOG XML files")
             ("chunk-size", bpo::value<size_t>(&Globals::globalConfig.iChunkSize)->default_value(10), "Chunk size (in MB) when creating XML")
@@ -580,15 +593,8 @@ int main(int argc, char *argv[])
     }
 
     // Make sure that directory has trailing slash
-    if (!Globals::globalConfig.dirConf.sDirectory.empty())
-    {
-        if (Globals::globalConfig.dirConf.sDirectory.at(Globals::globalConfig.dirConf.sDirectory.length()-1)!='/')
-            Globals::globalConfig.dirConf.sDirectory += "/";
-    }
-    else
-    {
-        Globals::globalConfig.dirConf.sDirectory = "./"; // Directory wasn't specified, use current directory
-    }
+    ensure_trailing_slash(Globals::globalConfig.dirConf.sDirectory, "./");
+    ensure_trailing_slash(Globals::globalConfig.dirConf.sWinePrefix, "./");
 
     // CA certificate bundle
     if (Globals::globalConfig.curlConf.sCACertPath.empty())
@@ -788,7 +794,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader.galaxyShowCloudSavesById(product_id, build_index);
+        downloader.galaxyShowCloudSaves(product_id, build_index);
     }
     else if (!galaxy_product_id_install.empty())
     {

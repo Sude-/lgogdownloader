@@ -391,6 +391,22 @@ int Util::replaceString(std::string& str, const std::string& to_replace, const s
     return 1;
 }
 
+int Util::replaceAllString(std::string& str, const std::string& to_replace, const std::string& replace_with) {
+    size_t pos = str.find(to_replace);
+    if (pos == std::string::npos)
+    {
+        return 0;
+    }
+
+    do {
+        str.replace(str.begin()+pos, str.begin()+pos+to_replace.length(), replace_with);
+
+        pos = str.find(to_replace, pos + to_replace.length());
+    } while(pos != std::string::npos);
+    
+    return 1;
+}
+
 void Util::filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId, const std::string& dlcname)
 {
     std::string platform;
