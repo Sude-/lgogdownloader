@@ -32,9 +32,11 @@
 #include <curl/curl.h>
 #include <json/json.h>
 #include <ctime>
+#include <functional>
 #include <fstream>
 #include <deque>
 
+class cloudSaveFile;
 class Timer
 {
     public:
@@ -99,6 +101,7 @@ class Downloader
         void clearUpdateNotifications();
         void repair();
         void download();
+        void downloadCloudSaves(const std::string& product_id, int build_index = -1);
         void checkOrphans();
         void checkStatus();
         void updateCache();
@@ -118,6 +121,8 @@ class Downloader
         void galaxyShowCloudSavesById(const std::string& product_id, int build_index = -1);
     protected:
     private:
+        int cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f);
+
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int getGameDetails();
@@ -135,6 +140,7 @@ class Downloader
         static std::string getChangelogFromJSON(const Json::Value& json);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
         static void processDownloadQueue(Config conf, const unsigned int& tid);
+        static void processCloudSaveDownloadQueue(Config conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);

@@ -839,8 +839,9 @@ CURLcode Util::CurlHandleGetResponse(CURL* curlhandle, std::string& response, in
             // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "404 Not Found"
             case CURLE_HTTP_RETURNED_ERROR:
                 curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-                if (response_code == 404)
+                if (response_code == 404 || response_code == 403) {
                     bShouldRetry = false;
+                }
                 else
                     bShouldRetry = true;
                 break;
