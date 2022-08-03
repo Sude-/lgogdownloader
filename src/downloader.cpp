@@ -4410,13 +4410,23 @@ void Downloader::galaxyShowCloudSaves(const std::string& product_id, int build_i
     }
 }
 
-int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f) {
+void Downloader::galaxyShowLocalCloudSaves(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyShowLocalCloudSavesById(id, build_index);
+    }
+}
+
+std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::string& product_id, int build_index) {
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
     if (iPlatform == GlobalConstants::PLATFORM_LINUX) {
         // Linux is not yet supported for cloud saves
         std::cout << "Cloud saves for Linux builds not yet supported" << std::endl;
-        return -1;
+        return {};
     }
     else if (iPlatform == GlobalConstants::PLATFORM_MAC)
         sPlatform = "osx";
@@ -4433,7 +4443,7 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
     if (json["items"][build_index]["generation"].asInt() != 2)
     {
         std::cout << "Only generation 2 builds are supported currently" << std::endl;
-        return -1;
+        return {};
     }
     std::string buildHash;
     buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
@@ -4444,7 +4454,7 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
 
     if(!gogGalaxy->refreshLogin(clientId, secret, Globals::galaxyConf.getRefreshToken(), false)) {
         std::cout << "Couldn't refresh login" << std::endl;
-        return -1;
+        return {};
     }
 
     std::string install_directory;
@@ -4469,8 +4479,6 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
     std::string appdata_local_low_path = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/AppData/LocalLow/";
     std::string saved_games = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/Save Games/";
 
-    std::string url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + "/" + clientId;
-
     auto cloud_saves_json = gogGalaxy->getCloudPathAsJson(manifest["clientId"].asString())["content"][platform]["cloudStorage"]["locations"];
 
     std::map<std::string, std::string> vars {
@@ -4489,12 +4497,17 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
         name_to_location.insert({cloud_save["name"].asString(), std::move(location)});
     }
 
+    return name_to_location;
+}
+
+int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f) {
+    auto name_to_location = this->cloudSaveLocations(product_id, build_index);
     if(name_to_location.empty()) {
         std::cout << "No cloud save locations found" << std::endl;
         return -1;
     }
             
-
+    std::string url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + "/" + Globals::galaxyConf.getClientId();
     auto fileList = gogGalaxy->getResponseJson(url, "application/json");
         
     for(auto &fileJson : fileList) {
@@ -4502,8 +4515,6 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
         auto pos = path.find_first_of('/');
 
         auto location = name_to_location[path.substr(0, pos)] + path.substr(pos);
-        // std::cout << location << std::endl;
-        // std::cout << path <<std::endl;
 
         auto filesize = fileJson["bytes"].asUInt64();
 
@@ -4517,8 +4528,6 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
         };
 
         f(csf);
-
-        // iTotalRemainingBytes.fetch_add(filesize);
     }
 
     return 0;
@@ -4586,6 +4595,86 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
             std::cout << filepath << " :: Isn't downloaded yet"  << std::endl;
         }
     });
+}
+
+void dirForEachHelper(const boost::filesystem::path &location, std::function<void(boost::filesystem::directory_iterator)> &f) {
+    boost::filesystem::directory_iterator begin { location };
+    boost::filesystem::directory_iterator end;
+
+    for(boost::filesystem::directory_iterator curr_dir { begin }; curr_dir != end; ++curr_dir) {
+        if(boost::filesystem::is_directory(*curr_dir)) {
+
+            dirForEachHelper(*curr_dir, f);
+        }
+        else {
+            f(curr_dir);
+        }
+    }
+}
+
+void dirForEach(const std::string &location, std::function<void(boost::filesystem::directory_iterator)> &&f) {
+    dirForEachHelper(location, f);
+}
+
+void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, int build_index) {
+    auto name_to_locations = cloudSaveLocations(product_id, build_index);
+
+    if(name_to_locations.empty()) {
+        std::cout << "Cloud saves not supported for this game" << std::endl;
+    }
+
+    std::map<std::string, cloudSaveFile> path_to_cloudSaveFile;
+    for(auto &name_to_location : name_to_locations) {
+        auto &name = name_to_location.first;
+        auto &location = name_to_location.second;
+
+        if(!boost::filesystem::exists(location) || !boost::filesystem::is_directory(location)) {
+            continue;
+        }
+
+        dirForEach(location, [&](boost::filesystem::directory_iterator file) {
+            cloudSaveFile csf {
+                boost::posix_time::from_time_t(boost::filesystem::last_write_time(*file) - 1),
+                boost::filesystem::file_size(*file),
+                (name / boost::filesystem::relative(*file, location)).string(),
+                file->path().string()
+            };
+
+            path_to_cloudSaveFile.insert(std::make_pair(csf.path, std::move(csf)));
+        });
+    }
+
+    if(path_to_cloudSaveFile.empty()) {
+        std::cout << "No local cloud saves found" << std::endl;
+
+        return;
+    }
+
+    this->cloudSaveListByIdForEach(product_id, build_index, [&](cloudSaveFile &csf) {
+        auto it = path_to_cloudSaveFile.find(csf.path);
+
+        //If remote save is not locally stored, skip
+        if(it == std::end(path_to_cloudSaveFile)) {
+            return;
+        }
+
+        cloudSaveFile local_csf { std::move(it->second) };
+        path_to_cloudSaveFile.erase(it);
+
+        std::cout << csf.path << ": ";
+        if(csf.lastModified < local_csf.lastModified) {
+            std::cout << "remote save out of date: it should be synchronized" << std::endl;
+        }
+        else {
+            std::cout << "up to date" << std::endl;
+        }
+    });
+
+    for(auto &path_csf : path_to_cloudSaveFile) {
+        auto &csf = path_csf.second;
+
+        std::cout << csf.path << ": there's only a local copy" << std::endl;
+    }
 }
 
 std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path)

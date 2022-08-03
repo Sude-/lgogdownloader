@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
     std::string galaxy_product_id_show_cloud_paths;
+    std::string galaxy_product_id_show_local_cloud_paths;
     std::string galaxy_product_cloud_saves;
     std::string tags;
 
@@ -288,6 +289,7 @@ int main(int argc, char *argv[])
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-download-cloud-saves", bpo::value<std::string>(&galaxy_product_cloud_saves)->default_value(""), "Download cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_cloud_paths)->default_value(""), "Show game cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-show-local-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_local_cloud_paths)->default_value(""), "Show local cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
             ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
@@ -797,6 +799,17 @@ int main(int argc, char *argv[])
             build_index = std::stoi(tokens[1]);
         }
         downloader.galaxyShowCloudSaves(product_id, build_index);
+    }
+    else if (!galaxy_product_id_show_local_cloud_paths.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_local_cloud_paths, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowLocalCloudSaves(product_id, build_index);
     }
     else if (!galaxy_product_id_install.empty())
     {

@@ -117,10 +117,13 @@ class Downloader
         void galaxyInstallGameById(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
         void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
         void galaxyShowCloudSaves(const std::string& product_id, int build_index = -1);
+        void galaxyShowLocalCloudSaves(const std::string& product_id, int build_index = -1);
+        void galaxyShowLocalCloudSavesById(const std::string& product_id, int build_index = -1);
         void galaxyShowBuildsById(const std::string& product_id, int build_index = -1);
         void galaxyShowCloudSavesById(const std::string& product_id, int build_index = -1);
     protected:
     private:
+        std::map<std::string, std::string> cloudSaveLocations(const std::string& product_id, int build_index);
         int cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f);
 
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
