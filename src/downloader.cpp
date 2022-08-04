@@ -4798,7 +4798,7 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
         cloudSaveFile local_csf { std::move(it->second) };
         path_to_cloudSaveFile.erase(it);
 
-        if(csf.lastModified < local_csf.lastModified) {
+        if(Globals::globalConfig.bCloudForce || csf.lastModified < local_csf.lastModified) {
             iTotalRemainingBytes.fetch_add(local_csf.fileSize);
 
             dlCloudSaveQueue.push(local_csf);
@@ -4850,7 +4850,7 @@ void Downloader::downloadCloudSavesById(const std::string& product_id, int build
             // last_write_time minus a single second, since time_t is only accurate to the second unlike boost::posix_time::ptime
             auto time = boost::posix_time::from_time_t(boost::filesystem::last_write_time(filepath) - 1);
 
-            if(time <= csf.lastModified) {
+            if(!Globals::globalConfig.bCloudForce && time <= csf.lastModified) {
                 std::cout << "Already up to date -- skipping: " << csf.path << std::endl;
                 return; // This file is already completed
             }

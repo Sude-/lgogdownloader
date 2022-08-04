@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
             ("wine-prefix", bpo::value<std::string>(&Globals::globalConfig.dirConf.sWinePrefix)->default_value("."), "Set wineprefix directory")
             ("cloud-whitelist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudWhiteList)->multitoken(), "Include this list of cloud saves, by default all cloud saves are included\n Example: --cloud-whitelist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
             ("cloud-blacklist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudBlackList)->multitoken(), "Exclude this list of cloud saves\n Example: --cloud-blacklist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
+            ("cloud-force", bpo::value<bool>(&Globals::globalConfig.bCloudForce)->zero_tokens()->default_value(false), "Download or Upload cloud saves even if they're up-to-date\nDelete remote cloud saves even if no saves are whitelisted")
 #ifdef USE_QT_GUI_LOGIN
             ("enable-login-gui", bpo::value<bool>(&Globals::globalConfig.bEnableLoginGUI)->zero_tokens()->default_value(false), "Enable login GUI when encountering reCAPTCHA on login form")
 #endif

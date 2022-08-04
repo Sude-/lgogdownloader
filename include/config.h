@@ -297,8 +297,10 @@ class Config
         Blacklist ignorelist;
         Blacklist gamehasdlc;
 
+        // Cloud save options
         std::vector<std::string> cloudWhiteList;
         std::vector<std::string> cloudBlackList;
+        bool bCloudForce;
 
         std::string sGameHasDLCList;
 
