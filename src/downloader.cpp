@@ -4872,17 +4872,17 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
             auto time = boost::filesystem::last_write_time(filepath) - 1;
 
             if(csf.fileSize < size) {
-                std::cout << filepath << " :: not yet completed download" << std::endl;
+                std::cout << csf.path << " :: not yet completed download" << std::endl;
             }
             else if(boost::posix_time::from_time_t(time) <= csf.lastModified) {
-                std::cout << filepath << " :: Already up to date" << std::endl;
+                std::cout << csf.path << " :: Already up to date" << std::endl;
             }
             else {
-                std::cout << filepath << " :: Out of date"  << std::endl;
+                std::cout << csf.path << " :: Out of date"  << std::endl;
             }
         }
         else {
-            std::cout << filepath << " :: Isn't downloaded yet"  << std::endl;
+            std::cout << csf.path << " :: Isn't downloaded yet"  << std::endl;
         }
     });
 }
