@@ -83,6 +83,31 @@ void dirForEach(const std::string &location, std::function<void(boost::filesyste
     dirForEachHelper(location, f);
 }
 
+bool whitelisted(const std::string &path) {
+    auto &whitelist = Globals::globalConfig.cloudWhiteList;
+    auto &blacklist = Globals::globalConfig.cloudBlackList;
+
+    // Check if path is whitelisted
+    if(!whitelist.empty()) {
+        return std::any_of(std::begin(whitelist), std::end(whitelist), [&path](const std::string &whitelisted) {
+            return
+                path.rfind(whitelisted, 0) == 0 &&
+                (path.size() == whitelisted.size() || path[whitelisted.size()] == '/');
+        });
+    }
+
+    // Check if blacklisted
+    if(!blacklist.empty()) {
+        return !std::any_of(std::begin(blacklist), std::end(blacklist), [&path](const std::string &blacklisted) {
+            return
+                path.rfind(blacklisted, 0) == 0 &&
+                (path.size() == blacklisted.size() || path[blacklisted.size()] == '/');
+        });
+    }
+
+    return true;
+}
+
 Downloader::Downloader()
 {
     if (Globals::globalConfig.bLogin)
@@ -4684,6 +4709,11 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
         
     for(auto &fileJson : fileList) {
         auto path = fileJson["name"].asString();
+
+        if(!whitelisted(path)) {
+            continue;
+        }
+
         auto pos = path.find_first_of('/');
 
         auto location = name_to_location[path.substr(0, pos)] + path.substr(pos);
@@ -4734,11 +4764,16 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
                 return;
             }
 
+            auto remote_path = (name / boost::filesystem::relative(*file, location)).string();
+            if(!whitelisted(remote_path)) {
+                return;
+            }
+
 
             cloudSaveFile csf {
                 boost::posix_time::from_time_t(boost::filesystem::last_write_time(*file) - 1),
                 boost::filesystem::file_size(*file),
-                (name / boost::filesystem::relative(*file, location)).string(),
+                std::move(remote_path),
                 file->path().string()
             };
 
@@ -4904,10 +4939,16 @@ void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, in
         }
 
         dirForEach(location, [&](boost::filesystem::directory_iterator file) {
+            auto path = (name / boost::filesystem::relative(*file, location)).string();
+
+            if(!whitelisted(path)) {
+                return;
+            }
+
             cloudSaveFile csf {
                 boost::posix_time::from_time_t(boost::filesystem::last_write_time(*file) - 1),
                 boost::filesystem::file_size(*file),
-                (name / boost::filesystem::relative(*file, location)).string(),
+                std::move(path),
                 file->path().string()
             };
 

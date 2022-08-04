@@ -296,6 +296,10 @@ class Config
         Blacklist blacklist;
         Blacklist ignorelist;
         Blacklist gamehasdlc;
+
+        std::vector<std::string> cloudWhiteList;
+        std::vector<std::string> cloudBlackList;
+
         std::string sGameHasDLCList;
 
         // Integers

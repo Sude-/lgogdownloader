@@ -101,10 +101,12 @@ class Downloader
         void clearUpdateNotifications();
         void repair();
         void download();
+        
         void downloadCloudSaves(const std::string& product_id, int build_index = -1);
         void downloadCloudSavesById(const std::string& product_id, int build_index = -1);
         void uploadCloudSaves(const std::string& product_id, int build_index = -1);
         void uploadCloudSavesById(const std::string& product_id, int build_index = -1);
+
         void checkOrphans();
         void checkStatus();
         void updateCache();
