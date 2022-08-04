@@ -8,6 +8,9 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
 #include <tinyxml2.h>
 #include <json/json.h>
 #include <fstream>
@@ -765,7 +768,6 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, conf.sUserAgent.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
@@ -879,6 +881,17 @@ curl_off_t Util::CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, c
     memcpy(&(mem->memory[mem->size]), contents, realsize);
     mem->size += realsize;
     mem->memory[mem->size] = 0;
+
+    return realsize;
+}
+
+curl_off_t Util::CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *mem) {
+    curl_off_t realsize = std::min(size * nmemb, mem->size);
+
+    std::copy(mem->memory, mem->memory + realsize, (char*)contents);
+
+    mem->size -= realsize;
+    mem->memory += realsize;
 
     return realsize;
 }

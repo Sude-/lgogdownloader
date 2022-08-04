@@ -91,6 +91,7 @@ namespace Util
     CURLcode CurlHandleGetResponse(CURL* curlhandle, std::string& response, int max_retries = -1);
     curl_off_t CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp);
+    curl_off_t CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *userp);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {

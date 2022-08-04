@@ -64,6 +64,25 @@ std::string username() {
     return user ? user : std::string();
 }
 
+void dirForEachHelper(const boost::filesystem::path &location, std::function<void(boost::filesystem::directory_iterator)> &f) {
+    boost::filesystem::directory_iterator begin { location };
+    boost::filesystem::directory_iterator end;
+
+    for(boost::filesystem::directory_iterator curr_dir { begin }; curr_dir != end; ++curr_dir) {
+        if(boost::filesystem::is_directory(*curr_dir)) {
+
+            dirForEachHelper(*curr_dir, f);
+        }
+        else {
+            f(curr_dir);
+        }
+    }
+}
+
+void dirForEach(const std::string &location, std::function<void(boost::filesystem::directory_iterator)> &&f) {
+    dirForEachHelper(location, f);
+}
+
 Downloader::Downloader()
 {
     if (Globals::globalConfig.bLogin)
@@ -2530,6 +2549,149 @@ void Downloader::showWishlist()
     return;
 }
 
+void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& tid) {
+    std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
+
+    std::unique_ptr<galaxyAPI> galaxy { new galaxyAPI(Globals::globalConfig.curlConf) };
+    if (!galaxy->init())
+    {
+        if (!galaxy->refreshLogin())
+        {
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+            return;
+        }
+    }
+
+    CURL* dlhandle = curl_easy_init();
+    
+    Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
+    curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
+    curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Util::CurlReadChunkMemoryCallback);
+    curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 1L);
+
+    xferInfo xferinfo;
+    xferinfo.tid = tid;
+    xferinfo.curlhandle = dlhandle;
+
+    curl_easy_setopt(dlhandle, CURLOPT_XFERINFOFUNCTION, Downloader::progressCallbackForThread);
+    curl_easy_setopt(dlhandle, CURLOPT_XFERINFODATA, &xferinfo);
+
+    cloudSaveFile csf;
+ 
+    std::string access_token;
+    if (!Globals::galaxyConf.isExpired()) {
+        access_token = Globals::galaxyConf.getAccessToken();
+    }
+
+    if (access_token.empty()) {
+        return;
+    }
+
+    std::string bearer = "Authorization: Bearer " + access_token;
+
+    while(dlCloudSaveQueue.try_pop(csf)) {
+        CURLcode result = CURLE_RECV_ERROR; // assume network error
+        int iRetryCount = 0;
+
+        iTotalRemainingBytes.fetch_sub(csf.fileSize);
+
+        vDownloadInfo[tid].setFilename(csf.location);
+
+        std::string filecontents;
+        {
+            std::ifstream in { csf.location, std::ios_base::in | std::ios_base::binary };
+
+            in >> filecontents;
+        }
+
+        ChunkMemoryStruct cms {
+            &filecontents[0],
+            (curl_off_t)filecontents.size()
+        };
+        
+        auto md5 = Util::getChunkHash((std::uint8_t*)filecontents.data(), filecontents.size(), RHASH_MD5);
+
+        auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
+
+        curl_slist *header = nullptr;
+        header = curl_slist_append(header, bearer.c_str());
+        header = curl_slist_append(header, ("X-Object-Meta-LocalLastModified: " + boost::posix_time::to_iso_extended_string(csf.lastModified)).c_str());
+        header = curl_slist_append(header, ("Etag: " + md5).c_str());
+        header = curl_slist_append(header, "Content-Type: Octet-Stream");
+        header = curl_slist_append(header, ("Content-Length: " + std::to_string(filecontents.size())).c_str());
+
+        curl_easy_setopt(dlhandle, CURLOPT_PUT, 1L);
+        curl_easy_setopt(dlhandle, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(dlhandle, CURLOPT_HTTPHEADER, header);
+        curl_easy_setopt(dlhandle, CURLOPT_READDATA, &cms);
+        curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
+
+        msgQueue.push(Message("Begin upload: " + csf.location, MSGTYPE_INFO, msg_prefix));
+
+        bool bShouldRetry = false;
+        long int response_code = 0;
+        std::string retry_reason;
+        do
+        {
+            if (conf.iWait > 0)
+                usleep(conf.iWait); // Wait before continuing
+
+            response_code = 0; // Make sure that response code is reset
+
+            if (iRetryCount != 0)
+            {
+                std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + boost::filesystem::path(csf.location).filename().string();
+                if (!retry_reason.empty())
+                    retry_msg += " (" + retry_reason + ")";
+                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+            }
+            retry_reason = ""; // reset retry reason
+
+            xferinfo.offset = 0;
+            xferinfo.timer.reset();
+            xferinfo.TimeAndSize.clear();
+            result = curl_easy_perform(dlhandle);
+
+            switch (result)
+            {
+                // Retry on these errors
+                case CURLE_PARTIAL_FILE:
+                case CURLE_OPERATION_TIMEDOUT:
+                case CURLE_RECV_ERROR:
+                case CURLE_SSL_CONNECT_ERROR:
+                    bShouldRetry = true;
+                    break;
+                // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "416 Range Not Satisfiable"
+                case CURLE_HTTP_RETURNED_ERROR:
+                    curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+                    if (response_code == 416 || response_code == 422 || response_code == 400 || response_code == 422) {
+                        msgQueue.push(Message(std::to_string(response_code) + ": " + curl_easy_strerror(result)));
+                        bShouldRetry = false;
+                    }
+                    else
+                        bShouldRetry = true;
+                    break;
+                default:
+                    bShouldRetry = false;
+                    break;
+            }
+
+            if (bShouldRetry) {
+                iRetryCount++;
+                retry_reason = std::to_string(response_code) + ": " + curl_easy_strerror(result);
+            }
+        } while (bShouldRetry && (iRetryCount <= conf.iRetries));
+
+        curl_slist_free_all(header);
+    }
+
+    curl_easy_cleanup(dlhandle);
+
+    vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix));
+}
+
 void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& tid) {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
@@ -2621,7 +2783,6 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
         }
 
         auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
-        msgQueue.push(Message(url));
         curl_easy_setopt(dlhandle, CURLOPT_HTTPHEADER, header);
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
         long int response_code = 0;
@@ -4400,6 +4561,26 @@ std::pair<std::string::const_iterator, std::string::const_iterator> getline(std:
     return { end, end };
 }
 
+void Downloader::uploadCloudSaves(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->uploadCloudSavesById(id, build_index);
+    }
+}
+
+void Downloader::downloadCloudSaves(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->downloadCloudSavesById(id, build_index);
+    }
+}
+
 void Downloader::galaxyShowCloudSaves(const std::string& product_id, int build_index)
 {
     std::string id;
@@ -4533,7 +4714,96 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
     return 0;
 }
 
-void Downloader::downloadCloudSaves(const std::string& product_id, int build_index)
+void Downloader::uploadCloudSavesById(const std::string& product_id, int build_index)
+{
+    auto name_to_locations = cloudSaveLocations(product_id, build_index);
+
+    if(name_to_locations.empty()) {
+        std::cout << "Cloud saves not supported for this game" << std::endl;
+    }
+
+    std::map<std::string, cloudSaveFile> path_to_cloudSaveFile;
+    for(auto &name_to_location : name_to_locations) {
+        auto &name = name_to_location.first;
+        auto &location = name_to_location.second;
+
+        if(!boost::filesystem::exists(location) || !boost::filesystem::is_directory(location)) {
+            continue;
+        }
+
+        dirForEach(location, [&](boost::filesystem::directory_iterator file) {
+            cloudSaveFile csf {
+                boost::posix_time::from_time_t(boost::filesystem::last_write_time(*file) - 1),
+                boost::filesystem::file_size(*file),
+                (name / boost::filesystem::relative(*file, location)).string(),
+                file->path().string()
+            };
+
+            path_to_cloudSaveFile.insert(std::make_pair(csf.path, std::move(csf)));
+        });
+    }
+
+    if(path_to_cloudSaveFile.empty()) {
+        std::cout << "No local cloud saves found" << std::endl;
+
+        return;
+    }
+
+    auto res = this->cloudSaveListByIdForEach(product_id, build_index, [&](cloudSaveFile &csf) {
+        auto it = path_to_cloudSaveFile.find(csf.path);
+
+        //If remote save is not locally stored, skip
+        if(it == std::end(path_to_cloudSaveFile)) {
+            return;
+        }
+
+        cloudSaveFile local_csf { std::move(it->second) };
+        path_to_cloudSaveFile.erase(it);
+
+        if(csf.lastModified < local_csf.lastModified || boost::filesystem::path(csf.location).filename().string() == "test.txt") {
+            iTotalRemainingBytes.fetch_add(local_csf.fileSize);
+
+            dlCloudSaveQueue.push(local_csf);
+        }
+    });
+
+    for(auto &path_csf : path_to_cloudSaveFile) {
+        auto &csf = path_csf.second;
+
+        iTotalRemainingBytes.fetch_add(csf.fileSize);
+
+        dlCloudSaveQueue.push(csf);
+    }
+
+    if(res || dlCloudSaveQueue.empty()) {
+        return;
+    }
+
+    // Limit thread count to number of items in upload queue
+    unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlCloudSaveQueue.size()));
+
+    // Create download threads
+    std::vector<std::thread> vThreads;
+    for (unsigned int i = 0; i < iThreads; ++i)
+    {
+        DownloadInfo dlInfo;
+        dlInfo.setStatus(DLSTATUS_NOTSTARTED);
+        vDownloadInfo.push_back(dlInfo);
+        vThreads.push_back(std::thread(Downloader::processCloudSaveUploadQueue, Globals::globalConfig, i));
+    }
+
+    this->printProgress(dlCloudSaveQueue);
+
+    // Join threads
+    for (unsigned int i = 0; i < vThreads.size(); ++i) {
+        vThreads[i].join();
+    }
+
+    vThreads.clear();
+    vDownloadInfo.clear();
+}
+
+void Downloader::downloadCloudSavesById(const std::string& product_id, int build_index)
 {
     auto res = this->cloudSaveListByIdForEach(product_id, build_index, [](cloudSaveFile &csf) {
         iTotalRemainingBytes.fetch_add(csf.fileSize);
@@ -4558,7 +4828,7 @@ void Downloader::downloadCloudSaves(const std::string& product_id, int build_ind
         vThreads.push_back(std::thread(Downloader::processCloudSaveDownloadQueue, Globals::globalConfig, i));
     }
 
-    this->printProgress(dlQueue);
+    this->printProgress(dlCloudSaveQueue);
 
     // Join threads
     for (unsigned int i = 0; i < vThreads.size(); ++i) {
@@ -4595,25 +4865,6 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
             std::cout << filepath << " :: Isn't downloaded yet"  << std::endl;
         }
     });
-}
-
-void dirForEachHelper(const boost::filesystem::path &location, std::function<void(boost::filesystem::directory_iterator)> &f) {
-    boost::filesystem::directory_iterator begin { location };
-    boost::filesystem::directory_iterator end;
-
-    for(boost::filesystem::directory_iterator curr_dir { begin }; curr_dir != end; ++curr_dir) {
-        if(boost::filesystem::is_directory(*curr_dir)) {
-
-            dirForEachHelper(*curr_dir, f);
-        }
-        else {
-            f(curr_dir);
-        }
-    }
-}
-
-void dirForEach(const std::string &location, std::function<void(boost::filesystem::directory_iterator)> &&f) {
-    dirForEachHelper(location, f);
 }
 
 void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, int build_index) {

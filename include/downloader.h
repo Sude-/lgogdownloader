@@ -102,6 +102,9 @@ class Downloader
         void repair();
         void download();
         void downloadCloudSaves(const std::string& product_id, int build_index = -1);
+        void downloadCloudSavesById(const std::string& product_id, int build_index = -1);
+        void uploadCloudSaves(const std::string& product_id, int build_index = -1);
+        void uploadCloudSavesById(const std::string& product_id, int build_index = -1);
         void checkOrphans();
         void checkStatus();
         void updateCache();
@@ -144,6 +147,7 @@ class Downloader
         void saveChangelog(const std::string& changelog, const std::string& filepath);
         static void processDownloadQueue(Config conf, const unsigned int& tid);
         static void processCloudSaveDownloadQueue(Config conf, const unsigned int& tid);
+        static void processCloudSaveUploadQueue(Config conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
