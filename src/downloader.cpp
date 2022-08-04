@@ -4587,6 +4587,16 @@ void Downloader::uploadCloudSaves(const std::string& product_id, int build_index
     }
 }
 
+void Downloader::deleteCloudSaves(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->deleteCloudSavesById(id, build_index);
+    }
+}
+
 void Downloader::downloadCloudSaves(const std::string& product_id, int build_index)
 {
     std::string id;
@@ -4841,8 +4851,49 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
     vDownloadInfo.clear();
 }
 
-void Downloader::downloadCloudSavesById(const std::string& product_id, int build_index)
-{
+void Downloader::deleteCloudSavesById(const std::string& product_id, int build_index) {
+    if(Globals::globalConfig.cloudWhiteList.empty() && !Globals::globalConfig.bCloudForce) {
+        std::cout << "No files have been whitelisted, either use \'--cloud-whitelist\' or \'--cloud-force\'" << std::endl;
+        return;
+    }
+
+
+    curl_slist *header = nullptr;
+
+    std::string access_token;
+    if (!Globals::galaxyConf.isExpired()) {
+        access_token = Globals::galaxyConf.getAccessToken();
+    }
+
+    if (!access_token.empty()) {
+        std::string bearer = "Authorization: Bearer " + access_token;
+        header = curl_slist_append(header, bearer.c_str());
+    }
+
+    auto dlhandle = curl_easy_init();
+
+    curl_easy_setopt(dlhandle, CURLOPT_HTTPHEADER, header);
+    curl_easy_setopt(dlhandle, CURLOPT_CUSTOMREQUEST, "DELETE");
+
+    this->cloudSaveListByIdForEach(product_id, build_index, [dlhandle](cloudSaveFile &csf) {
+        auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
+        curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
+
+        auto result = curl_easy_perform(dlhandle);
+        if(result == CURLE_HTTP_RETURNED_ERROR) {
+            long response_code = 0;
+            curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+
+            std::cout << response_code << ": " << curl_easy_strerror(result);
+        }
+    });
+
+    curl_slist_free_all(header);
+
+    curl_easy_cleanup(dlhandle);
+}
+
+void Downloader::downloadCloudSavesById(const std::string& product_id, int build_index) {
     auto res = this->cloudSaveListByIdForEach(product_id, build_index, [](cloudSaveFile &csf) {
         boost::filesystem::path filepath = csf.location;
 

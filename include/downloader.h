@@ -106,6 +106,8 @@ class Downloader
         void downloadCloudSavesById(const std::string& product_id, int build_index = -1);
         void uploadCloudSaves(const std::string& product_id, int build_index = -1);
         void uploadCloudSavesById(const std::string& product_id, int build_index = -1);
+        void deleteCloudSaves(const std::string& product_id, int build_index = -1);
+        void deleteCloudSavesById(const std::string& product_id, int build_index = -1);
 
         void checkOrphans();
         void checkStatus();
