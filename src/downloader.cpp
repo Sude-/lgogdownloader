@@ -2596,13 +2596,15 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
 
         iTotalRemainingBytes.fetch_sub(csf.fileSize);
 
-        vDownloadInfo[tid].setFilename(csf.location);
+        vDownloadInfo[tid].setFilename(csf.path);
 
         std::string filecontents;
         {
             std::ifstream in { csf.location, std::ios_base::in | std::ios_base::binary };
 
             in >> filecontents;
+
+            in.close();
         }
 
         ChunkMemoryStruct cms {
@@ -2627,7 +2629,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
         curl_easy_setopt(dlhandle, CURLOPT_READDATA, &cms);
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
 
-        msgQueue.push(Message("Begin upload: " + csf.location, MSGTYPE_INFO, msg_prefix));
+        msgQueue.push(Message("Begin upload: " + csf.path, MSGTYPE_INFO, msg_prefix));
 
         bool bShouldRetry = false;
         long int response_code = 0;
@@ -2646,7 +2648,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
                     retry_msg += " (" + retry_reason + ")";
                 msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
             }
-            retry_reason = ""; // reset retry reason
+            retry_reason.clear(); // reset retry reason
 
             xferinfo.offset = 0;
             xferinfo.timer.reset();
@@ -2744,28 +2746,15 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
         iTotalRemainingBytes.fetch_sub(csf.fileSize);
 
         // Get directory from filepath
-        boost::filesystem::path filepath = csf.location;
+        boost::filesystem::path filepath = csf.location + ".~incomplete";
         filepath = boost::filesystem::absolute(filepath, boost::filesystem::current_path());
         boost::filesystem::path directory = filepath.parent_path();
 
-        vDownloadInfo[tid].setFilename(filepath.filename().string());
+        vDownloadInfo[tid].setFilename(csf.path);
 
-        if(boost::filesystem::exists(filepath)) {
-            auto size = boost::filesystem::file_size(filepath);
+        bResume = boost::filesystem::exists(filepath);
 
-            // last_write_time minus a single second, since time_t is only accurate to the second unlike boost::posix_time::ptime
-            auto time = boost::filesystem::last_write_time(filepath) - 1;
-
-            if(csf.fileSize < size) {
-                bResume = true;
-            }
-            else if(boost::posix_time::from_time_t(time) <= csf.lastModified) {
-                msgQueue.push(Message("Already up to date -- skipping: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
-                continue; // This file is already completed
-            }
-        }
-
-        msgQueue.push(Message("Begin download: " + filepath.string(), MSGTYPE_INFO, msg_prefix));
+        msgQueue.push(Message("Begin download: " + csf.path, MSGTYPE_INFO, msg_prefix));
 
         // Check that directory exists and create subdirectories
         std::unique_lock<std::mutex> ul { mtx_create_directories }; // Use mutex to avoid possible race conditions
@@ -2805,7 +2794,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
             retry_reason = ""; // reset retry reason
 
             FILE* outfile;
-            // File exists, resume
+            // If a file was partially downloaded
             if (bResume)
             {
                 iResumePosition = boost::filesystem::file_size(filepath);
@@ -2877,6 +2866,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
         if (result == CURLE_OK || result == CURLE_RANGE_ERROR || (result == CURLE_HTTP_RETURNED_ERROR && response_code == 416))
         {
             // Set timestamp for downloaded file to same value as file on server
+            // and rename "filename.~incomplete" to "filename"
             long filetime = -1;
             CURLcode res = curl_easy_getinfo(dlhandle, CURLINFO_FILETIME, &filetime);
             if (res == CURLE_OK && filetime >= 0)
@@ -2884,11 +2874,12 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 std::time_t timestamp = (std::time_t)filetime;
                 try
                 {
-                    boost::filesystem::last_write_time(filepath, timestamp);
+                    boost::filesystem::rename(filepath, csf.location);
+                    boost::filesystem::last_write_time(csf.location, timestamp);
                 }
                 catch(const boost::filesystem::filesystem_error& e)
                 {
-                    msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                    msgQueue.push(Message(e.what(), MSGTYPE_ERROR, msg_prefix));
                 }
             }
 
@@ -2908,7 +2899,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
             }
             dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
 
-            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix));
+            msgQueue.push(Message("Download complete: " + csf.path + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix));
         }
         else
         {
@@ -2924,7 +2915,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 if ((result != CURLE_PARTIAL_FILE && !bResume && result != CURLE_OPERATION_TIMEDOUT) || boost::filesystem::file_size(filepath) == 0)
                 {
                     if (!boost::filesystem::remove(filepath))
-                        msgQueue.push(Message("Failed to delete " + filepath.filename().string(), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("Failed to delete " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
                 }
             }
         }
@@ -4731,7 +4722,19 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
             continue;
         }
 
+        const char endswith[] = ".~incomplete";
         dirForEach(location, [&](boost::filesystem::directory_iterator file) {
+            auto path = file->path();
+
+            // If path ends with ".~incomplete", then skip this file
+            if(
+                path.size() >= sizeof(endswith) &&
+                strcmp(path.c_str() + (path.size() + 1 - sizeof(endswith)), endswith) == 0
+            ) {
+                return;
+            }
+
+
             cloudSaveFile csf {
                 boost::posix_time::from_time_t(boost::filesystem::last_write_time(*file) - 1),
                 boost::filesystem::file_size(*file),
@@ -4760,7 +4763,7 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
         cloudSaveFile local_csf { std::move(it->second) };
         path_to_cloudSaveFile.erase(it);
 
-        if(csf.lastModified < local_csf.lastModified || boost::filesystem::path(csf.location).filename().string() == "test.txt") {
+        if(csf.lastModified < local_csf.lastModified) {
             iTotalRemainingBytes.fetch_add(local_csf.fileSize);
 
             dlCloudSaveQueue.push(local_csf);
@@ -4806,6 +4809,23 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
 void Downloader::downloadCloudSavesById(const std::string& product_id, int build_index)
 {
     auto res = this->cloudSaveListByIdForEach(product_id, build_index, [](cloudSaveFile &csf) {
+        boost::filesystem::path filepath = csf.location;
+
+        if(boost::filesystem::exists(filepath)) {
+            // last_write_time minus a single second, since time_t is only accurate to the second unlike boost::posix_time::ptime
+            auto time = boost::posix_time::from_time_t(boost::filesystem::last_write_time(filepath) - 1);
+
+            if(time <= csf.lastModified) {
+                std::cout << "Already up to date -- skipping: " << csf.path << std::endl;
+                return; // This file is already completed
+            }
+        }
+
+        if(boost::filesystem::is_directory(filepath)) {
+            std::cout << "is a directory: " << csf.location << std::endl;
+            return;
+        }
+
         iTotalRemainingBytes.fetch_add(csf.fileSize);
 
         dlCloudSaveQueue.push(std::move(csf));
