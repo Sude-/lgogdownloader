@@ -4635,8 +4635,10 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
         std::cout << "Cloud saves for Linux builds not yet supported" << std::endl;
         return {};
     }
-    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
-        sPlatform = "osx";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC) {
+        std::cout << "Cloud saves for Mac builds not yet supported" << std::endl;
+        return {};
+    }
     else
         sPlatform = "windows";
 
@@ -4672,11 +4674,12 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
 
     std::string platform;
     switch(iPlatform) {
-        case GlobalConstants::PLATFORM_MAC:
-            platform = "MacOS";
+        case GlobalConstants::PLATFORM_WINDOWS:
+            platform = "Windows";
             break;
         default:
-            platform = "Windows";
+            std::cout << "Only Windows supported for now for cloud support" << std::endl;
+            return {};
     }
 
     std::string install_path = Globals::globalConfig.dirConf.sDirectory + install_directory;
@@ -4686,7 +4689,12 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
     std::string appdata_local_low_path = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/AppData/LocalLow/";
     std::string saved_games = Globals::globalConfig.dirConf.sWinePrefix + "drive_c/users/" + username() + "/Save Games/";
 
-    auto cloud_saves_json = gogGalaxy->getCloudPathAsJson(manifest["clientId"].asString())["content"][platform]["cloudStorage"]["locations"];
+    auto cloud_saves_json = gogGalaxy->getCloudPathAsJson(manifest["clientId"].asString())["content"][platform]["cloudStorage"];
+    auto enabled = cloud_saves_json["enabled"].asBool();
+
+    if(!enabled) {
+        return {};
+    }
 
     std::map<std::string, std::string> vars {
         { "INSTALL", std::move(install_path) },
@@ -4698,10 +4706,24 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
     };
 
     std::map<std::string, std::string> name_to_location;
-    for(auto &cloud_save : cloud_saves_json) {
+    for(auto &cloud_save : cloud_saves_json["locations"]) {
         std::string location = parseLocation(cloud_save["location"].asString(), vars);
 
         name_to_location.insert({cloud_save["name"].asString(), std::move(location)});
+    }
+
+    if(name_to_location.empty()) {
+        std::string location;
+        switch(iPlatform) {
+            case GlobalConstants::PLATFORM_WINDOWS:
+                location = vars["APPLICATION_DATA_LOCAL"] + "/GOG.com/Galaxy/Applications/" + Globals::galaxyConf.getClientId() + "/Storage";
+                break;
+            default:
+                std::cout << "Only Windows supported for now for cloud support" << std::endl;
+                return {};
+        }
+
+        name_to_location.insert({"__default", std::move(location)});
     }
 
     return name_to_location;
