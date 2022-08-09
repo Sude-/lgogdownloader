@@ -142,9 +142,19 @@ class GalaxyConfig
             return this->filepath;
         }
 
+        void resetClient() {
+            std::lock_guard<std::mutex> lock(m);
+            if(token_json.isMember("client_id")) {
+                token_json["client_id"] = default_client_id;
+            }
+            if(token_json.isMember("client_secret")) {
+                token_json["client_secret"] = default_client_secret;
+            }
+        }
+
         std::string getClientId()
         {
-            std::unique_lock<std::mutex> lock(m);
+            std::lock_guard<std::mutex> lock(m);
             if(token_json.isMember("client_id")) {
                 return token_json["client_id"].asString();
             }
@@ -154,6 +164,7 @@ class GalaxyConfig
 
         std::string getClientSecret()
         {
+            std::lock_guard<std::mutex> lock(m);
             if(token_json.isMember("client_secret")) {
                 return token_json["client_secret"].asString();
             }
