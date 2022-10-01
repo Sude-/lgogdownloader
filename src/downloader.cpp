@@ -6002,40 +6002,38 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
 
 
     // Get XML data
+    curl_off_t file_size = 0;
+    bool bMissingXML = false;
+    bool bXMLParsingError = false;
     std::string xml_data = gogGalaxy->getResponse(xml_url);
     if (xml_data.empty())
     {
         std::cerr << "Failed to get XML data" << std::endl;
-        return 1;
+        bMissingXML = true;
     }
 
-
-    std::uintmax_t file_size = 0;
-    tinyxml2::XMLDocument xml;
-    xml.Parse(xml_data.c_str());
-    tinyxml2::XMLElement *fileElem = xml.FirstChildElement("file");
-
-    if (!fileElem)
+    if (!bMissingXML)
     {
-        std::cerr << "Failed to parse XML data" << std::endl;
-        return 1;
-    }
-    else
-    {
-        std::string total_size = fileElem->Attribute("total_size");
-        try
-        {
-            file_size = std::stoull(total_size);
-        }
-        catch (std::invalid_argument& e)
-        {
-            file_size = 0;
-        }
+        tinyxml2::XMLDocument xml;
+        xml.Parse(xml_data.c_str());
+        tinyxml2::XMLElement *fileElem = xml.FirstChildElement("file");
 
-        if (file_size == 0)
+        if (!fileElem)
         {
-            std::cerr << "Failed to get file size" << std::endl;
-            return 1;
+            std::cerr << "Failed to parse XML data" << std::endl;
+            bXMLParsingError = true;
+        }
+        else
+        {
+            std::string total_size = fileElem->Attribute("total_size");
+            try
+            {
+                file_size = std::stoull(total_size);
+            }
+            catch (std::invalid_argument& e)
+            {
+                file_size = 0;
+            }
         }
     }
 
@@ -6043,6 +6041,28 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
     if (installer_url.empty())
     {
         std::cerr << "Failed to get installer url" << std::endl;
+        return 1;
+    }
+
+    if (bXMLParsingError || bMissingXML || file_size == 0)
+    {
+        std::cerr << "Failed to get file size from XML data, trying to get Content-Length header" << std::endl;
+        std::stringstream header;
+        curl_easy_setopt(curlhandle, CURLOPT_URL, installer_url.c_str());
+        curl_easy_setopt(curlhandle, CURLOPT_HEADER, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_NOBODY, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
+        curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, &header);
+        curl_easy_perform(curlhandle);
+        curl_easy_setopt(curlhandle, CURLOPT_HEADER, 0);
+        curl_easy_setopt(curlhandle, CURLOPT_NOBODY, 0);
+        curl_easy_getinfo(curlhandle, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &file_size);
+    }
+
+    if (file_size <= 0)
+    {
+        std::cerr << "Failed to get file size" << std::endl;
         return 1;
     }
 
