@@ -3808,6 +3808,17 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
             items.insert(std::end(items), std::begin(vec), std::end(vec));
     }
 
+    if (!Globals::globalConfig.dlConf.bDLC)
+    {
+        std::vector<galaxyDepotItem> items_no_dlc;
+        for (auto it : items)
+        {
+            if (it.product_id == product_id)
+                items_no_dlc.push_back(it);
+        }
+        items = items_no_dlc;
+    }
+
     // Add dependency ids to vector
     std::vector<std::string> dependencies;
     if (json.isMember("dependencies") && Globals::globalConfig.dlConf.bGalaxyDependencies)
@@ -5143,7 +5154,6 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
     dlConf.bExtras = false;
     dlConf.bLanguagePacks = false;
     dlConf.bPatches = false;
-    dlConf.bDLC = true;
     dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
     dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
 
