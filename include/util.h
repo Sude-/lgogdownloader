@@ -66,6 +66,7 @@ namespace Util
     int createXML(std::string filepath, uintmax_t chunk_size, std::string xml_dir = std::string());
     int getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, std::string directory = std::string());
     int replaceString(std::string& str, const std::string& to_replace, const std::string& replace_with);
+    int replaceAllString(std::string& str, const std::string& to_replace, const std::string& replace_with);
     void filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId = 0, const std::string& dlcname = "");
     void setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions);
     int getTerminalWidth();
@@ -90,6 +91,7 @@ namespace Util
     CURLcode CurlHandleGetResponse(CURL* curlhandle, std::string& response, int max_retries = -1);
     curl_off_t CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp);
+    curl_off_t CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *userp);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {

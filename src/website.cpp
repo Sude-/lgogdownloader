@@ -264,6 +264,9 @@ std::vector<gameItem> Website::getGames()
 // Login to GOG website
 int Website::Login(const std::string& email, const std::string& password)
 {
+    // Reset client id and client secret to ensure we can log-in
+    Globals::galaxyConf.resetClient();
+
     int res = 0;
     std::string postdata;
     std::ostringstream memory;

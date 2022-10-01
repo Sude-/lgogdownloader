@@ -46,16 +46,20 @@ class galaxyAPI
         galaxyAPI(CurlConfig& conf);
         virtual ~galaxyAPI();
         int init();
+
         bool isTokenExpired();
         bool refreshLogin();
+        bool refreshLogin(const std::string &clientId, const std::string &clientSecret, const std::string &refreshToken, bool newSession);
+
         Json::Value getProductBuilds(const std::string& product_id, const std::string& platform = "windows", const std::string& generation = "2");
         Json::Value getManifestV1(const std::string& product_id, const std::string& build_id, const std::string& manifest_id = "repository", const std::string& platform = "windows");
         Json::Value getManifestV1(const std::string& manifest_url);
         Json::Value getManifestV2(std::string manifest_hash, const bool& is_dependency = false);
+        Json::Value getCloudPathAsJson(const std::string &clientId);
         Json::Value getSecureLink(const std::string& product_id, const std::string& path);
         Json::Value getDependencyLink(const std::string& path);
-        std::string getResponse(const std::string& url);
-        Json::Value getResponseJson(const std::string& url);
+        std::string getResponse(const std::string& url, const char *encoding = nullptr);
+        Json::Value getResponseJson(const std::string& url, const char *encoding = nullptr);
         std::string hashToGalaxyPath(const std::string& hash);
         std::vector<galaxyDepotItem> getDepotItemsVector(const std::string& hash, const bool& is_dependency = false);
         Json::Value getProductInfo(const std::string& product_id);

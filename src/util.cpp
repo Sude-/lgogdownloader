@@ -8,6 +8,9 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
 #include <tinyxml2.h>
 #include <json/json.h>
 #include <fstream>
@@ -391,6 +394,22 @@ int Util::replaceString(std::string& str, const std::string& to_replace, const s
     return 1;
 }
 
+int Util::replaceAllString(std::string& str, const std::string& to_replace, const std::string& replace_with) {
+    size_t pos = str.find(to_replace);
+    if (pos == std::string::npos)
+    {
+        return 0;
+    }
+
+    do {
+        str.replace(str.begin()+pos, str.begin()+pos+to_replace.length(), replace_with);
+
+        pos = str.find(to_replace, pos + to_replace.length());
+    } while(pos != std::string::npos);
+    
+    return 1;
+}
+
 void Util::filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId, const std::string& dlcname)
 {
     std::string platform;
@@ -749,7 +768,6 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
     curl_easy_setopt(curlhandle, CURLOPT_USERAGENT, conf.sUserAgent.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(curlhandle, CURLOPT_NOPROGRESS, 1);
-    curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
@@ -823,8 +841,9 @@ CURLcode Util::CurlHandleGetResponse(CURL* curlhandle, std::string& response, in
             // Retry on CURLE_HTTP_RETURNED_ERROR if response code is not "404 Not Found"
             case CURLE_HTTP_RETURNED_ERROR:
                 curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-                if (response_code == 404)
+                if (response_code == 404 || response_code == 403) {
                     bShouldRetry = false;
+                }
                 else
                     bShouldRetry = true;
                 break;
@@ -862,6 +881,17 @@ curl_off_t Util::CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, c
     memcpy(&(mem->memory[mem->size]), contents, realsize);
     mem->size += realsize;
     mem->memory[mem->size] = 0;
+
+    return realsize;
+}
+
+curl_off_t Util::CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *mem) {
+    curl_off_t realsize = std::min(size * nmemb, mem->size);
+
+    std::copy(mem->memory, mem->memory + realsize, (char*)contents);
+
+    mem->size -= realsize;
+    mem->memory += realsize;
 
     return realsize;
 }

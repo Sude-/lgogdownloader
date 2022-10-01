@@ -53,21 +53,31 @@ int galaxyAPI::init()
     return res;
 }
 
-bool galaxyAPI::refreshLogin()
+bool galaxyAPI::refreshLogin(const std::string &clientId, const std::string &clientSecret, const std::string &refreshToken, bool newSession)
 {
-    std::string refresh_url = "https://auth.gog.com/token?client_id=" + Globals::galaxyConf.getClientId()
-                            + "&client_secret=" + Globals::galaxyConf.getClientSecret()
+    std::string refresh_url = "https://auth.gog.com/token?client_id=" + clientId
+                            + "&client_secret=" + clientSecret
                             + "&grant_type=refresh_token"
-                            + "&refresh_token=" + Globals::galaxyConf.getRefreshToken();
+                            + "&refresh_token=" + refreshToken
+                            + (newSession ? "" : "&without_new_session=1");
 
+    // std::cout << refresh_url << std::endl;
     Json::Value token_json = this->getResponseJson(refresh_url);
 
     if (token_json.empty())
         return false;
 
+    token_json["client_id"] = clientId;
+    token_json["client_secret"] = clientSecret;
+
     Globals::galaxyConf.setJSON(token_json);
 
     return true;
+}
+
+bool galaxyAPI::refreshLogin()
+{
+    return refreshLogin(Globals::galaxyConf.getClientId(), Globals::galaxyConf.getClientSecret(), Globals::galaxyConf.getRefreshToken(), true);
 }
 
 bool galaxyAPI::isTokenExpired()
@@ -80,7 +90,7 @@ bool galaxyAPI::isTokenExpired()
     return res;
 }
 
-std::string galaxyAPI::getResponse(const std::string& url)
+std::string galaxyAPI::getResponse(const std::string& url, const char *encoding)
 {
     struct curl_slist *header = NULL;
 
@@ -92,13 +102,26 @@ std::string galaxyAPI::getResponse(const std::string& url)
         std::string bearer = "Authorization: Bearer " + access_token;
         header = curl_slist_append(header, bearer.c_str());
     }
+
+    if(encoding) {
+        auto accept = "Accept: " + std::string(encoding);
+        header = curl_slist_append(header, accept.c_str());
+    }
+
     curl_easy_setopt(curlhandle, CURLOPT_HTTPHEADER, header);
     curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_ACCEPT_ENCODING, "");
 
     int max_retries = std::min(3, Globals::globalConfig.iRetries);
     std::string response;
-    Util::CurlHandleGetResponse(curlhandle, response, max_retries);
+    auto res = Util::CurlHandleGetResponse(curlhandle, response, max_retries);
+
+    if(res) {
+        long int response_code = 0;
+        curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+
+        std::cout << "Response code for " << url << " is [" << response_code << ']' << std::endl;
+    }
 
     curl_easy_setopt(curlhandle, CURLOPT_ACCEPT_ENCODING, NULL);
     curl_easy_setopt(curlhandle, CURLOPT_HTTPHEADER, NULL);
@@ -107,9 +130,9 @@ std::string galaxyAPI::getResponse(const std::string& url)
     return response;
 }
 
-Json::Value galaxyAPI::getResponseJson(const std::string& url)
+Json::Value galaxyAPI::getResponseJson(const std::string& url, const char *encoding)
 {
-    std::istringstream response(this->getResponse(url));
+    std::istringstream response(this->getResponse(url, encoding));
     Json::Value json;
 
     if (!response.str().empty())
@@ -149,7 +172,12 @@ Json::Value galaxyAPI::getResponseJson(const std::string& url)
                 catch(const Json::Exception& exc)
                 {
                     // Failed to parse json
+
+                    std::cout << "Failed to parse json: " << exc.what();
                 }
+            }
+            else {
+                std::cout << "Failed to parse json: " << exc.what();
             }
         }
     }
@@ -186,6 +214,12 @@ Json::Value galaxyAPI::getManifestV2(std::string manifest_hash, const bool& is_d
         url = "https://cdn.gog.com/content-system/v2/dependencies/meta/" + manifest_hash;
     else
         url = "https://cdn.gog.com/content-system/v2/meta/" + manifest_hash;
+
+    return this->getResponseJson(url);
+}
+
+Json::Value galaxyAPI::getCloudPathAsJson(const std::string &clientId) {
+    std::string url = "https://remote-config.gog.com/components/galaxy_client/clients/" + clientId + "?component_version=2.0.51";
 
     return this->getResponseJson(url);
 }

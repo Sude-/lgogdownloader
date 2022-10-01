@@ -19,6 +19,7 @@ struct DirectoryConfig
 {
     bool bSubDirectories;
     std::string sDirectory;
+    std::string sWinePrefix;
     std::string sGameSubdir;
     std::string sInstallersSubdir;
     std::string sExtrasSubdir;
@@ -102,6 +103,16 @@ class GalaxyConfig
             return this->token_json;
         }
 
+        std::string getUserId() {
+            std::unique_lock<std::mutex> lock(m);
+
+            if(this->token_json.isMember("user_id")) {
+                return this->token_json["user_id"].asString();
+            }
+
+            return {};
+        }
+
         void setJSON(Json::Value json)
         {
             std::unique_lock<std::mutex> lock(m);
@@ -131,16 +142,34 @@ class GalaxyConfig
             return this->filepath;
         }
 
+        void resetClient() {
+            std::lock_guard<std::mutex> lock(m);
+            if(token_json.isMember("client_id")) {
+                token_json["client_id"] = default_client_id;
+            }
+            if(token_json.isMember("client_secret")) {
+                token_json["client_secret"] = default_client_secret;
+            }
+        }
+
         std::string getClientId()
         {
-            std::unique_lock<std::mutex> lock(m);
-            return this->client_id;
+            std::lock_guard<std::mutex> lock(m);
+            if(token_json.isMember("client_id")) {
+                return token_json["client_id"].asString();
+            }
+
+            return default_client_id;
         }
 
         std::string getClientSecret()
         {
-            std::unique_lock<std::mutex> lock(m);
-            return this->client_secret;
+            std::lock_guard<std::mutex> lock(m);
+            if(token_json.isMember("client_secret")) {
+                return token_json["client_secret"].asString();
+            }
+
+            return default_client_secret;
         }
 
         std::string getRedirectUri()
@@ -154,8 +183,6 @@ class GalaxyConfig
         GalaxyConfig(const GalaxyConfig& other)
         {
             std::lock_guard<std::mutex> guard(other.m);
-            client_id = other.client_id;
-            client_secret = other.client_secret;
             redirect_uri = other.redirect_uri;
             filepath = other.filepath;
             token_json = other.token_json;
@@ -169,8 +196,6 @@ class GalaxyConfig
             std::unique_lock<std::mutex> lock1(m, std::defer_lock);
             std::unique_lock<std::mutex> lock2(other.m, std::defer_lock);
             std::lock(lock1, lock2);
-            client_id = other.client_id;
-            client_secret = other.client_secret;
             redirect_uri = other.redirect_uri;
             filepath = other.filepath;
             token_json = other.token_json;
@@ -178,8 +203,9 @@ class GalaxyConfig
         }
     protected:
     private:
-        std::string client_id = "46899977096215655";
-        std::string client_secret = "9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9";
+        const std::string default_client_id = "46899977096215655";
+        const std::string default_client_secret = "9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9";
+
         std::string redirect_uri = "https://embed.gog.com/on_login_success?origin=client";
         std::string filepath;
         Json::Value token_json;
@@ -281,6 +307,12 @@ class Config
         Blacklist blacklist;
         Blacklist ignorelist;
         Blacklist gamehasdlc;
+
+        // Cloud save options
+        std::vector<std::string> cloudWhiteList;
+        std::vector<std::string> cloudBlackList;
+        bool bCloudForce;
+
         std::string sGameHasDLCList;
 
         // Integers

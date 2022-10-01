@@ -24,6 +24,18 @@ template<typename T> void set_vm_value(std::map<std::string, bpo::variable_value
     vm[option].value() = boost::any(value);
 }
 
+void ensure_trailing_slash(std::string &path, const char *default_ = nullptr) {
+    if (!path.empty())
+    {
+        if (path.at(path.length()-1)!='/')
+            path += "/";
+    }
+    else
+    {
+        path = default_; // Directory wasn't specified, use current directory
+    }
+}
+
 int main(int argc, char *argv[])
 {
     struct sigaction act;
@@ -151,6 +163,11 @@ int main(int argc, char *argv[])
 
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
+    std::string galaxy_product_id_show_cloud_paths;
+    std::string galaxy_product_id_show_local_cloud_paths;
+    std::string galaxy_product_cloud_saves;
+    std::string galaxy_product_cloud_saves_delete;
+    std::string galaxy_upload_product_cloud_saves;
     std::string tags;
 
     std::vector<std::string> vFileIdStrings;
@@ -213,6 +230,11 @@ int main(int argc, char *argv[])
             ("cacert", bpo::value<std::string>(&Globals::globalConfig.curlConf.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
             ("respect-umask", bpo::value<bool>(&Globals::globalConfig.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
             ("user-agent", bpo::value<std::string>(&Globals::globalConfig.curlConf.sUserAgent)->default_value(DEFAULT_USER_AGENT), "Set user agent")
+
+            ("wine-prefix", bpo::value<std::string>(&Globals::globalConfig.dirConf.sWinePrefix)->default_value("."), "Set wineprefix directory")
+            ("cloud-whitelist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudWhiteList)->multitoken(), "Include this list of cloud saves, by default all cloud saves are included\n Example: --cloud-whitelist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
+            ("cloud-blacklist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudBlackList)->multitoken(), "Exclude this list of cloud saves\n Example: --cloud-blacklist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
+            ("cloud-force", bpo::value<bool>(&Globals::globalConfig.bCloudForce)->zero_tokens()->default_value(false), "Download or Upload cloud saves even if they're up-to-date\nDelete remote cloud saves even if no saves are whitelisted")
 #ifdef USE_QT_GUI_LOGIN
             ("enable-login-gui", bpo::value<bool>(&Globals::globalConfig.bEnableLoginGUI)->zero_tokens()->default_value(false), "Enable login GUI when encountering reCAPTCHA on login form")
 #endif
@@ -271,6 +293,11 @@ int main(int argc, char *argv[])
         options_cli_experimental.add_options()
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-download-cloud-saves", bpo::value<std::string>(&galaxy_product_cloud_saves)->default_value(""), "Download cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-upload-cloud-saves", bpo::value<std::string>(&galaxy_upload_product_cloud_saves)->default_value(""), "Upload cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-show-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_cloud_paths)->default_value(""), "Show game cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-show-local-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_local_cloud_paths)->default_value(""), "Show local cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-delete-cloud-saves", bpo::value<std::string>(&galaxy_product_cloud_saves_delete)->default_value(""), "Delete cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-platform", bpo::value<std::string>(&sGalaxyPlatform)->default_value("w"), galaxy_platform_text.c_str())
             ("galaxy-language", bpo::value<std::string>(&sGalaxyLanguage)->default_value("en"), galaxy_language_text.c_str())
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
@@ -578,15 +605,8 @@ int main(int argc, char *argv[])
     }
 
     // Make sure that directory has trailing slash
-    if (!Globals::globalConfig.dirConf.sDirectory.empty())
-    {
-        if (Globals::globalConfig.dirConf.sDirectory.at(Globals::globalConfig.dirConf.sDirectory.length()-1)!='/')
-            Globals::globalConfig.dirConf.sDirectory += "/";
-    }
-    else
-    {
-        Globals::globalConfig.dirConf.sDirectory = "./"; // Directory wasn't specified, use current directory
-    }
+    ensure_trailing_slash(Globals::globalConfig.dirConf.sDirectory, "./");
+    ensure_trailing_slash(Globals::globalConfig.dirConf.sWinePrefix, "./");
 
     // CA certificate bundle
     if (Globals::globalConfig.curlConf.sCACertPath.empty())
@@ -777,6 +797,39 @@ int main(int argc, char *argv[])
         }
         downloader.galaxyShowBuilds(product_id, build_index);
     }
+    else if (!galaxy_product_id_show_cloud_paths.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_cloud_paths, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowCloudSaves(product_id, build_index);
+    }
+    else if (!galaxy_product_id_show_local_cloud_paths.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_local_cloud_paths, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowLocalCloudSaves(product_id, build_index);
+    }
+    else if (!galaxy_product_cloud_saves_delete.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_cloud_saves_delete, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.deleteCloudSaves(product_id, build_index);
+    }
     else if (!galaxy_product_id_install.empty())
     {
         int build_index = -1;
@@ -787,6 +840,26 @@ int main(int argc, char *argv[])
             build_index = std::stoi(tokens[1]);
         }
         downloader.galaxyInstallGame(product_id, build_index, Globals::globalConfig.dlConf.iGalaxyArch);
+    }
+    else if (!galaxy_product_cloud_saves.empty()) {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_cloud_saves, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.downloadCloudSaves(product_id, build_index);
+    }
+    else if (!galaxy_upload_product_cloud_saves.empty()) {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_upload_product_cloud_saves, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.uploadCloudSaves(product_id, build_index);
     }
     else
     {
