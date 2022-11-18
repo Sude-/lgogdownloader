@@ -142,6 +142,7 @@ class Downloader
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
         std::string getRemoteFileHash(const gameFile& gf);
+        void addStatusLine(const std::string& statusCode, const std::string& gamename, const std::string& filepath, const uintmax_t& filesize, const std::string& localHash);
         int loadGameDetailsCache();
         int saveGameDetailsCache();
         std::vector<gameDetails> getGameDetailsFromJsonNode(Json::Value root, const int& recursion_level = 0);

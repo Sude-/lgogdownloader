@@ -1962,63 +1962,86 @@ void Downloader::checkStatus()
         if (Globals::globalConfig.blacklist.isBlacklisted(filepath.native()))
             continue;
 
+        std::string filePathString = filepath.filename().string();
         std::string gamename = vGameFiles[i].gamename;
 
         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
         {
-            std::string remoteHash;
-            bool bHashOK = true; // assume hash OK
             uintmax_t filesize = boost::filesystem::file_size(filepath);
+            uintmax_t filesize_xml = 0;
+            boost::filesystem::path path = filepath;
+            boost::filesystem::path local_xml_file;
+            if (!gamename.empty())
+                local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
+            else
+                local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + path.filename().string() + ".xml";
 
-            // GOG only provides xml data for installers, patches and language packs
-            if (type & (GFTYPE_INSTALLER | GFTYPE_PATCH | GFTYPE_LANGPACK))
-                remoteHash = this->getRemoteFileHash(vGameFiles[i]);
-            std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
-
-            if (!remoteHash.empty())
+            if (boost::filesystem::exists(local_xml_file))
             {
-                if (remoteHash != localHash)
-                    bHashOK = false;
-                else
+                tinyxml2::XMLDocument local_xml;
+                local_xml.LoadFile(local_xml_file.string().c_str());
+                tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
+                if (fileElemLocal)
                 {
-                    // Check for incomplete file by comparing the filesizes
-                    // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
-                    uintmax_t filesize_xml = 0;
-                    boost::filesystem::path path = filepath;
-                    boost::filesystem::path local_xml_file;
-                    if (!gamename.empty())
-                        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + gamename + "/" + path.filename().string() + ".xml";
-                    else
-                        local_xml_file = Globals::globalConfig.sXMLDirectory + "/" + path.filename().string() + ".xml";
-
-                    if (boost::filesystem::exists(local_xml_file))
-                    {
-                        tinyxml2::XMLDocument local_xml;
-                        local_xml.LoadFile(local_xml_file.string().c_str());
-                        tinyxml2::XMLElement *fileElemLocal = local_xml.FirstChildElement("file");
-                        if (fileElemLocal)
-                        {
-                            std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
-                            filesize_xml = std::stoull(filesize_xml_str);
-                        }
-                    }
-
-                    if (filesize_xml > 0 && filesize_xml != filesize)
-                    {
-                        localHash = Util::getFileHash(path.string(), RHASH_MD5);
-                        std::cout << "FS " << gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
-                        continue;
-                    }
+                    std::string filesize_xml_str = fileElemLocal->Attribute("total_size");
+                    filesize_xml = std::stoull(filesize_xml_str);
                 }
             }
-            std::cout << (bHashOK ? "OK " : "MD5 ") << gamename << " " << filepath.filename().string() << " " << filesize << " " << localHash << std::endl;
+
+            if (Globals::globalConfig.bSizeOnly)
+            {
+                // Check for incomplete file by comparing the filesizes
+                if (filesize_xml > 0 && filesize_xml != filesize)
+                {
+                    addStatusLine("FS", gamename, filePathString, filesize, "");
+                    continue;
+                }
+                else
+                {
+                    addStatusLine("OK", gamename, filePathString, filesize, "");
+                    continue;
+                }
+            }
+            else
+            {
+                std::string remoteHash;
+                bool bHashOK = true; // assume hash OK
+
+                // GOG only provides xml data for installers, patches and language packs
+                if (type & (GFTYPE_INSTALLER | GFTYPE_PATCH | GFTYPE_LANGPACK))
+                    remoteHash = this->getRemoteFileHash(vGameFiles[i]);
+                std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
+
+                if (!remoteHash.empty())
+                {
+                    if (remoteHash != localHash)
+                        bHashOK = false;
+                    else
+                    {
+                        // Check for incomplete file by comparing the filesizes
+                        // Remote hash was saved but download was incomplete and therefore getLocalFileHash returned the same as getRemoteFileHash
+                        if (filesize_xml > 0 && filesize_xml != filesize)
+                        {
+                            localHash = Util::getFileHash(path.string(), RHASH_MD5);
+                            addStatusLine("FS", gamename, filePathString, filesize, localHash);
+                            continue;
+                        }
+                    }
+                }
+                addStatusLine(bHashOK ? "OK" : "MD5", gamename, filePathString, filesize, localHash);
+            }
         }
         else
         {
-            std::cout << "ND " << gamename << " " << filepath.filename().string() << std::endl;
+            addStatusLine("ND", gamename, filePathString, 0, "");
         }
     }
+    return;
+}
 
+void Downloader::addStatusLine(const std::string& statusCode, const std::string& gamename, const std::string& filepath, const uintmax_t& filesize, const std::string& localHash)
+{
+    std::cout << statusCode << " " << gamename << " " << filepath << " " << filesize << " " << localHash << std::endl;
     return;
 }
 
