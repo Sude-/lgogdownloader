@@ -247,7 +247,6 @@ class Config
         bool bIncludeHiddenProducts;
         bool bSizeOnly;
 
-        bool bVerbose;
         bool bUnicode; // use Unicode in console output
         bool bColor;   // use colors
         bool bReport;
@@ -322,6 +321,7 @@ class Config
         int iWait;
         size_t iChunkSize;
         int iProgressInterval;
+        int iMsgLevel;
 };
 
 #endif // CONFIG_H__

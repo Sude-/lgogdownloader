@@ -254,7 +254,6 @@ int main(int argc, char *argv[])
             ("no-color", bpo::value<bool>(&bNoColor)->zero_tokens()->default_value(false), "Don't use coloring in the progress bar or status messages")
             ("no-duplicate-handling", bpo::value<bool>(&bNoDuplicateHandler)->zero_tokens()->default_value(false), "Don't use duplicate handler for installers\nDuplicate installers from different languages are handled separately")
             ("no-subdirectories", bpo::value<bool>(&bNoSubDirectories)->zero_tokens()->default_value(false), "Don't create subdirectories for extras, patches and language packs")
-            ("verbose", bpo::value<bool>(&Globals::globalConfig.bVerbose)->zero_tokens()->default_value(false), "Print lots of information")
             ("curl-verbose", bpo::value<bool>(&Globals::globalConfig.curlConf.bVerbose)->zero_tokens()->default_value(false), "Set libcurl to verbose mode")
             ("insecure", bpo::value<bool>(&bInsecure)->zero_tokens()->default_value(false), "Don't verify authenticity of SSL certificates")
             ("timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iTimeout)->default_value(10), "Set timeout for connection\nMaximum time in seconds that connection phase is allowed to take")
@@ -283,6 +282,7 @@ int main(int argc, char *argv[])
             ("lowspeed-rate", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeoutRate)->default_value(200), "Set average transfer speed in bytes per second that the transfer should be below during time specified with --lowspeed-timeout for it to be considered too slow and aborted")
             ("include-hidden-products", bpo::value<bool>(&Globals::globalConfig.bIncludeHiddenProducts)->zero_tokens()->default_value(false), "Include games that have been set hidden in account page")
             ("size-only", bpo::value<bool>(&Globals::globalConfig.bSizeOnly)->zero_tokens()->default_value(false), "Don't check the hashes of the files whose size matches that on the server")
+            ("verbosity", bpo::value<int>(&Globals::globalConfig.iMsgLevel)->default_value(0), "Set message verbosity level\n -1 = Less verbose\n 0 = Default\n 1 = Verbose\n 2 = Debug")
         ;
 
         options_cli_no_cfg_hidden.add_options()
@@ -497,6 +497,12 @@ int main(int argc, char *argv[])
         {
             Globals::globalConfig.iThreads = 1;
             set_vm_value(vm, "threads", Globals::globalConfig.iThreads);
+        }
+
+        if (Globals::globalConfig.iMsgLevel < -1)
+        {
+            Globals::globalConfig.iMsgLevel = -1;
+            set_vm_value(vm, "verbosity", Globals::globalConfig.iMsgLevel);
         }
 
         Globals::globalConfig.curlConf.bVerifyPeer = !bInsecure;

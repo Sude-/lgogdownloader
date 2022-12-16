@@ -5,6 +5,7 @@
  * http://www.wtfpl.net/ for more details. */
 
 #include "galaxyapi.h"
+#include "message.h"
 #include "ziputil.h"
 
 #include <boost/iostreams/filtering_streambuf.hpp>
@@ -120,7 +121,8 @@ std::string galaxyAPI::getResponse(const std::string& url, const char *encoding)
         long int response_code = 0;
         curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
 
-        std::cout << "Response code for " << url << " is [" << response_code << ']' << std::endl;
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+            std::cout << "Response code for " << url << " is [" << response_code << ']' << std::endl;
     }
 
     curl_easy_setopt(curlhandle, CURLOPT_ACCEPT_ENCODING, NULL);

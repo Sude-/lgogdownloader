@@ -14,16 +14,22 @@ const unsigned int MSGTYPE_WARNING = 1 << 1;
 const unsigned int MSGTYPE_ERROR   = 1 << 2;
 const unsigned int MSGTYPE_SUCCESS = 1 << 3;
 
+const int MSGLEVEL_ALWAYS  = -1;
+const int MSGLEVEL_DEFAULT = 0;
+const int MSGLEVEL_VERBOSE = 1;
+const int MSGLEVEL_DEBUG   = 2;
+
 class Message
 {
     public:
         Message() = default;
-        Message(std::string msg, const unsigned int& type = MSGTYPE_INFO, const std::string& prefix = std::string())
+        Message(std::string msg, const unsigned int& type = MSGTYPE_INFO, const std::string& prefix = std::string(), const int& level = MSGLEVEL_DEFAULT)
         {
             prefix_ = prefix;
             msg_ = msg;
             type_ = type;
             timestamp_ = boost::posix_time::second_clock::local_time();
+            level_ = level;
         }
 
         void setMessage(const std::string& msg)
@@ -44,6 +50,11 @@ class Message
         void setPrefix(const std::string& prefix)
         {
             prefix_ = prefix;
+        }
+
+        void setLevel(const int& level)
+        {
+            level_ = level;
         }
 
         std::string getMessage()
@@ -69,6 +80,11 @@ class Message
         std::string getPrefix()
         {
             return prefix_;
+        }
+
+        int getLevel()
+        {
+            return level_;
         }
 
         std::string getFormattedString(const bool& bColor = true, const bool& bPrefix = true)
@@ -103,6 +119,7 @@ class Message
         boost::posix_time::ptime timestamp_;
         unsigned int type_;
         std::string prefix_;
+        int level_;
 };
 
 #endif // MESSAGE_H

@@ -482,7 +482,9 @@ int Downloader::getGameDetails()
             Message msg;
             while (msgQueue.try_pop(msg))
             {
-                std::cerr << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+                if (msg.getLevel() <= Globals::globalConfig.iMsgLevel)
+                    std::cerr << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+
                 if (Globals::globalConfig.bReport)
                 {
                     this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
@@ -549,7 +551,7 @@ int Downloader::listGames()
                     std::string filepath = games[i].installers[j].getFilepath();
                     if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (Globals::globalConfig.bVerbose)
+                        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -575,7 +577,7 @@ int Downloader::listGames()
                     std::string filepath = games[i].extras[j].getFilepath();
                     if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (Globals::globalConfig.bVerbose)
+                        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -596,7 +598,7 @@ int Downloader::listGames()
                     std::string filepath = games[i].patches[j].getFilepath();
                     if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (Globals::globalConfig.bVerbose)
+                        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -622,7 +624,7 @@ int Downloader::listGames()
                     std::string filepath = games[i].languagepacks[j].getFilepath();
                     if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                     {
-                        if (Globals::globalConfig.bVerbose)
+                        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                             std::cerr << "skipped blacklisted file " << filepath << std::endl;
                         continue;
                     }
@@ -650,7 +652,7 @@ int Downloader::listGames()
                         std::string filepath = games[i].dlcs[j].installers[k].getFilepath();
                         if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
                         {
-                            if (Globals::globalConfig.bVerbose)
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -669,7 +671,7 @@ int Downloader::listGames()
                     {
                         std::string filepath = games[i].dlcs[j].patches[k].getFilepath();
                         if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                            if (Globals::globalConfig.bVerbose)
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -687,7 +689,7 @@ int Downloader::listGames()
                     {
                         std::string filepath = games[i].dlcs[j].extras[k].getFilepath();
                         if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                            if (Globals::globalConfig.bVerbose)
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -704,7 +706,7 @@ int Downloader::listGames()
                     {
                         std::string filepath = games[i].dlcs[j].languagepacks[k].getFilepath();
                         if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                            if (Globals::globalConfig.bVerbose)
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
                             continue;
                         }
@@ -794,7 +796,7 @@ void Downloader::repair()
         std::string filepath = vGameFiles[i].getFilepath();
         if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
         {
-            if (Globals::globalConfig.bVerbose)
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                 std::cerr << "skipped blacklisted file " << filepath << std::endl;
             continue;
         }
@@ -1864,7 +1866,7 @@ void Downloader::checkOrphans()
                             {
                                 std::string filepath = dir_iter->path().string();
                                 if (config.ignorelist.isBlacklisted(filepath.substr(pathlen))) {
-                                    if (config.bVerbose)
+                                    if (config.iMsgLevel >= MSGLEVEL_VERBOSE)
                                         std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                                 } else {
                                     boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
@@ -2605,14 +2607,14 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
     {
         if (!galaxy->refreshLogin())
         {
-            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
             return;
         }
     }
 
     CURL* dlhandle = curl_easy_init();
-    
+
     Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
     curl_easy_setopt(dlhandle, CURLOPT_READFUNCTION, Util::CurlReadChunkMemoryCallback);
@@ -2626,7 +2628,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
     curl_easy_setopt(dlhandle, CURLOPT_XFERINFODATA, &xferinfo);
 
     cloudSaveFile csf;
- 
+
     std::string access_token;
     if (!Globals::galaxyConf.isExpired()) {
         access_token = Globals::galaxyConf.getAccessToken();
@@ -2659,7 +2661,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
             &filecontents[0],
             (curl_off_t)filecontents.size()
         };
-        
+
         auto md5 = Util::getChunkHash((std::uint8_t*)filecontents.data(), filecontents.size(), RHASH_MD5);
 
         auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
@@ -2677,7 +2679,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
         curl_easy_setopt(dlhandle, CURLOPT_READDATA, &cms);
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
 
-        msgQueue.push(Message("Begin upload: " + csf.path, MSGTYPE_INFO, msg_prefix));
+        msgQueue.push(Message("Begin upload: " + csf.path, MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 
         bool bShouldRetry = false;
         long int response_code = 0;
@@ -2694,7 +2696,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
                 std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + boost::filesystem::path(csf.location).filename().string();
                 if (!retry_reason.empty())
                     retry_msg += " (" + retry_reason + ")";
-                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
             }
             retry_reason.clear(); // reset retry reason
 
@@ -2716,7 +2718,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
                 case CURLE_HTTP_RETURNED_ERROR:
                     curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
                     if (response_code == 416 || response_code == 422 || response_code == 400 || response_code == 422) {
-                        msgQueue.push(Message(std::to_string(response_code) + ": " + curl_easy_strerror(result)));
+                        msgQueue.push(Message(std::to_string(response_code) + ": " + curl_easy_strerror(result), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                         bShouldRetry = false;
                     }
                     else
@@ -2739,7 +2741,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
     curl_easy_cleanup(dlhandle);
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix));
+    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 }
 
 void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& tid) {
@@ -2750,14 +2752,14 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
     {
         if (!galaxy->refreshLogin())
         {
-            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
             return;
         }
     }
 
     CURL* dlhandle = curl_easy_init();
-    
+
     Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
 
     curl_slist *header = nullptr;
@@ -2802,20 +2804,20 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
 
         bResume = boost::filesystem::exists(filepath);
 
-        msgQueue.push(Message("Begin download: " + csf.path, MSGTYPE_INFO, msg_prefix));
+        msgQueue.push(Message("Begin download: " + csf.path, MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
         // Check that directory exists and create subdirectories
         std::unique_lock<std::mutex> ul { mtx_create_directories }; // Use mutex to avoid possible race conditions
         if (boost::filesystem::exists(directory))
         {
             if (!boost::filesystem::is_directory(directory)) {
-                msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix));
+                msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_ALWAYS));
                 continue;
             }
         }
         else if (!boost::filesystem::create_directories(directory))
         {
-            msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             continue;
         }
 
@@ -2837,7 +2839,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string();
                 if (!retry_reason.empty())
                     retry_msg += " (" + retry_reason + ")";
-                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             }
             retry_reason = ""; // reset retry reason
 
@@ -2854,7 +2856,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 }
                 else
                 {
-                    msgQueue.push(Message("Failed to open " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Failed to open " + filepath.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     break;
                 }
             }
@@ -2867,7 +2869,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 }
                 else
                 {
-                    msgQueue.push(Message("Failed to create " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Failed to create " + filepath.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     break;
                 }
             }
@@ -2927,7 +2929,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 }
                 catch(const boost::filesystem::filesystem_error& e)
                 {
-                    msgQueue.push(Message(e.what(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(e.what(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
 
@@ -2947,7 +2949,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
             }
             dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
 
-            msgQueue.push(Message("Download complete: " + csf.path + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix));
+            msgQueue.push(Message("Download complete: " + csf.path + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
         }
         else
         {
@@ -2955,7 +2957,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
             if (response_code > 0)
                 msg += " (" + std::to_string(response_code) + ")";
             msg += "): " + filepath.filename().string();
-            msgQueue.push(Message(msg, MSGTYPE_WARNING, msg_prefix));
+            msgQueue.push(Message(msg, MSGTYPE_WARNING, msg_prefix, MSGLEVEL_DEFAULT));
 
             // Delete the file if download failed and was not a resume attempt or the result is zero length file
             if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
@@ -2963,7 +2965,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
                 if ((result != CURLE_PARTIAL_FILE && !bResume && result != CURLE_OPERATION_TIMEDOUT) || boost::filesystem::file_size(filepath) == 0)
                 {
                     if (!boost::filesystem::remove(filepath))
-                        msgQueue.push(Message("Failed to delete " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("Failed to delete " + filepath.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 }
             }
         }
@@ -2973,7 +2975,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
     curl_easy_cleanup(dlhandle);
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix));
+    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 }
 
 void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
@@ -2986,7 +2988,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         if (!galaxy->refreshLogin())
         {
             delete galaxy;
-            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
             return;
         }
@@ -3034,7 +3036,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         // Skip blacklisted files
         if (conf.blacklist.isBlacklisted(filepath.string()))
         {
-            msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix));
+            msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
 
@@ -3043,7 +3045,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         boost::filesystem::path local_xml_file = xml_directory + "/" + filenameXML;
 
         vDownloadInfo[tid].setFilename(filepath.filename().string());
-        msgQueue.push(Message("Begin download: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
+        msgQueue.push(Message("Begin download: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
         // Check that directory exists and create subdirectories
         mtx_create_directories.lock(); // Use mutex to avoid possible race conditions
@@ -3052,7 +3054,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (!boost::filesystem::is_directory(directory))
             {
                 mtx_create_directories.unlock();
-                msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix));
+                msgQueue.push(Message(directory.string() + " is not directory, skipping file (" + filepath.filename().string() + ")", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_ALWAYS));
                 continue;
             }
             else
@@ -3065,7 +3067,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (!boost::filesystem::create_directories(directory))
             {
                 mtx_create_directories.unlock();
-                msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message("Failed to create directory (" + directory.string() + "), skipping file (" + filepath.filename().string() + ")", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 continue;
             }
             else
@@ -3082,7 +3084,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         {
             if (!galaxy->refreshLogin())
             {
-                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                 delete galaxy;
                 return;
@@ -3094,13 +3096,13 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         if (downlinkJson.empty())
         {
-            msgQueue.push(Message("Empty JSON response, skipping file", MSGTYPE_WARNING, msg_prefix));
+            msgQueue.push(Message("Empty JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
 
         if (!downlinkJson.isMember("downlink"))
         {
-            msgQueue.push(Message("Invalid JSON response, skipping file", MSGTYPE_WARNING, msg_prefix));
+            msgQueue.push(Message("Invalid JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
 
@@ -3165,7 +3167,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                         }
                         if (filesize_local == filesize_xml)
                         {
-                            msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix));
+                            msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                             bIsComplete = true; // Set to true so we can skip after saving xml data
                         }
                     }
@@ -3173,14 +3175,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
             else
             {
-                msgQueue.push(Message("Remote file is different, renaming local file", MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message("Remote file is different, renaming local file", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 std::string date_old = "." + bptime::to_iso_string(bptime::second_clock::local_time()) + ".old";
                 boost::filesystem::path new_name = filepath.string() + date_old; // Rename old file by appending date and ".old" to filename
                 boost::system::error_code ec;
                 boost::filesystem::rename(filepath, new_name, ec); // Rename the file
                 if (ec)
                 {
-                    msgQueue.push(Message("Failed to rename " + filepath.string() + " to " + new_name.string() + " - Skipping file", MSGTYPE_WARNING, msg_prefix));
+                    msgQueue.push(Message("Failed to rename " + filepath.string() + " to " + new_name.string() + " - Skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                     continue;
                 }
             }
@@ -3198,14 +3200,14 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 {
                     if (!boost::filesystem::is_directory(path))
                     {
-                        msgQueue.push(Message(path.string() + " is not directory", MSGTYPE_WARNING, msg_prefix));
+                        msgQueue.push(Message(path.string() + " is not directory", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_ALWAYS));
                     }
                 }
                 else
                 {
                     if (!boost::filesystem::create_directories(path))
                     {
-                        msgQueue.push(Message("Failed to create directory: " + path.string(), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("Failed to create directory: " + path.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     }
                 }
                 mtx_create_directories.unlock();
@@ -3217,7 +3219,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(Message("Can't create " + local_xml_file.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Can't create " + local_xml_file.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
         }
@@ -3243,7 +3245,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath.filename().string();
                 if (!retry_reason.empty())
                     retry_msg += " (" + retry_reason + ")";
-                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             }
             retry_reason = ""; // reset retry reason
 
@@ -3260,7 +3262,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(Message("Failed to open " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Failed to open " + filepath.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     break;
                 }
             }
@@ -3273,7 +3275,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 else
                 {
-                    msgQueue.push(Message("Failed to create " + filepath.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Failed to create " + filepath.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     break;
                 }
             }
@@ -3330,7 +3332,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
                 catch(const boost::filesystem::filesystem_error& e)
                 {
-                    msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                    msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
 
@@ -3350,7 +3352,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
             dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
 
-            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix));
+            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
         }
         else
         {
@@ -3358,7 +3360,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             if (response_code > 0)
                 msg += " (" + std::to_string(response_code) + ")";
             msg += "): " + filepath.filename().string();
-            msgQueue.push(Message(msg, MSGTYPE_WARNING, msg_prefix));
+            msgQueue.push(Message(msg, MSGTYPE_WARNING, msg_prefix, MSGLEVEL_DEFAULT));
 
             // Delete the file if download failed and was not a resume attempt or the result is zero length file
             if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
@@ -3366,7 +3368,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 if ((result != CURLE_PARTIAL_FILE && !bResume && result != CURLE_OPERATION_TIMEDOUT) || boost::filesystem::file_size(filepath) == 0)
                 {
                     if (!boost::filesystem::remove(filepath))
-                        msgQueue.push(Message("Failed to delete " + filepath.filename().string(), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("Failed to delete " + filepath.filename().string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 }
             }
         }
@@ -3386,7 +3388,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
     delete galaxy;
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix));
+    msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 
     return;
 }
@@ -3459,7 +3461,9 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         Message msg;
         while (msgQueue.try_pop(msg))
         {
-            std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+            if (msg.getLevel() <= Globals::globalConfig.iMsgLevel)
+                std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+
             if (Globals::globalConfig.bReport)
             {
                 this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
@@ -3610,7 +3614,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         if (!galaxy->refreshLogin())
         {
             delete galaxy;
-            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
             return;
         }
@@ -3622,7 +3626,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
     {
         delete galaxy;
         delete website;
-        msgQueue.push(Message("Website not logged in", MSGTYPE_ERROR, msg_prefix));
+        msgQueue.push(Message("Website not logged in", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
         vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
         return;
     }
@@ -3648,7 +3652,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             {
                 std::ostringstream ss;
                 ss << game_item.name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
-                if (config.bVerbose)
+                if (config.iMsgLevel >= MSGLEVEL_DEBUG)
                 {
                     if (conf.dlConf.bIgnoreDLCCount)
                         ss << "\tIgnore DLC count" << std::endl;
@@ -3675,7 +3679,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
                         }
                     }
                 }
-                msgQueue.push(Message(ss.str(), MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(ss.str(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             }
         }
 
@@ -3684,7 +3688,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         {
             if (!galaxy->refreshLogin())
             {
-                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 break;
             }
         }
@@ -4029,7 +4033,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     uintmax_t totalSize = 0;
     for (unsigned int i = 0; i < items.size(); ++i)
     {
-        if (Globals::globalConfig.bVerbose)
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
         {
             std::cout << items[i].path << std::endl;
             std::cout << "\tChunks: " << items[i].chunks.size() << std::endl;
@@ -4095,7 +4099,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         if (!galaxy->refreshLogin())
         {
             delete galaxy;
-            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
             vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
             return;
         }
@@ -4135,7 +4139,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         {
             if (!boost::filesystem::is_directory(directory))
             {
-                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                 delete galaxy;
                 mtx_create_directories.unlock();
@@ -4146,7 +4150,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         {
             if (!boost::filesystem::create_directories(directory))
             {
-                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                 delete galaxy;
                 mtx_create_directories.unlock();
@@ -4160,8 +4164,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         unsigned int start_chunk = 0;
         if (boost::filesystem::exists(path))
         {
-            if (conf.bVerbose)
-                msgQueue.push(Message("File already exists: " + path.string(), MSGTYPE_INFO, msg_prefix));
+            msgQueue.push(Message("File already exists: " + path.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
             unsigned int resume_chunk = 0;
             uintmax_t filesize = boost::filesystem::file_size(path);
@@ -4170,15 +4173,15 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 // File is same size
                 if (Util::getFileHash(path.string(), RHASH_MD5) == item.md5)
                 {
-                    msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
                     continue;
                 }
                 else
                 {
-                    msgQueue.push(Message(path.string() + ": MD5 mismatch", MSGTYPE_WARNING, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": MD5 mismatch", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_DEFAULT));
                     if (!boost::filesystem::remove(path))
                     {
-                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                         continue;
                     }
                 }
@@ -4186,10 +4189,10 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             else if (filesize > item.totalSizeUncompressed)
             {
                 // File is bigger than on server, delete old file and start from beginning
-                msgQueue.push(Message(path.string() + ": File is bigger than expected. Deleting old file and starting from beginning", MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(path.string() + ": File is bigger than expected. Deleting old file and starting from beginning", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 if (!boost::filesystem::remove(path))
                 {
-                    msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     continue;
                 }
             }
@@ -4207,12 +4210,12 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
                 if (resume_chunk > 0)
                 {
-                    msgQueue.push(Message(path.string() + ": Resume from chunk " + std::to_string(resume_chunk), MSGTYPE_INFO, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Resume from chunk " + std::to_string(resume_chunk), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                     // Get chunk hash for previous chunk
                     FILE* f = fopen(path.string().c_str(), "r");
                     if (!f)
                     {
-                        msgQueue.push(Message(path.string() + ": Failed to open", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Failed to open", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                         continue;
                     }
 
@@ -4223,7 +4226,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
                     if (chunk == NULL)
                     {
-                        msgQueue.push(Message(path.string() + ": Memory error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Memory error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                         fclose(f);
                         continue;
                     }
@@ -4233,7 +4236,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
                     if (fread_size != chunk_size)
                     {
-                        msgQueue.push(Message(path.string() + ": Read error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Read error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                         free(chunk);
                         continue;
                     }
@@ -4248,20 +4251,20 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     else
                     {
                         // Hash for previous chunk is different, delete old file and start from beginning
-                        msgQueue.push(Message(path.string() + ": Chunk hash is different. Deleting old file and starting from beginning.", MSGTYPE_WARNING, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Chunk hash is different. Deleting old file and starting from beginning.", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                         if (!boost::filesystem::remove(path))
                         {
-                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                             continue;
                         }
                     }
                 }
                 else
                 {
-                    msgQueue.push(Message(path.string() + ": Failed to find valid resume position. Deleting old file and starting from beginning.", MSGTYPE_WARNING, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Failed to find valid resume position. Deleting old file and starting from beginning.", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                     if (!boost::filesystem::remove(path))
                     {
-                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                         continue;
                     }
                 }
@@ -4277,7 +4280,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             {
                 if (!galaxy->refreshLogin())
                 {
-                    msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                     delete galaxy;
                     return;
@@ -4300,7 +4303,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                 {
                     bChunkFailure = true;
                     std::string error_message = path.string() + ": Empty JSON response (product: " + item.product_id + ", chunk #"+ std::to_string(j) + ": " + item.chunks[j].md5_compressed + ")";
-                    msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(error_message, MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                     break;
                 }
 
@@ -4310,7 +4313,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             if (cdnUrlTemplates.empty())
             {
                 bChunkFailure = true;
-                msgQueue.push(Message(path.string() + ": Failed to get download url", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(path.string() + ": Failed to get download url", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                 break;
             }
 
@@ -4360,7 +4363,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     std::string retry_msg = "Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + filepath_and_chunk;
                     if (!retry_reason.empty())
                         retry_msg += " (" + retry_reason + ")";
-                    msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix));
+                    msgQueue.push(Message(retry_msg, MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
                     curl_easy_setopt(dlhandle, CURLOPT_RESUME_FROM_LARGE, chunk.size);
                 }
@@ -4406,15 +4409,15 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
             if (result != CURLE_OK)
             {
-                msgQueue.push(Message(std::string(curl_easy_strerror(result)), MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(std::string(curl_easy_strerror(result)), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                 if (result == CURLE_HTTP_RETURNED_ERROR)
                 {
                     long int response_code = 0;
                     result = curl_easy_getinfo(dlhandle, CURLINFO_RESPONSE_CODE, &response_code);
                     if (result == CURLE_OK)
-                        msgQueue.push(Message("HTTP ERROR: " + std::to_string(response_code) + " (" + url + ")", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("HTTP ERROR: " + std::to_string(response_code) + " (" + url + ")", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     else
-                        msgQueue.push(Message("HTTP ERROR: failed to get error code: " + std::string(curl_easy_strerror(result)) + " (" + url + ")", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message("HTTP ERROR: failed to get error code: " + std::string(curl_easy_strerror(result)) + " (" + url + ")", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
             else
@@ -4442,7 +4445,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
         if (bChunkFailure)
         {
-            msgQueue.push(Message(path.string() + ": Chunk failure, skipping file", MSGTYPE_ERROR, msg_prefix));
+            msgQueue.push(Message(path.string() + ": Chunk failure, skipping file", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
 
@@ -4455,11 +4458,11 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             }
             catch(const boost::filesystem::filesystem_error& e)
             {
-                msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
             }
         }
 
-        msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix));
+        msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
     }
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
@@ -4769,10 +4772,10 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
         std::cout << "No cloud save locations found" << std::endl;
         return -1;
     }
-            
+
     std::string url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + "/" + Globals::galaxyConf.getClientId();
     auto fileList = gogGalaxy->getResponseJson(url, "application/json");
-        
+
     for(auto &fileJson : fileList) {
         auto path = fileJson["name"].asString();
 
@@ -5121,7 +5124,7 @@ std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<ga
                         std::string filepath = dir_iter->path().string();
                         if (Globals::globalConfig.ignorelist.isBlacklisted(filepath.substr(pathlen)))
                         {
-                            if (Globals::globalConfig.bVerbose)
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                         }
                         else
@@ -5587,7 +5590,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
         {
             if (!boost::filesystem::is_directory(directory))
             {
-                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(directory.string() + " is not directory", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                 mtx_create_directories.unlock();
                 return;
@@ -5597,7 +5600,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
         {
             if (!boost::filesystem::create_directories(directory))
             {
-                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message("Failed to create directory: " + directory.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
                 mtx_create_directories.unlock();
                 return;
@@ -5611,7 +5614,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
         {
             if (boost::filesystem::is_symlink(path))
             {
-                msgQueue.push(Message("Symlink already exists: " + path.string(), MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message("Symlink already exists: " + path.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 continue;
             }
         }
@@ -5621,25 +5624,24 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             {
                 if (boost::filesystem::exists(zfe.splitFileBasePath))
                 {
-                    msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file exists. Checking if it is same version.", MSGTYPE_INFO, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file exists. Checking if it is same version.", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
                     std::string crc32 = Util::getFileHashRange(zfe.splitFileBasePath, RHASH_CRC32, zfe.splitFileStartOffset, zfe.splitFileEndOffset);
                     if (crc32 == Util::formattedString("%08x", zfe.crc32))
                     {
-                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is same version. Skipping file.", MSGTYPE_INFO, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is same version. Skipping file.", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                         continue;
                     }
                     else
                     {
-                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is different version. Continuing to download file.", MSGTYPE_INFO, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Complete file (" + zfe.splitFileBasePath + ") of split file is different version. Continuing to download file.", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                     }
                 }
             }
 
             if (boost::filesystem::exists(path))
             {
-                if (conf.bVerbose)
-                    msgQueue.push(Message("File already exists: " + path.string(), MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message("File already exists: " + path.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
                 off_t filesize = static_cast<off_t>(boost::filesystem::file_size(path));
                 if (filesize == zfe.uncomp_size)
@@ -5647,15 +5649,15 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                     // File is same size
                     if (Util::getFileHash(path.string(), RHASH_CRC32) == Util::formattedString("%08x", zfe.crc32))
                     {
-                        msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_VERBOSE));
                         continue;
                     }
                     else
                     {
-                        msgQueue.push(Message(path.string() + ": CRC32 mismatch. Deleting old file.", MSGTYPE_WARNING, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": CRC32 mismatch. Deleting old file.", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                         if (!boost::filesystem::remove(path))
                         {
-                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                             continue;
                         }
                     }
@@ -5663,10 +5665,10 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 else
                 {
                     // File size mismatch
-                    msgQueue.push(Message(path.string() + ": File size mismatch. Deleting old file.", MSGTYPE_INFO, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": File size mismatch. Deleting old file.", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                     if (!boost::filesystem::remove(path))
                     {
-                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                        msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                         continue;
                     }
                 }
@@ -5685,10 +5687,10 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             else
             {
                 // Delete old file
-                msgQueue.push(Message(path_tmp.string() + ": Deleting old file.", MSGTYPE_INFO, msg_prefix));
+                msgQueue.push(Message(path_tmp.string() + ": Deleting old file.", MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 if (!boost::filesystem::remove(path_tmp))
                 {
-                    msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     continue;
                 }
             }
@@ -5723,7 +5725,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             if (result != CURLE_OK)
             {
                 symlink_compressed.str(std::string());
-                msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 continue;
             }
 
@@ -5753,7 +5755,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 }
                 msg += ")";
 
-                msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix));
+                msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                 symlink_uncompressed.str(std::string());
                 continue;
             }
@@ -5765,8 +5767,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             {
                 if (!boost::filesystem::exists(path))
                 {
-                    if (conf.bVerbose)
-                        msgQueue.push(Message(path.string() + ": Creating symlink to " + link_target, MSGTYPE_INFO, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Creating symlink to " + link_target, MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                     boost::filesystem::create_symlink(link_target, path);
                 }
             }
@@ -5782,7 +5783,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary);
                 if (!ofs)
                 {
-                    msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     continue;
                 }
 
@@ -5802,12 +5803,12 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 {
                     data_compressed.str(std::string());
                     ofs.close();
-                    msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(path.string() + ": Failed to download", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
                     {
                         if (!boost::filesystem::remove(path))
                         {
-                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                         }
                     }
                     continue;
@@ -5840,13 +5841,13 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                     }
                     msg += ")";
 
-                    msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message(msg + " " + path.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                     data_compressed.str(std::string());
                     if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
                     {
                         if (!boost::filesystem::remove(path))
                         {
-                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message(path.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                         }
                     }
                     continue;
@@ -5867,7 +5868,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                         }
                         catch(const boost::filesystem::filesystem_error& e)
                         {
-                            msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix));
+                            msgQueue.push(Message(e.what(), MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
                         }
                     }
                 }
@@ -5882,7 +5883,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 do
                 {
                     if (iRetryCount != 0)
-                        msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + path_tmp.filename().string(), MSGTYPE_INFO, msg_prefix));
+                        msgQueue.push(Message("Retry " + std::to_string(iRetryCount) + "/" + std::to_string(conf.iRetries) + ": " + path_tmp.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
 
                     FILE* outfile;
@@ -5898,7 +5899,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                         }
                         else
                         {
-                            msgQueue.push(Message("Failed to open " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message("Failed to open " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                             break;
                         }
                     }
@@ -5911,7 +5912,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                         }
                         else
                         {
-                            msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message("Failed to create " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                             break;
                         }
                     }
@@ -5969,7 +5970,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                         }
                         msg += ")";
 
-                        msgQueue.push(Message(msg + " " + path_tmp.string(), msg_type, msg_prefix));
+                        msgQueue.push(Message(msg + " " + path_tmp.string(), msg_type, msg_prefix, MSGLEVEL_ALWAYS));
                     }
 
                     if (bFailed)
@@ -5979,7 +5980,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                     {
                         if (!boost::filesystem::remove(path_tmp))
                         {
-                            msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix));
+                            msgQueue.push(Message(path_tmp.string() + ": Failed to delete", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
                         }
                     }
 
@@ -5990,13 +5991,13 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
                 }
                 else
                 {
-                    msgQueue.push(Message("Download failed " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix));
+                    msgQueue.push(Message("Download failed " + path_tmp.string(), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
                     continue;
                 }
             }
         }
 
-        msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix));
+        msgQueue.push(Message("Download complete: " + path.string(), MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
     }
 
     vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);

@@ -6,6 +6,7 @@
 
 #include "website.h"
 #include "globalconstants.h"
+#include "message.h"
 
 #include <htmlcxx/html/ParserDom.h>
 #include <boost/algorithm/string/case_conv.hpp>
@@ -71,14 +72,13 @@ Json::Value Website::getGameDetailsJSON(const std::string& gameid)
     try {
         json_stream >> root;
     } catch(const Json::Exception& exc) {
-        #ifdef DEBUG
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
             std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << json << std::endl;
-        #endif
+
         std::cout << exc.what();
     }
-    #ifdef DEBUG
+    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
         std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << root << std::endl;
-    #endif
 
     return root;
 }
@@ -113,9 +113,9 @@ std::vector<gameItem> Website::getGames()
             // Parse JSON
             json_stream >> root;
         } catch (const Json::Exception& exc) {
-            #ifdef DEBUG
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
                 std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << response << std::endl;
-            #endif
+
             std::cout << exc.what();
             if (!response.empty())
             {
@@ -127,9 +127,9 @@ std::vector<gameItem> Website::getGames()
             }
             exit(1);
         }
-        #ifdef DEBUG
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
             std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << root << std::endl;
-        #endif
+
         if (root["page"].asInt() == root["totalPages"].asInt() || root["totalPages"].asInt() == 0)
             bAllPagesParsed = true;
 
@@ -280,10 +280,12 @@ int Website::Login(const std::string& email, const std::string& password)
     bool bRecaptcha = false;
 
     std::string login_form_html = this->getResponse(auth_url);
-    #ifdef DEBUG
+    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
+    {
         std::cerr << "DEBUG INFO (Website::Login)" << std::endl;
         std::cerr << login_form_html << std::endl;
-    #endif
+    }
+
     if (login_form_html.find("class=\"g-recaptcha form__recaptcha\"") != std::string::npos)
     {
         bRecaptcha = true;
@@ -601,15 +603,15 @@ std::vector<wishlistItem> Website::getWishlistItems()
             // Parse JSON
             response_stream >> root;
         } catch(const Json::Exception& exc) {
-            #ifdef DEBUG
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
                 std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << response << std::endl;
-            #endif
+
             std::cout << exc.what();
             exit(1);
         }
-        #ifdef DEBUG
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
             std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << root << std::endl;
-        #endif
+
         if (root["page"].asInt() >= root["totalPages"].asInt())
             bAllPagesParsed = true;
         if (root["products"].isArray())
