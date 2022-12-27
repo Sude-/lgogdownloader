@@ -1609,9 +1609,12 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
     Downloader* downloader = static_cast<Downloader*>(clientp);
 
     double rate; //  average download speed in B/s
+    curl_off_t curl_rate;
     // trying to get rate and setting to NaN if it fails
-    if (CURLE_OK != curl_easy_getinfo(downloader->curlhandle, CURLINFO_SPEED_DOWNLOAD, &rate))
-       rate = std::numeric_limits<double>::quiet_NaN();
+    if (CURLE_OK != curl_easy_getinfo(downloader->curlhandle, CURLINFO_SPEED_DOWNLOAD_T, &curl_rate))
+        rate = std::numeric_limits<double>::quiet_NaN();
+    else
+        rate = static_cast<double>(curl_rate);
 
     // (Shmerl): this flag is needed to catch the case before anything was downloaded on resume,
     // and there is no way to calculate the fraction, so we set to 0 (otherwise it'd be 1).
@@ -2673,7 +2676,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
         header = curl_slist_append(header, "Content-Type: Octet-Stream");
         header = curl_slist_append(header, ("Content-Length: " + std::to_string(filecontents.size())).c_str());
 
-        curl_easy_setopt(dlhandle, CURLOPT_PUT, 1L);
+        curl_easy_setopt(dlhandle, CURLOPT_UPLOAD, 1L);
         curl_easy_setopt(dlhandle, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_easy_setopt(dlhandle, CURLOPT_HTTPHEADER, header);
         curl_easy_setopt(dlhandle, CURLOPT_READDATA, &cms);
@@ -3408,10 +3411,13 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
         progressInfo info;
         info.dlnow = dlnow;
         info.dltotal = dltotal;
+        curl_off_t curl_rate;
 
         // trying to get rate and setting to NaN if it fails
-        if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD, &info.rate_avg))
+        if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD_T, &curl_rate))
             info.rate_avg = std::numeric_limits<double>::quiet_NaN();
+        else
+            info.rate_avg = static_cast<double>(curl_rate);
 
         // setting full dlwnow and dltotal
         if (xferinfo->offset > 0)
