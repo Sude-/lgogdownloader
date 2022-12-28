@@ -3,7 +3,16 @@
 This repository contains the code of LGOGDownloader which is unoffcial open source downloader for [GOG.com](https://www.gog.com/).
 It uses the same API as GOG Galaxy which doesn't have Linux support at the moment.
 
-## Dependencies
+
+## Installation
+Several distributions provide LGOGDownloader packages:
+
+- [Debian](https://packages.debian.org/search?keywords=lgogdownloader) (since Debian 9)
+- [Ubuntu](https://packages.ubuntu.com/search?keywords=lgogdownloader) (since 18.04)
+
+## Building
+
+### Dependencies
 
 * [libcurl](https://curl.haxx.se/libcurl/) >= 7.32.0
 * [librhash](https://github.com/rhash/RHash)
@@ -14,12 +23,12 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [zlib](https://www.zlib.net/)
 * [qtwebengine](https://www.qt.io/) if built with -DUSE_QT_GUI=ON
 
-## Make dependencies
+### Make dependencies
 * [cmake](https://cmake.org/) >= 3.0.0
 * [ninja](https://github.com/ninja-build/ninja)
 * [help2man](https://www.gnu.org/software/help2man/help2man.html) (optional, man page generation)
 
-### Debian/Ubuntu
+#### Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
     libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
@@ -27,7 +36,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
     libboost-date-time-dev libboost-iostreams-dev help2man cmake \
     pkg-config zlib1g-dev qtwebengine5-dev ninja-build
 
-## Build and install
+### Build and install
 
     $ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON -GNinja
     $ ninja -Cbuild install
@@ -76,3 +85,6 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 - [LGOGDownloader @ Ubuntu](https://launchpad.net/ubuntu/+source/lgogdownloader)
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PT95NXVLQU6WG&source=url)
+
+### Other GOG tools
+- [Minigalaxy](https://sharkwouter.github.io/minigalaxy/)
