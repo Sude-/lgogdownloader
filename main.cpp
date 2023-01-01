@@ -635,6 +635,8 @@ int main(int argc, char *argv[])
 
     // Init curl globally
     curl_global_init(CURL_GLOBAL_ALL);
+    struct CurlCleanup { ~CurlCleanup() { curl_global_cleanup(); } };
+    CurlCleanup _curl_cleanup;
 
     Downloader downloader;
 
@@ -662,7 +664,6 @@ int main(int argc, char *argv[])
     // Login failed, cleanup
     if (!bLoginOK && !bIsLoggedin)
     {
-        curl_global_cleanup();
         return 1;
     }
 
@@ -725,14 +726,12 @@ int main(int argc, char *argv[])
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             if (Globals::globalConfig.bSaveConfig)
             {
-                curl_global_cleanup();
                 return 0;
             }
         }
         else
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
-            curl_global_cleanup();
             return 1;
         }
     }
@@ -745,13 +744,11 @@ int main(int argc, char *argv[])
             if (!Globals::globalConfig.bRespectUmask)
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
 
-            curl_global_cleanup();
             return 0;
         }
         else
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
-            curl_global_cleanup();
             return 1;
         }
     }
@@ -759,7 +756,6 @@ int main(int argc, char *argv[])
     bool bInitOK = downloader.init();
     if (!bInitOK)
     {
-        curl_global_cleanup();
         return 1;
     }
 
@@ -880,8 +876,6 @@ int main(int argc, char *argv[])
     // Orphan check was called at the same time as download. Perform it after download has finished
     if (!Globals::globalConfig.sOrphanRegex.empty() && Globals::globalConfig.bDownload)
         downloader.checkOrphans();
-
-    curl_global_cleanup();
 
     return res;
 }
