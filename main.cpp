@@ -635,35 +635,35 @@ int main(int argc, char *argv[])
 
     // Init curl globally
     curl_global_init(CURL_GLOBAL_ALL);
+    struct CurlCleanup { ~CurlCleanup() { curl_global_cleanup(); } };
+    CurlCleanup _curl_cleanup;
 
-    Downloader *downloader = new Downloader;
+    Downloader downloader;
 
     int iLoginTries = 0;
     bool bLoginOK = false;
 
     // Login because --login was used
     if (Globals::globalConfig.bLogin)
-        bLoginOK = downloader->login();
+        bLoginOK = downloader.login();
 
-    bool bIsLoggedin = downloader->isLoggedIn();
+    bool bIsLoggedin = downloader.isLoggedIn();
     if (!bIsLoggedin)
         Globals::globalConfig.bLogin = true;
 
     // Login because we are not logged in
     while (iLoginTries++ < Globals::globalConfig.iRetries && !bIsLoggedin)
     {
-        bLoginOK = downloader->login();
+        bLoginOK = downloader.login();
         if (bLoginOK)
         {
-            bIsLoggedin = downloader->isLoggedIn();
+            bIsLoggedin = downloader.isLoggedIn();
         }
     }
 
     // Login failed, cleanup
     if (!bLoginOK && !bIsLoggedin)
     {
-        delete downloader;
-        curl_global_cleanup();
         return 1;
     }
 
@@ -726,16 +726,12 @@ int main(int argc, char *argv[])
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
             if (Globals::globalConfig.bSaveConfig)
             {
-                delete downloader;
-                curl_global_cleanup();
                 return 0;
             }
         }
         else
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
-            delete downloader;
-            curl_global_cleanup();
             return 1;
         }
     }
@@ -748,56 +744,50 @@ int main(int argc, char *argv[])
             if (!Globals::globalConfig.bRespectUmask)
                 Util::setFilePermissions(Globals::globalConfig.sConfigFilePath, boost::filesystem::owner_read | boost::filesystem::owner_write);
 
-            delete downloader;
-            curl_global_cleanup();
             return 0;
         }
         else
         {
             std::cerr << "Failed to create config: " << Globals::globalConfig.sConfigFilePath << std::endl;
-            delete downloader;
-            curl_global_cleanup();
             return 1;
         }
     }
 
-    bool bInitOK = downloader->init();
+    bool bInitOK = downloader.init();
     if (!bInitOK)
     {
-        delete downloader;
-        curl_global_cleanup();
         return 1;
     }
 
     int res = 0;
 
     if (Globals::globalConfig.bShowWishlist)
-        downloader->showWishlist();
+        downloader.showWishlist();
     else if (Globals::globalConfig.bUpdateCache)
-        downloader->updateCache();
+        downloader.updateCache();
     else if (Globals::globalConfig.bNotifications)
-        downloader->checkNotifications();
+        downloader.checkNotifications();
     else if (bClearUpdateNotifications)
-        downloader->clearUpdateNotifications();
+        downloader.clearUpdateNotifications();
     else if (!vFileIdStrings.empty())
     {
         for (std::vector<std::string>::iterator it = vFileIdStrings.begin(); it != vFileIdStrings.end(); it++)
         {
-            res |= downloader->downloadFileWithId(*it, Globals::globalConfig.sOutputFilename) ? 1 : 0;
+            res |= downloader.downloadFileWithId(*it, Globals::globalConfig.sOutputFilename) ? 1 : 0;
         }
     }
     else if (Globals::globalConfig.bRepair) // Repair file
-        downloader->repair();
+        downloader.repair();
     else if (Globals::globalConfig.bDownload) // Download games
-        downloader->download();
+        downloader.download();
     else if (Globals::globalConfig.bListDetails || Globals::globalConfig.bList) // Detailed list of games/extras
-        res = downloader->listGames();
+        res = downloader.listGames();
     else if (Globals::globalConfig.bListTags) // List tags
-        res = downloader->listTags();
+        res = downloader.listTags();
     else if (!Globals::globalConfig.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
-        downloader->checkOrphans();
+        downloader.checkOrphans();
     else if (Globals::globalConfig.bCheckStatus)
-        downloader->checkStatus();
+        downloader.checkStatus();
     else if (!galaxy_product_id_show_builds.empty())
     {
         int build_index = -1;
@@ -807,7 +797,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->galaxyShowBuilds(product_id, build_index);
+        downloader.galaxyShowBuilds(product_id, build_index);
     }
     else if (!galaxy_product_id_show_cloud_paths.empty())
     {
@@ -818,7 +808,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->galaxyShowCloudSaves(product_id, build_index);
+        downloader.galaxyShowCloudSaves(product_id, build_index);
     }
     else if (!galaxy_product_id_show_local_cloud_paths.empty())
     {
@@ -829,7 +819,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->galaxyShowLocalCloudSaves(product_id, build_index);
+        downloader.galaxyShowLocalCloudSaves(product_id, build_index);
     }
     else if (!galaxy_product_cloud_saves_delete.empty())
     {
@@ -840,7 +830,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->deleteCloudSaves(product_id, build_index);
+        downloader.deleteCloudSaves(product_id, build_index);
     }
     else if (!galaxy_product_id_install.empty())
     {
@@ -851,7 +841,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->galaxyInstallGame(product_id, build_index, Globals::globalConfig.dlConf.iGalaxyArch);
+        downloader.galaxyInstallGame(product_id, build_index, Globals::globalConfig.dlConf.iGalaxyArch);
     }
     else if (!galaxy_product_cloud_saves.empty()) {
         int build_index = -1;
@@ -861,7 +851,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->downloadCloudSaves(product_id, build_index);
+        downloader.downloadCloudSaves(product_id, build_index);
     }
     else if (!galaxy_upload_product_cloud_saves.empty()) {
         int build_index = -1;
@@ -871,7 +861,7 @@ int main(int argc, char *argv[])
         {
             build_index = std::stoi(tokens[1]);
         }
-        downloader->uploadCloudSaves(product_id, build_index);
+        downloader.uploadCloudSaves(product_id, build_index);
     }
     else
     {
@@ -885,10 +875,7 @@ int main(int argc, char *argv[])
 
     // Orphan check was called at the same time as download. Perform it after download has finished
     if (!Globals::globalConfig.sOrphanRegex.empty() && Globals::globalConfig.bDownload)
-        downloader->checkOrphans();
-
-    delete downloader;
-    curl_global_cleanup();
+        downloader.checkOrphans();
 
     return res;
 }
