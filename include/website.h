@@ -33,6 +33,12 @@ class Website
         bool IsLoggedInComplex(const std::string& email);
         std::map<std::string, std::string> getTagsFromJson(const Json::Value& json);
         int retries;
+        std::string LoginGetAuthCode(const std::string& email, const std::string& password);
+        std::string LoginGetAuthCodeCurl(const std::string& login_form_html, const std::string& email, const std::string& password);
+        std::string LoginGetAuthCodeBrowser(const std::string& auth_url);
+        #ifdef USE_QT_GUI_LOGIN
+        std::string LoginGetAuthCodeGUI(const std::string& email, const std::string& password);
+        #endif
 };
 
 #endif // WEBSITE_H
