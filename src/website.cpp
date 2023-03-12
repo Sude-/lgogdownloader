@@ -506,7 +506,7 @@ std::string Website::LoginGetAuthCodeBrowser(const std::string& auth_url)
 
     std::cerr << "Login using browser at the following url" << std::endl;
     std::cerr << auth_url << std::endl << std::endl;
-    std::cerr << "then copy & paste the full url here" << std::endl;
+    std::cerr << "Copy & paste the full url from your browser here after login is complete" << std::endl;
     std::cerr << "URL: ";
     std::getline(std::cin, url);
 
