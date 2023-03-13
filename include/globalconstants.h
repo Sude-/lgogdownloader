@@ -117,6 +117,17 @@ namespace GlobalConstants
         { CDN_LUMEN,     "lumen",      "Lumen",     "lumen|lumen_cdn"         },
         { CDN_AKAMAI,    "akamai_edgecast_proxy", "Akamai", "akamai|akamai_cdn|akamai_ec|akamai_edgecast_proxy" }
     };
+
+    const unsigned int LIST_FORMAT_NO_DETAILS   = 1 << 0;
+    const unsigned int LIST_FORMAT_DETAILS_TEXT = 1 << 1;
+    const unsigned int LIST_FORMAT_DETAILS_JSON = 1 << 2;
+
+    const std::vector<optionsStruct> LIST_FORMAT =
+    {
+        { LIST_FORMAT_NO_DETAILS,   "no_details", "No details", "n|nd|no_details" },
+        { LIST_FORMAT_DETAILS_TEXT, "details",    "Details",    "d|details"       },
+        { LIST_FORMAT_DETAILS_JSON, "json",       "JSON",       "j|json"          }
+    };
 }
 
 #endif // GLOBALCONSTANTS_H_INCLUDED

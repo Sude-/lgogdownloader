@@ -101,7 +101,7 @@ class Downloader
         void clearUpdateNotifications();
         void repair();
         void download();
-        
+
         void downloadCloudSaves(const std::string& product_id, int build_index = -1);
         void downloadCloudSavesById(const std::string& product_id, int build_index = -1);
         void uploadCloudSaves(const std::string& product_id, int build_index = -1);
@@ -156,6 +156,7 @@ class Downloader
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
+        void printGameDetailsAsText(gameDetails& game);
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);

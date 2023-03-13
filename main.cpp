@@ -161,6 +161,13 @@ int main(int argc, char *argv[])
     }
     include_options_text += "Separate with \",\" to use multiple values";
 
+    // Create help text for --list-format option
+    std::string list_format_text = "Select output format\n";
+    for (unsigned int i = 0; i < GlobalConstants::LIST_FORMAT.size(); ++i)
+    {
+        list_format_text += GlobalConstants::LIST_FORMAT[i].str + " = " + GlobalConstants::LIST_FORMAT[i].regexp + "\n";
+    }
+
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
     std::string galaxy_product_id_show_cloud_paths;
@@ -202,6 +209,7 @@ int main(int argc, char *argv[])
         std::string sGalaxyLanguage;
         std::string sGalaxyArch;
         std::string sGalaxyCDN;
+        std::string sListFormat;
         Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -209,7 +217,7 @@ int main(int argc, char *argv[])
             ("version", "Print version information")
             ("login", bpo::value<bool>(&Globals::globalConfig.bLogin)->zero_tokens()->default_value(false), "Login")
             ("list", bpo::value<bool>(&Globals::globalConfig.bList)->zero_tokens()->default_value(false), "List games")
-            ("list-details", bpo::value<bool>(&Globals::globalConfig.bListDetails)->zero_tokens()->default_value(false), "List games with detailed info")
+            ("list-format", bpo::value<std::string>(&sListFormat)->default_value("no_details"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
             ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)")
@@ -572,6 +580,8 @@ int main(int argc, char *argv[])
         Globals::globalConfig.dlConf.bPatches = (Globals::globalConfig.dlConf.iInclude & OPTION_PATCHES);
         Globals::globalConfig.dlConf.bLanguagePacks = (Globals::globalConfig.dlConf.iInclude & OPTION_LANGPACKS);
         Globals::globalConfig.dlConf.bDLC = (Globals::globalConfig.dlConf.iInclude & OPTION_DLCS);
+
+        Globals::globalConfig.iListFormat = Util::getOptionValue(sListFormat, GlobalConstants::LIST_FORMAT, false);
     }
     catch (std::exception& e)
     {
@@ -780,7 +790,7 @@ int main(int argc, char *argv[])
         downloader.repair();
     else if (Globals::globalConfig.bDownload) // Download games
         downloader.download();
-    else if (Globals::globalConfig.bListDetails || Globals::globalConfig.bList) // Detailed list of games/extras
+    else if (Globals::globalConfig.bList) // List games/extras
         res = downloader.listGames();
     else if (Globals::globalConfig.bListTags) // List tags
         res = downloader.listTags();

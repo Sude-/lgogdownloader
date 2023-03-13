@@ -240,7 +240,6 @@ class Config
         bool bRepair;
         bool bUpdated;
         bool bList;
-        bool bListDetails;
         bool bCheckStatus;
         bool bShowWishlist;
         bool bNotifications;
@@ -322,6 +321,7 @@ class Config
         size_t iChunkSize;
         int iProgressInterval;
         int iMsgLevel;
+        unsigned int iListFormat;
 };
 
 #endif // CONFIG_H__
