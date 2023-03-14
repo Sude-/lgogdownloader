@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     include_options_text += "Separate with \",\" to use multiple values";
 
     // Create help text for --list-format option
-    std::string list_format_text = "Select output format\n";
+    std::string list_format_text = "List games\nPossible output formats:\n";
     for (unsigned int i = 0; i < GlobalConstants::LIST_FORMAT.size(); ++i)
     {
         list_format_text += GlobalConstants::LIST_FORMAT[i].str + " = " + GlobalConstants::LIST_FORMAT[i].regexp + "\n";
@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
     bpo::options_description options_cfg_only;
     bpo::options_description options_cfg_all("Configuration");
     bool bClearUpdateNotifications = false;
+    bool bList = false;
     try
     {
         bool bInsecure = false;
@@ -216,8 +217,7 @@ int main(int argc, char *argv[])
             ("help,h", "Print help message")
             ("version", "Print version information")
             ("login", bpo::value<bool>(&Globals::globalConfig.bLogin)->zero_tokens()->default_value(false), "Login")
-            ("list", bpo::value<bool>(&Globals::globalConfig.bList)->zero_tokens()->default_value(false), "List games")
-            ("list-format", bpo::value<std::string>(&sListFormat)->default_value("no_details"), list_format_text.c_str())
+            ("list", bpo::value<std::string>(&sListFormat)->implicit_value("no_details"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
             ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax)")
@@ -335,6 +335,11 @@ int main(int argc, char *argv[])
         {
             std::cout << VERSION_STRING << std::endl;
             return 0;
+        }
+
+        if (vm.count("list"))
+        {
+            bList = true;
         }
 
         // Create lgogdownloader directories
@@ -790,7 +795,7 @@ int main(int argc, char *argv[])
         downloader.repair();
     else if (Globals::globalConfig.bDownload) // Download games
         downloader.download();
-    else if (Globals::globalConfig.bList) // List games/extras
+    else if (bList) // List games/extras
         res = downloader.listGames();
     else if (Globals::globalConfig.bListTags) // List tags
         res = downloader.listTags();
