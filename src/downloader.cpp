@@ -554,8 +554,11 @@ int Downloader::listGames()
 
         if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_DETAILS_JSON)
         {
+            Json::Value json(Json::arrayValue);
             for (auto game : this->games)
-                std::cout << game.getDetailsAsJson() << std::endl;
+                json.append(game.getDetailsAsJson());
+
+            std::cout << json << std::endl;
         }
         else if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_DETAILS_TEXT)
         {
