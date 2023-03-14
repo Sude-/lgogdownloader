@@ -96,7 +96,6 @@ class Downloader
         int init();
         int login();
         int listGames();
-        int listTags();
         void checkNotifications();
         void clearUpdateNotifications();
         void repair();

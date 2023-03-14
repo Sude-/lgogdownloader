@@ -253,7 +253,6 @@ class Config
 #ifdef USE_QT_GUI_LOGIN
         bool bEnableLoginGUI;
 #endif
-        bool bListTags;
 
         // Cache
         bool bUseCache;

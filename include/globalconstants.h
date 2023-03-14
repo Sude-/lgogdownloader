@@ -118,15 +118,17 @@ namespace GlobalConstants
         { CDN_AKAMAI,    "akamai_edgecast_proxy", "Akamai", "akamai|akamai_cdn|akamai_ec|akamai_edgecast_proxy" }
     };
 
-    const unsigned int LIST_FORMAT_NO_DETAILS   = 1 << 0;
+    const unsigned int LIST_FORMAT_GAMES        = 1 << 0;
     const unsigned int LIST_FORMAT_DETAILS_TEXT = 1 << 1;
     const unsigned int LIST_FORMAT_DETAILS_JSON = 1 << 2;
+    const unsigned int LIST_FORMAT_TAGS         = 1 << 3;
 
     const std::vector<optionsStruct> LIST_FORMAT =
     {
-        { LIST_FORMAT_NO_DETAILS,   "no_details", "No details", "n|nd|no_details" },
-        { LIST_FORMAT_DETAILS_TEXT, "details",    "Details",    "d|details"       },
-        { LIST_FORMAT_DETAILS_JSON, "json",       "JSON",       "j|json"          }
+        { LIST_FORMAT_GAMES,        "games",   "Games",   "g|games"   },
+        { LIST_FORMAT_DETAILS_TEXT, "details", "Details", "d|details" },
+        { LIST_FORMAT_DETAILS_JSON, "json",    "JSON",    "j|json"    },
+        { LIST_FORMAT_TAGS,         "tags",    "Tags",    "t|tags"    }
     };
 }
 

@@ -525,7 +525,7 @@ int Downloader::getGameDetails()
 
 int Downloader::listGames()
 {
-    if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_NO_DETAILS)
+    if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_GAMES)
     {
         if (gameItems.empty())
             this->getGameList();
@@ -542,6 +542,19 @@ int Downloader::listGames()
             std::cout << gamename << std::endl;
             for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
                 std::cout << "+> " << gameItems[i].dlcnames[j] << std::endl;
+        }
+    }
+    else if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_TAGS)
+    {
+        std::map<std::string, std::string> tags;
+        tags = gogWebsite->getTags();
+
+        if (!tags.empty())
+        {
+            for (auto tag : tags)
+            {
+                std::cout << tag.first  << " = " << tag.second << std::endl;
+            }
         }
     }
     else
@@ -564,22 +577,6 @@ int Downloader::listGames()
         {
             for (auto game : this->games)
                 printGameDetailsAsText(game);
-        }
-    }
-
-    return 0;
-}
-
-int Downloader::listTags()
-{
-    std::map<std::string, std::string> tags;
-    tags = gogWebsite->getTags();
-
-    if (!tags.empty())
-    {
-        for (auto tag : tags)
-        {
-            std::cout << tag.first  << " = " << tag.second << std::endl;
         }
     }
 
