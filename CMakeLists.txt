@@ -14,8 +14,6 @@ if(USE_QT_GUI)
   set(CMAKE_AUTOUIC ON)
 endif(USE_QT_GUI)
 
-find_program(READELF readelf DOC "Location of the readelf program")
-find_program(GREP grep DOC "Location of the grep program")
 find_package(Boost
   REQUIRED
   system
