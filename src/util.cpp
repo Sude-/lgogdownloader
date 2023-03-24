@@ -406,7 +406,7 @@ int Util::replaceAllString(std::string& str, const std::string& to_replace, cons
 
         pos = str.find(to_replace, pos + to_replace.length());
     } while(pos != std::string::npos);
-    
+
     return 1;
 }
 
@@ -772,7 +772,6 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
     curl_easy_setopt(curlhandle, CURLOPT_CONNECTTIMEOUT, conf.iTimeout);
     curl_easy_setopt(curlhandle, CURLOPT_FAILONERROR, true);
     curl_easy_setopt(curlhandle, CURLOPT_COOKIEFILE, conf.sCookiePath.c_str());
-    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, conf.sCookiePath.c_str());
     curl_easy_setopt(curlhandle, CURLOPT_SSL_VERIFYPEER, conf.bVerifyPeer);
     curl_easy_setopt(curlhandle, CURLOPT_VERBOSE, conf.bVerbose);
     curl_easy_setopt(curlhandle, CURLOPT_MAX_RECV_SPEED_LARGE, conf.iDownloadRate);

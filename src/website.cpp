@@ -21,6 +21,7 @@ Website::Website()
 
     curlhandle = curl_easy_init();
     Util::CurlHandleSetDefaultOptions(curlhandle, Globals::globalConfig.curlConf);
+    curl_easy_setopt(curlhandle, CURLOPT_COOKIEJAR, Globals::globalConfig.curlConf.sCookiePath.c_str());
 }
 
 Website::~Website()
