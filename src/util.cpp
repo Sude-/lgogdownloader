@@ -480,18 +480,18 @@ int Util::getTerminalWidth()
 }
 
 
-void Util::getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls)
+void Util::getManualUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls)
 {
     if(root.size() > 0) {
         for(Json::ValueConstIterator it = root.begin() ; it != root.end() ; ++it)
         {
-            if (it.key() == "downloaderUrl")
+            if (it.key() == "manualUrl")
             {
                 Json::Value url = *it;
                 urls.push_back(url.asString());
             }
             else
-                getDownloaderUrlsFromJSON(*it, urls);
+                getManualUrlsFromJSON(*it, urls);
         }
     }
     return;
@@ -500,15 +500,14 @@ void Util::getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::s
 std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
 {
     std::vector<std::string> urls, dlcnames;
-    getDownloaderUrlsFromJSON(root, urls);
+    getManualUrlsFromJSON(root, urls);
 
     for (unsigned int i = 0; i < urls.size(); ++i)
     {
         std::string gamename;
-        if (urls[i].find(GlobalConstants::PROTOCOL_PREFIX) == std::string::npos)
-            continue;
+        std::string url_prefix = "/downloads/";
 
-        gamename.assign(urls[i].begin()+urls[i].find(GlobalConstants::PROTOCOL_PREFIX)+GlobalConstants::PROTOCOL_PREFIX.length(), urls[i].begin()+urls[i].find_last_of("/"));
+        gamename.assign(urls[i].begin()+urls[i].find(url_prefix)+url_prefix.length(), urls[i].begin()+urls[i].find_last_of("/"));
         bool bDuplicate = false;
         for (unsigned int j = 0; j < dlcnames.size(); ++j)
         {

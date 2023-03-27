@@ -70,7 +70,7 @@ namespace Util
     void filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId = 0, const std::string& dlcname = "");
     void setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions);
     int getTerminalWidth();
-    void getDownloaderUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls);
+    void getManualUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls);
     std::vector<std::string> getDLCNamesFromJSON(const Json::Value &root);
     std::string getHomeDir();
     std::string getConfigHome();
