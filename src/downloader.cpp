@@ -2146,7 +2146,6 @@ void Downloader::updateCache()
     Globals::globalConfig.dlConf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     Globals::globalConfig.dlConf.vLanguagePriority.clear();
     Globals::globalConfig.dlConf.vPlatformPriority.clear();
-    Globals::globalConfig.sIgnoreDLCCountRegex = ".*"; // Ignore DLC count for all games because GOG doesn't report DLC count correctly
 
     this->getGameList();
     this->getGameDetails();
@@ -3524,23 +3523,23 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
         game.filterWithPriorities(conf);
 
-        Json::Value gameDetailsJSON;
-
-        if (!game_item.gamedetailsjson.empty())
-            gameDetailsJSON = game_item.gamedetailsjson;
-
-        if (conf.dlConf.bSaveSerials && game.serials.empty())
+        if ((conf.dlConf.bSaveSerials && game.serials.empty())
+            || (conf.dlConf.bSaveChangelogs && game.changelog.empty())
+        )
         {
+            Json::Value gameDetailsJSON;
+
+            if (!game_item.gamedetailsjson.empty())
+                gameDetailsJSON = game_item.gamedetailsjson;
+
             if (gameDetailsJSON.empty())
                 gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
-            game.serials = Downloader::getSerialsFromJSON(gameDetailsJSON);
-        }
 
-        if (conf.dlConf.bSaveChangelogs && game.changelog.empty())
-        {
-            if (gameDetailsJSON.empty())
-                gameDetailsJSON = website->getGameDetailsJSON(game_item.id);
-            game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
+            if (conf.dlConf.bSaveSerials && game.serials.empty())
+                game.serials = Downloader::getSerialsFromJSON(gameDetailsJSON);
+
+            if (conf.dlConf.bSaveChangelogs && game.changelog.empty())
+                game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
         }
 
         game.makeFilepaths(conf.dirConf);
