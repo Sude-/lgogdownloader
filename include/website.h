@@ -20,11 +20,13 @@ class Website
         Website();
         int Login(const std::string& email, const std::string& password);
         std::string getResponse(const std::string& url);
+        Json::Value getResponseJson(const std::string& url);
         Json::Value getGameDetailsJSON(const std::string& gameid);
         std::vector<gameItem> getGames();
         std::vector<wishlistItem> getWishlistItems();
         bool IsLoggedIn();
         std::map<std::string, std::string> getTags();
+        std::vector<std::string> getOwnedGamesIds();
         virtual ~Website();
     protected:
     private:

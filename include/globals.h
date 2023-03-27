@@ -15,6 +15,7 @@ namespace Globals
 {
     extern GalaxyConfig galaxyConf;
     extern Config globalConfig;
+    extern std::vector<std::string> vOwnedGamesIds;
 }
 
 #endif // GLOBALS_H_INCLUDED

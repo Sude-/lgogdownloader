@@ -47,6 +47,7 @@ struct cloudSaveFile {
     std::string location;
 };
 
+std::vector<std::string> Globals::vOwnedGamesIds;
 std::vector<DownloadInfo> vDownloadInfo;
 ThreadSafeQueue<gameFile> dlQueue;
 ThreadSafeQueue<cloudSaveFile> dlCloudSaveQueue;

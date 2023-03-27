@@ -340,6 +340,14 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
         {
             for (unsigned int i = 0; i < json["expanded_dlcs"].size(); ++i)
             {
+                std::string dlc_id = json["expanded_dlcs"][i]["id"].asString();
+
+                if (!Globals::vOwnedGamesIds.empty())
+                {
+                    if (std::find(Globals::vOwnedGamesIds.begin(), Globals::vOwnedGamesIds.end(), dlc_id) == Globals::vOwnedGamesIds.end())
+                        continue;
+                }
+
                 gameDetails dlc_gamedetails = this->productInfoJsonToGameDetails(json["expanded_dlcs"][i], dlConf);
 
                 // Add DLC type to all DLC files

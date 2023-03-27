@@ -61,27 +61,35 @@ std::string Website::getResponse(const std::string& url)
     return response;
 }
 
+Json::Value Website::getResponseJson(const std::string& url)
+{
+    std::istringstream response(this->getResponse(url));
+    Json::Value json;
+
+    if (!response.str().empty())
+    {
+        try
+        {
+            response >> json;
+        }
+        catch(const Json::Exception& exc)
+        {
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
+                std::cerr << "DEBUG INFO (Website::getResponseJson)" << std::endl << json << std::endl;
+
+            std::cout << "Failed to parse json: " << exc.what();
+        }
+    }
+
+    return json;
+}
+
 Json::Value Website::getGameDetailsJSON(const std::string& gameid)
 {
     std::string gameDataUrl = "https://www.gog.com/account/gameDetails/" + gameid + ".json";
-    std::string json = this->getResponse(gameDataUrl);
+    Json::Value json = this->getResponseJson(gameDataUrl);
 
-    // Parse JSON
-    Json::Value root;
-    std::istringstream json_stream(json);
-
-    try {
-        json_stream >> root;
-    } catch(const Json::Exception& exc) {
-        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-            std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << json << std::endl;
-
-        std::cout << exc.what();
-    }
-    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-        std::cerr << "DEBUG INFO (Website::getGameDetailsJSON)" << std::endl << root << std::endl;
-
-    return root;
+    return json;
 }
 
 // Get list of games from account page
@@ -102,34 +110,16 @@ std::vector<gameItem> Website::getGames()
             tags += "," + tag;
     }
 
+    Globals::vOwnedGamesIds = this->getOwnedGamesIds();
     do
     {
         std::string url = "https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i);
         if (!tags.empty())
             url += "&tags=" + tags;
-        std::string response = this->getResponse(url);
-        std::istringstream json_stream(response);
 
-        try {
-            // Parse JSON
-            json_stream >> root;
-        } catch (const Json::Exception& exc) {
-            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-                std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << response << std::endl;
-
-            std::cout << exc.what();
-            if (!response.empty())
-            {
-                if(response[0] != '{')
-                {
-                    // Response was not JSON. Assume that cookies have expired.
-                    std::cerr << "Response was not JSON. Cookies have most likely expired. Try --login first." << std::endl;
-                }
-            }
-            exit(1);
-        }
-        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-            std::cerr << "DEBUG INFO (Website::getGames)" << std::endl << root << std::endl;
+        Json::Value root = this->getResponseJson(url);
+        if (root.empty())
+            continue;
 
         if (root["page"].asInt() == root["totalPages"].asInt() || root["totalPages"].asInt() == 0)
             bAllPagesParsed = true;
@@ -642,21 +632,10 @@ std::vector<wishlistItem> Website::getWishlistItems()
 
     do
     {
-        std::string response(this->getResponse("https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i)));
-        std::istringstream response_stream(response);
-
-        try {
-            // Parse JSON
-            response_stream >> root;
-        } catch(const Json::Exception& exc) {
-            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-                std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << response << std::endl;
-
-            std::cout << exc.what();
-            exit(1);
-        }
-        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
-            std::cerr << "DEBUG INFO (Website::getWishlistItems)" << std::endl << root << std::endl;
+        std::string url = "https://www.gog.com/account/wishlist/search?hasHiddenProducts=false&hiddenFlag=0&isUpdated=0&mediaType=0&sortBy=title&system=&page=" + std::to_string(i);
+        Json::Value root = this->getResponseJson(url);
+        if (root.empty())
+            continue;
 
         if (root["page"].asInt() >= root["totalPages"].asInt())
             bAllPagesParsed = true;
@@ -788,4 +767,18 @@ std::map<std::string, std::string> Website::getTagsFromJson(const Json::Value& j
     }
 
     return tags;
+}
+
+std::vector<std::string> Website::getOwnedGamesIds()
+{
+    std::vector<std::string> vOwnedGamesIds;
+    Json::Value owned_json = this->getResponseJson("https://www.gog.com/user/data/games");
+
+    if (owned_json.isMember("owned"))
+    {
+        for (auto id : owned_json["owned"])
+            vOwnedGamesIds.push_back(id.asString());
+    }
+
+    return vOwnedGamesIds;
 }
