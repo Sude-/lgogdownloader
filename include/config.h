@@ -47,6 +47,7 @@ struct DownloadConfig
     bool bSaveChangelogs;
     bool bSaveSerials;
     bool bAutomaticXMLCreation;
+    bool bFreeSpaceCheck;
 
     bool bInstallers;
     bool bExtras;

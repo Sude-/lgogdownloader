@@ -735,6 +735,30 @@ void Downloader::download()
 
     if (!dlQueue.empty())
     {
+        unsigned long long totalSizeBytes = iTotalRemainingBytes.load();
+        std::cout << "Total size: " << Util::makeSizeString(totalSizeBytes) << std::endl;
+
+        if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
+        {
+            boost::filesystem::path path = boost::filesystem::absolute(Globals::globalConfig.dirConf.sDirectory);
+            while(!boost::filesystem::exists(path) && !path.empty())
+            {
+                path = path.parent_path();
+            }
+
+            if(boost::filesystem::exists(path) && !path.empty())
+            {
+                boost::filesystem::space_info space = boost::filesystem::space(path);
+
+                if (space.available < totalSizeBytes)
+                {
+                    std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
+                    << Util::makeSizeString(space.available) << ")"<< std::endl;
+                    exit(1);
+                }
+            }
+        }
+
         // Limit thread count to number of items in download queue
         unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlQueue.size()));
 
@@ -3871,10 +3895,30 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
         dlQueueGalaxy.push(items[i]);
     }
 
-    double totalSizeMB = static_cast<double>(totalSize)/1024/1024;
     std::cout << game_title << std::endl;
     std::cout << "Files: " << items.size() << std::endl;
-    std::cout << "Total size installed: " << totalSizeMB << " MB" << std::endl;
+    std::cout << "Total size installed: " << Util::makeSizeString(totalSize) << std::endl;
+
+    if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
+    {
+        boost::filesystem::path path = boost::filesystem::absolute(install_path);
+        while(!boost::filesystem::exists(path) && !path.empty())
+        {
+            path = path.parent_path();
+        }
+
+        if(boost::filesystem::exists(path) && !path.empty())
+        {
+            boost::filesystem::space_info space = boost::filesystem::space(path);
+
+            if (space.available < totalSize)
+            {
+                std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
+                << Util::makeSizeString(space.available) << ")"<< std::endl;
+                exit(1);
+            }
+        }
+    }
 
     // Limit thread count to number of items in download queue
     unsigned int iThreads = std::min(Globals::globalConfig.iThreads, static_cast<unsigned int>(dlQueueGalaxy.size()));
@@ -5166,19 +5210,6 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
             }
         }
 
-        // Create directories
-        for (std::uintmax_t i = 0; i < vZipDirectories.size(); ++i)
-        {
-            if (!boost::filesystem::exists(vZipDirectories[i].filepath))
-            {
-                if (!boost::filesystem::create_directories(vZipDirectories[i].filepath))
-                {
-                    std::cerr << "Failed to create directory " << vZipDirectories[i].filepath << std::endl;
-                    return;
-                }
-            }
-        }
-
         // Set start and end offsets for split files
         // Create map of split files for combining them later
         splitFilesMap mSplitFiles;
@@ -5216,10 +5247,12 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         }
 
         // Add files to download queue
+        uintmax_t totalSize = 0;
         for (std::uintmax_t i = 0; i < vZipFiles.size(); ++i)
         {
             dlQueueGalaxy_MojoSetupHack.push(vZipFiles[i]);
             iTotalRemainingBytes.fetch_add(vZipFiles[i].comp_size);
+            totalSize += vZipFiles[i].uncomp_size;
         }
 
         // Add symlinks to download queue
@@ -5227,6 +5260,45 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         {
             dlQueueGalaxy_MojoSetupHack.push(vZipFilesSymlink[i]);
             iTotalRemainingBytes.fetch_add(vZipFilesSymlink[i].comp_size);
+            totalSize += vZipFilesSymlink[i].uncomp_size;
+        }
+
+        std::cout << game.title << std::endl;
+        std::cout << "Files: " << dlQueueGalaxy_MojoSetupHack.size() << std::endl;
+        std::cout << "Total size installed: " << Util::makeSizeString(totalSize) << std::endl;
+
+        if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
+        {
+            boost::filesystem::path path = boost::filesystem::absolute(install_path);
+            while(!boost::filesystem::exists(path) && !path.empty())
+            {
+                path = path.parent_path();
+            }
+
+            if(boost::filesystem::exists(path) && !path.empty())
+            {
+                boost::filesystem::space_info space = boost::filesystem::space(path);
+
+                if (space.available < totalSize)
+                {
+                    std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
+                    << Util::makeSizeString(space.available) << ")"<< std::endl;
+                    exit(1);
+                }
+            }
+        }
+
+        // Create directories
+        for (std::uintmax_t i = 0; i < vZipDirectories.size(); ++i)
+        {
+            if (!boost::filesystem::exists(vZipDirectories[i].filepath))
+            {
+                if (!boost::filesystem::create_directories(vZipDirectories[i].filepath))
+                {
+                    std::cerr << "Failed to create directory " << vZipDirectories[i].filepath << std::endl;
+                    return;
+                }
+            }
         }
 
         // Limit thread count to number of items in download queue

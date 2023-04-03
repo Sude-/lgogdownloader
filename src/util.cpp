@@ -893,3 +893,19 @@ curl_off_t Util::CurlReadChunkMemoryCallback(void *contents, curl_off_t size, cu
 
     return realsize;
 }
+
+std::string Util::makeSizeString(const unsigned long long& iSizeInBytes)
+{
+    auto units = { "B", "kB", "MB", "GB", "TB", "PB" };
+    std::string size_unit = "B";
+    double iSize = static_cast<double>(iSizeInBytes);
+    for (auto unit : units)
+    {
+        size_unit = unit;
+        if (iSize < 1024)
+            break;
+
+        iSize /= 1024;
+    }
+    return formattedString("%0.2f %s", iSize, size_unit.c_str());
+}

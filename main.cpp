@@ -290,6 +290,7 @@ int main(int argc, char *argv[])
             ("include-hidden-products", bpo::value<bool>(&Globals::globalConfig.bIncludeHiddenProducts)->zero_tokens()->default_value(false), "Include games that have been set hidden in account page")
             ("size-only", bpo::value<bool>(&Globals::globalConfig.bSizeOnly)->zero_tokens()->default_value(false), "Don't check the hashes of the files whose size matches that on the server")
             ("verbosity", bpo::value<int>(&Globals::globalConfig.iMsgLevel)->default_value(0), "Set message verbosity level\n -1 = Less verbose\n 0 = Default\n 1 = Verbose\n 2 = Debug")
+            ("check-free-space", bpo::value<bool>(&Globals::globalConfig.dlConf.bFreeSpaceCheck)->zero_tokens()->default_value(false), "Check for available free space before starting download")
         ;
 
         options_cli_no_cfg_hidden.add_options()
