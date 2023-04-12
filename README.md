@@ -5,7 +5,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 
 ## Dependencies
 
-* [libcurl](https://curl.haxx.se/libcurl/) >= 7.32.0
+* [libcurl](https://curl.haxx.se/libcurl/) >= 7.55.0
 * [librhash](https://github.com/rhash/RHash)
 * [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
 * [htmlcxx](http://htmlcxx.sourceforge.net/)
@@ -41,7 +41,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 - **Listing games and details for specific games**
 
         lgogdownloader --list
-        lgogdownloader --list-details --game witcher
+        lgogdownloader --list details --game witcher
 
 
 - **Downloading files**
