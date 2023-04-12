@@ -23,7 +23,7 @@ find_package(Boost
   date_time
   iostreams
   )
-find_package(CURL 7.32.0 REQUIRED)
+find_package(CURL 7.55.0 REQUIRED)
 find_package(Jsoncpp REQUIRED)
 find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)
