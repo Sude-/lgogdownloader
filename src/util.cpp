@@ -438,6 +438,34 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
             gamename_firstletter = gamename.front();
     }
 
+    std::string gamename_transformed = gamename;
+    if (str.find("%gamename_transformed%") != std::string::npos || str.find("%gamename_transformed_firstletter%") != std::string::npos)
+    {
+        for (auto transformMatch : Globals::globalConfig.transformationsJSON.getMemberNames())
+        {
+            boost::regex expression(transformMatch);
+            boost::match_results<std::string::const_iterator> what;
+            if (boost::regex_search(gamename, what, expression))
+            {
+                boost::regex transformRegex(Globals::globalConfig.transformationsJSON[transformMatch]["regex"].asString());
+                std::string transformReplacement = Globals::globalConfig.transformationsJSON[transformMatch]["replacement"].asString();
+                gamename_transformed = boost::regex_replace(gamename, transformRegex, transformReplacement);
+            }
+        }
+
+        std::string gamename_transformed_firstletter;
+        if (!gamename_transformed.empty())
+        {
+            if (std::isdigit(gamename_transformed.front()))
+                gamename_transformed_firstletter = "0";
+            else
+                gamename_transformed_firstletter = gamename_transformed.front();
+        }
+
+        while (Util::replaceString(str, "%gamename_transformed%", gamename_transformed));
+        while (Util::replaceString(str, "%gamename_transformed_firstletter%", gamename_transformed_firstletter));
+    }
+
     while (Util::replaceString(str, "%gamename_firstletter%", gamename_firstletter));
     while (Util::replaceString(str, "%gamename%", gamename));
     while (Util::replaceString(str, "%dlcname%", dlcname));

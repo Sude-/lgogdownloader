@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
     Globals::globalConfig.sBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
     Globals::globalConfig.sIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
     Globals::globalConfig.sGameHasDLCListFilePath = Globals::globalConfig.sConfigDirectory + "/game_has_dlc.txt";
+    Globals::globalConfig.sTransformConfigFilePath = Globals::globalConfig.sConfigDirectory + "/transformations.json";
 
     Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
 
@@ -151,7 +152,7 @@ int main(int argc, char *argv[])
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
 
     // Help text for subdir options
-    std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %gamename_firstletter%\n- %dlcname%";
+    std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %gamename_firstletter%\n- %dlcname%\n- %gamename_transformed%\n- %gamename_transformed_firstletter%";
 
     // Help text for include and exclude options
     std::string include_options_text;
@@ -430,6 +431,25 @@ int main(int argc, char *argv[])
                 }
                 Globals::globalConfig.ignorelist.initialize(lines);
             }
+        }
+
+        if (boost::filesystem::exists(Globals::globalConfig.sTransformConfigFilePath))
+        {
+            std::ifstream ifs(Globals::globalConfig.sTransformConfigFilePath, std::ifstream::binary);
+            Json::Value json;
+            try {
+                ifs >> json;
+                if (!json.empty())
+                {
+                    Globals::globalConfig.transformationsJSON = json;
+                }
+            } catch (const Json::Exception& exc) {
+                std::cerr << "Failed to parse " << Globals::globalConfig.sTransformConfigFilePath<< std::endl;
+                std::cerr << exc.what() << std::endl;
+            }
+
+            if (ifs)
+                ifs.close();
         }
 
         if (!bUseDLCList)

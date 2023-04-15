@@ -109,6 +109,42 @@ Must be in the following format:
 .br
 }
 
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/transformations.json\fP
+JSON formatted file. Used to transform gamenames.
+.br
+Must be in the following format:
+.br
+{
+    <string> :
+    {
+        "regex" : <string>,
+        "replacement" : <string>,
+    },
+    <string> :
+    {
+        "regex" : <string>,
+        "replacement" : <string>,
+    },
+.br
+}
+.br
+Member names are used to match the gamename.
+If it matches then \fBregex\fP is used for the actual replacement using the value in \fBreplacement\fP.
+.br
+\fBExample:\fP
+.br
+match all games beginning with "\fBb\fP" and if they end with "\fB_the\fP" then remove "\fB_the\fP" at the end and prefix it with "\fBthe_\fP"
+.br
+{
+    "^b" :
+    {
+        "regex" : "(.*)_the$",
+        "replacement" : "the_\\\\1",
+    },
+.br
+}
+
 [priorities]
 Separating values with "," when using \fBlanguage\fP and \fBplatform\fP switches enables a priority-based mode: only the first matching one will be downloaded.
 .PP

@@ -526,7 +526,8 @@ int Downloader::getGameDetails()
 
 int Downloader::listGames()
 {
-    if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_GAMES)
+    if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_GAMES ||
+        Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_TRANSFORMATIONS)
     {
         if (gameItems.empty())
             this->getGameList();
@@ -534,15 +535,24 @@ int Downloader::listGames()
         for (unsigned int i = 0; i < gameItems.size(); ++i)
         {
             std::string gamename = gameItems[i].name;
-            if (gameItems[i].updates > 0)
+            if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_TRANSFORMATIONS)
             {
-                gamename += " [" + std::to_string(gameItems[i].updates) + "]";
-                if (Globals::globalConfig.bColor)
-                    gamename = "\033[32m" + gamename + "\033[0m";
+                std::string str = "%gamename% -> %gamename_transformed%";
+                Util::filepathReplaceReservedStrings(str, gamename);
+                std::cout << str << std::endl;
             }
-            std::cout << gamename << std::endl;
-            for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
-                std::cout << "+> " << gameItems[i].dlcnames[j] << std::endl;
+            else
+            {
+                if (gameItems[i].updates > 0)
+                {
+                    gamename += " [" + std::to_string(gameItems[i].updates) + "]";
+                    if (Globals::globalConfig.bColor)
+                        gamename = "\033[32m" + gamename + "\033[0m";
+                }
+                std::cout << gamename << std::endl;
+                for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)
+                    std::cout << "+> " << gameItems[i].dlcnames[j] << std::endl;
+            }
         }
     }
     else if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_TAGS)

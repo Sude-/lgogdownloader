@@ -282,6 +282,7 @@ class Config
         std::string sIgnorelistFilePath;
         std::string sGameHasDLCListFilePath;
         std::string sReportFilePath;
+        std::string sTransformConfigFilePath;
 
         std::string sXMLFile;
 
@@ -321,6 +322,8 @@ class Config
         int iProgressInterval;
         int iMsgLevel;
         unsigned int iListFormat;
+
+        Json::Value transformationsJSON;
 };
 
 #endif // CONFIG_H__
