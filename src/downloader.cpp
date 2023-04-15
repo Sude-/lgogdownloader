@@ -1902,7 +1902,15 @@ void Downloader::checkStatus()
 
 void Downloader::addStatusLine(const std::string& statusCode, const std::string& gamename, const std::string& filepath, const uintmax_t& filesize, const std::string& localHash)
 {
-    std::cout << statusCode << " " << gamename << " " << filepath << " " << filesize << " " << localHash << std::endl;
+    std::cout << statusCode << " " << gamename << " " << filepath;
+
+    if (filesize > 0)
+        std::cout << " " << filesize;
+
+    if (!localHash.empty())
+        std::cout << " " << localHash;
+
+    std::cout << std::endl;
     return;
 }
 
