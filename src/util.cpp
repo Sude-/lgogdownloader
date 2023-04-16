@@ -445,11 +445,11 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
         {
             boost::regex expression(transformMatch);
             boost::match_results<std::string::const_iterator> what;
-            if (boost::regex_search(gamename, what, expression))
+            if (boost::regex_search(gamename_transformed, what, expression))
             {
                 boost::regex transformRegex(Globals::globalConfig.transformationsJSON[transformMatch]["regex"].asString());
                 std::string transformReplacement = Globals::globalConfig.transformationsJSON[transformMatch]["replacement"].asString();
-                gamename_transformed = boost::regex_replace(gamename, transformRegex, transformReplacement);
+                gamename_transformed = boost::regex_replace(gamename_transformed, transformRegex, transformReplacement);
             }
         }
 
