@@ -438,21 +438,9 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
             gamename_firstletter = gamename.front();
     }
 
-    std::string gamename_transformed = gamename;
     if (str.find("%gamename_transformed%") != std::string::npos || str.find("%gamename_transformed_firstletter%") != std::string::npos)
     {
-        for (auto transformMatch : Globals::globalConfig.transformationsJSON.getMemberNames())
-        {
-            boost::regex expression(transformMatch);
-            boost::match_results<std::string::const_iterator> what;
-            if (boost::regex_search(gamename_transformed, what, expression))
-            {
-                boost::regex transformRegex(Globals::globalConfig.transformationsJSON[transformMatch]["regex"].asString());
-                std::string transformReplacement = Globals::globalConfig.transformationsJSON[transformMatch]["replacement"].asString();
-                gamename_transformed = boost::regex_replace(gamename_transformed, transformRegex, transformReplacement);
-            }
-        }
-
+        std::string gamename_transformed = transformGamename(gamename);
         std::string gamename_transformed_firstletter;
         if (!gamename_transformed.empty())
         {
@@ -962,4 +950,41 @@ Json::Value Util::readJsonFile(const std::string& path)
     }
 
     return json;
+}
+
+std::string Util::transformGamename(const std::string& gamename)
+{
+    std::string gamename_transformed = gamename;
+    for (auto transformMatch : Globals::globalConfig.transformationsJSON.getMemberNames())
+    {
+        boost::regex expression(transformMatch);
+        boost::match_results<std::string::const_iterator> what;
+        if (boost::regex_search(gamename_transformed, what, expression))
+        {
+            // Get list of exceptions
+            std::vector<std::string> vExceptions;
+            if (Globals::globalConfig.transformationsJSON[transformMatch].isMember("exceptions"))
+            {
+                if (Globals::globalConfig.transformationsJSON[transformMatch]["exceptions"].isArray())
+                {
+                    for (auto exception : Globals::globalConfig.transformationsJSON[transformMatch]["exceptions"])
+                        vExceptions.push_back(exception.asString());
+                }
+                else
+                {
+                    vExceptions.push_back(Globals::globalConfig.transformationsJSON[transformMatch]["exceptions"].asString());
+                }
+            }
+
+            // Skip if gamename matches exception
+            if (std::any_of(vExceptions.begin(), vExceptions.end(), [gamename](std::string exception){return exception == gamename;}))
+                continue;
+
+            boost::regex transformRegex(Globals::globalConfig.transformationsJSON[transformMatch]["regex"].asString());
+            std::string transformReplacement = Globals::globalConfig.transformationsJSON[transformMatch]["replacement"].asString();
+            gamename_transformed = boost::regex_replace(gamename_transformed, transformRegex, transformReplacement);
+        }
+    }
+
+    return gamename_transformed;
 }

@@ -526,9 +526,7 @@ int Downloader::listGames()
             std::string gamename = gameItems[i].name;
             if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_TRANSFORMATIONS)
             {
-                std::string str = "%gamename% -> %gamename_transformed%";
-                Util::filepathReplaceReservedStrings(str, gamename);
-                std::cout << str << std::endl;
+                std::cout << gamename << " -> " << Util::transformGamename(gamename) << std::endl;
             }
             else
             {

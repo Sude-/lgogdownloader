@@ -120,6 +120,10 @@ Must be in the following format:
     {
         "regex" : <string>,
         "replacement" : <string>,
+        "exceptions" : [
+            <string>,
+            <string>,
+        ],
     },
     <string> :
     {
@@ -129,18 +133,27 @@ Must be in the following format:
 .br
 }
 .br
-Member names are used to match the gamename.
+Member names are used to match the gamename (regex).
+Member names must be unique.
+.br
+For example if the file contains 2 rules with "^x" then only the last one is applied. However if user really wants multiple different rules for everything starting with "x" then adding wild wildcard matches makes them unique ("^x", "^x.*", "^x.*.*")
+.br
 If it matches then \fBregex\fP is used for the actual replacement using the value in \fBreplacement\fP.
+.br
+"\fBexceptions\fP" is an optional array of gamenames excluded from the rule. These are matched exactly, no regex.
 .br
 \fBExample:\fP
 .br
-match all games beginning with "\fBb\fP" and if they end with "\fB_the\fP" then remove "\fB_the\fP" at the end and prefix it with "\fBthe_\fP"
+match all games beginning with "\fBb\fP" and if they end with "\fB_the\fP" then remove "\fB_the\fP" at the end and prefix it with "\fBthe_\fP" with exception of "\fBblackwell_epiphany_the\fP"
 .br
 {
     "^b" :
     {
         "regex" : "(.*)_the$",
         "replacement" : "the_\\\\1",
+        "exceptions" : [
+            "blackwell_epiphany_the",
+        ],
     },
 .br
 }

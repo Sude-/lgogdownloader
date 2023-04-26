@@ -102,6 +102,7 @@ namespace Util
         return std::string(buf.get(), buf.get() + sz - 1); // -1 because we don't want the null terminator
     }
     Json::Value readJsonFile(const std::string& path);
+    std::string transformGamename(const std::string& gamename);
 }
 
 #endif // UTIL_H
