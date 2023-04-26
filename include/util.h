@@ -101,6 +101,7 @@ namespace Util
         std::snprintf(buf.get(), sz, format.c_str(), args ...);
         return std::string(buf.get(), buf.get() + sz - 1); // -1 because we don't want the null terminator
     }
+    Json::Value readJsonFile(const std::string& path);
 }
 
 #endif // UTIL_H

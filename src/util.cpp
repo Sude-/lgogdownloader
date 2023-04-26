@@ -937,3 +937,29 @@ std::string Util::makeSizeString(const unsigned long long& iSizeInBytes)
     }
     return formattedString("%0.2f %s", iSize, size_unit.c_str());
 }
+
+Json::Value Util::readJsonFile(const std::string& path)
+{
+    Json::Value json;
+    std::ifstream ifs(path, std::ifstream::binary);
+
+    if (ifs)
+    {
+        try
+        {
+            ifs >> json;
+        }
+        catch (const Json::Exception& exc)
+        {
+            std::cerr << "Failed to parse " << path << std::endl;
+            std::cerr << exc.what() << std::endl;
+        }
+        ifs.close();
+    }
+    else
+    {
+        std::cerr << "Failed to open " << path << std::endl;
+    }
+
+    return json;
+}

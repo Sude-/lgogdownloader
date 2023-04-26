@@ -435,21 +435,7 @@ int main(int argc, char *argv[])
 
         if (boost::filesystem::exists(Globals::globalConfig.sTransformConfigFilePath))
         {
-            std::ifstream ifs(Globals::globalConfig.sTransformConfigFilePath, std::ifstream::binary);
-            Json::Value json;
-            try {
-                ifs >> json;
-                if (!json.empty())
-                {
-                    Globals::globalConfig.transformationsJSON = json;
-                }
-            } catch (const Json::Exception& exc) {
-                std::cerr << "Failed to parse " << Globals::globalConfig.sTransformConfigFilePath<< std::endl;
-                std::cerr << exc.what() << std::endl;
-            }
-
-            if (ifs)
-                ifs.close();
+            Globals::globalConfig.transformationsJSON = Util::readJsonFile(Globals::globalConfig.sTransformConfigFilePath);
         }
 
         if (!bUseDLCList)

@@ -141,25 +141,14 @@ Downloader::Downloader()
 
     if (boost::filesystem::exists(Globals::galaxyConf.getFilepath()))
     {
-        std::ifstream ifs(Globals::galaxyConf.getFilepath(), std::ifstream::binary);
-        Json::Value json;
-		try {
-			ifs >> json;
-            if (!json.isMember("expires_at"))
-            {
-                std::time_t last_modified = boost::filesystem::last_write_time(Globals::galaxyConf.getFilepath());
-                Json::Value::LargestInt expires_in = json["expires_in"].asLargestInt();
-                json["expires_at"] = expires_in + last_modified;
-            }
-
-            Globals::galaxyConf.setJSON(json);
-		} catch (const Json::Exception& exc) {
-            std::cerr << "Failed to parse " << Globals::galaxyConf.getFilepath() << std::endl;
-            std::cerr << exc.what() << std::endl;
-		}
-
-        if (ifs)
-            ifs.close();
+        Json::Value json = Util::readJsonFile(Globals::galaxyConf.getFilepath());
+        if (!json.isMember("expires_at"))
+        {
+            std::time_t last_modified = boost::filesystem::last_write_time(Globals::galaxyConf.getFilepath());
+            Json::Value::LargestInt expires_in = json["expires_in"].asLargestInt();
+            json["expires_at"] = expires_in + last_modified;
+        }
+        Globals::galaxyConf.setJSON(json);
     }
 
     gogGalaxy = new galaxyAPI(Globals::globalConfig.curlConf);
@@ -2004,13 +1993,9 @@ int Downloader::loadGameDetailsCache()
     bptime::ptime now = bptime::second_clock::local_time();
     bptime::ptime cachedate;
 
-    std::ifstream json(cachepath, std::ifstream::binary);
-    Json::Value root;
-    try {
-        json >> root;
-    } catch (const Json::Exception& exc) {
-        std::cout << "Failed to parse cache" << std::endl;
-        std::cout << exc.what() << std::endl;
+    Json::Value root = Util::readJsonFile(cachepath);
+    if (root.empty())
+    {
         return 2;
     }
 
@@ -3829,18 +3814,9 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     int old_build_index = -1;
     if (boost::filesystem::exists(info_path))
     {
-        std::ifstream info_file_stream(info_path, std::ifstream::binary);
-        Json::Value info_json;
-        try {
-            info_file_stream >> info_json;
+        Json::Value info_json = Util::readJsonFile(info_path);
+        if (!info_json.empty())
             old_build_id = info_json["buildId"].asString();
-        }
-        catch (const Json::Exception& exc)
-        {
-            std::cout << "Failed to parse " << info_path << std::endl;
-            std::cout << exc.what() << std::endl;
-            return;
-        }
 
         if (!old_build_id.empty())
         {
