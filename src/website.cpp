@@ -188,7 +188,7 @@ std::vector<gameItem> Website::getGames()
                         continue;
                 }
 
-                if (Globals::globalConfig.dlConf.bDLC)
+                if (Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
                 {
                     int dlcCount = product["dlcCount"].asInt();
 

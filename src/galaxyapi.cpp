@@ -314,27 +314,27 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     if (json.isMember("changelog"))
         gamedetails.changelog = json["changelog"].asString();
 
-    if (dlConf.bInstallers)
+    if (dlConf.iInclude & GlobalConstants::GFTYPE_INSTALLER)
     {
-        gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GFTYPE_INSTALLER, dlConf);
+        gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GlobalConstants::GFTYPE_BASE_INSTALLER, dlConf);
     }
 
-    if (dlConf.bExtras)
+    if (dlConf.iInclude & GlobalConstants::GFTYPE_EXTRA)
     {
-        gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GFTYPE_EXTRA, dlConf);
+        gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GlobalConstants::GFTYPE_BASE_EXTRA, dlConf);
     }
 
-    if (dlConf.bPatches)
+    if (dlConf.iInclude & GlobalConstants::GFTYPE_PATCH)
     {
-        gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GFTYPE_PATCH, dlConf);
+        gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GlobalConstants::GFTYPE_BASE_PATCH, dlConf);
     }
 
-    if (dlConf.bLanguagePacks)
+    if (dlConf.iInclude & GlobalConstants::GFTYPE_LANGPACK)
     {
-        gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GFTYPE_LANGPACK, dlConf);
+        gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GlobalConstants::GFTYPE_BASE_LANGPACK, dlConf);
     }
 
-    if (dlConf.bDLC)
+    if (dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
     {
         if (json.isMember("expanded_dlcs"))
         {
@@ -352,13 +352,13 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
 
                 // Add DLC type to all DLC files
                 for (unsigned int j = 0; j < dlc_gamedetails.installers.size(); ++j)
-                    dlc_gamedetails.installers[j].type |= GFTYPE_DLC;
+                    dlc_gamedetails.installers[j].type = GlobalConstants::GFTYPE_DLC_INSTALLER;
                 for (unsigned int j = 0; j < dlc_gamedetails.extras.size(); ++j)
-                    dlc_gamedetails.extras[j].type |= GFTYPE_DLC;
+                    dlc_gamedetails.extras[j].type = GlobalConstants::GFTYPE_DLC_EXTRA;
                 for (unsigned int j = 0; j < dlc_gamedetails.patches.size(); ++j)
-                    dlc_gamedetails.patches[j].type |= GFTYPE_DLC;
+                    dlc_gamedetails.patches[j].type = GlobalConstants::GFTYPE_DLC_PATCH;
                 for (unsigned int j = 0; j < dlc_gamedetails.languagepacks.size(); ++j)
-                    dlc_gamedetails.languagepacks[j].type |= GFTYPE_DLC;
+                    dlc_gamedetails.languagepacks[j].type = GlobalConstants::GFTYPE_DLC_LANGPACK;
 
                 // Add DLC only if it has any files
                 if (!dlc_gamedetails.installers.empty() || !dlc_gamedetails.extras.empty() || !dlc_gamedetails.patches.empty() || !dlc_gamedetails.languagepacks.empty())
@@ -385,7 +385,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
 
         unsigned int iPlatform = GlobalConstants::PLATFORM_WINDOWS;
         unsigned int iLanguage = GlobalConstants::LANGUAGE_EN;
-        if (!(type & GFTYPE_EXTRA))
+        if (!(type & GlobalConstants::GFTYPE_EXTRA))
         {
             iPlatform = Util::getOptionValue(infoNode["os"].asString(), GlobalConstants::PLATFORMS);
             iLanguage = Util::getOptionValue(infoNode["language"].asString(), GlobalConstants::LANGUAGES);
@@ -433,7 +433,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
             gf.galaxy_downlink_json_url = downlink;
             gf.version = version;
 
-            if (!(type & GFTYPE_EXTRA))
+            if (!(type & GlobalConstants::GFTYPE_EXTRA))
             {
                 gf.platform = iPlatform;
                 gf.language = iLanguage;
@@ -446,7 +446,7 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 {
                     if (gamefiles[k].path == gf.path)
                     {
-                        if (!(type & GFTYPE_EXTRA))
+                        if (!(type & GlobalConstants::GFTYPE_EXTRA))
                             gamefiles[k].language |= gf.language; // Add language code to installer
                         bDuplicate = true;
                         break;

@@ -12,7 +12,7 @@
 
 namespace GlobalConstants
 {
-    const int GAMEDETAILS_CACHE_VERSION = 4;
+    const int GAMEDETAILS_CACHE_VERSION = 5;
     const int ZLIB_WINDOW_SIZE = 15;
 
     struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};
@@ -131,6 +131,41 @@ namespace GlobalConstants
         { LIST_FORMAT_DETAILS_JSON, "json",    "JSON",    "j|json"    },
         { LIST_FORMAT_TAGS,         "tags",    "Tags",    "t|tags"    },
         { LIST_FORMAT_TRANSFORMATIONS, "transform", "Transformations", "tr|transform|transformations" }
+    };
+
+    const unsigned int GFTYPE_BASE_INSTALLER = 1 << 0;
+    const unsigned int GFTYPE_BASE_EXTRA     = 1 << 1;
+    const unsigned int GFTYPE_BASE_PATCH     = 1 << 2;
+    const unsigned int GFTYPE_BASE_LANGPACK  = 1 << 3;
+    const unsigned int GFTYPE_DLC_INSTALLER  = 1 << 4;
+    const unsigned int GFTYPE_DLC_EXTRA      = 1 << 5;
+    const unsigned int GFTYPE_DLC_PATCH      = 1 << 6;
+    const unsigned int GFTYPE_DLC_LANGPACK   = 1 << 7;
+    const unsigned int GFTYPE_DLC = GFTYPE_DLC_INSTALLER | GFTYPE_DLC_EXTRA |
+                                    GFTYPE_DLC_PATCH | GFTYPE_DLC_LANGPACK;
+    const unsigned int GFTYPE_BASE = GFTYPE_BASE_INSTALLER | GFTYPE_BASE_EXTRA |
+                                     GFTYPE_BASE_PATCH | GFTYPE_BASE_LANGPACK;
+    const unsigned int GFTYPE_INSTALLER = GFTYPE_BASE_INSTALLER | GFTYPE_DLC_INSTALLER;
+    const unsigned int GFTYPE_EXTRA     = GFTYPE_BASE_EXTRA | GFTYPE_DLC_EXTRA;
+    const unsigned int GFTYPE_PATCH     = GFTYPE_BASE_PATCH | GFTYPE_DLC_PATCH;
+    const unsigned int GFTYPE_LANGPACK  = GFTYPE_BASE_LANGPACK | GFTYPE_DLC_LANGPACK;
+
+    const std::vector<GlobalConstants::optionsStruct> INCLUDE_OPTIONS =
+    {
+        { GFTYPE_BASE_INSTALLER, "bi", "Base game installers",     "bi|basegame_installers" },
+        { GFTYPE_BASE_EXTRA,     "be", "Base game extras",         "be|basegame_extras"     },
+        { GFTYPE_BASE_PATCH,     "bp", "Base game patches",        "bp|basegame_patches"    },
+        { GFTYPE_BASE_LANGPACK,  "bl", "Base game language packs", "bl|basegame_languagepacks|basegame_langpacks" },
+        { GFTYPE_DLC_INSTALLER,  "di", "DLC installers",           "di|dlc_installers"      },
+        { GFTYPE_DLC_EXTRA,      "de", "DLC extras",               "de|dlc_extras"          },
+        { GFTYPE_DLC_PATCH,      "dp", "DLC patches",              "dp|dlc_patches"         },
+        { GFTYPE_DLC_LANGPACK,   "dl", "DLC language packs",       "dl|dlc_languagepacks|dlc_langpacks" },
+        { GFTYPE_DLC,            "d",  "DLCs",                     "d|dlc|dlcs"             },
+        { GFTYPE_BASE,           "b",  "Basegame",                 "b|bg|basegame"          },
+        { GFTYPE_INSTALLER,      "i",  "All installers",           "i|installers"           },
+        { GFTYPE_EXTRA,          "e",  "All extras",               "e|extras"               },
+        { GFTYPE_PATCH,          "p",  "All patches",              "p|patches"              },
+        { GFTYPE_LANGPACK,       "l",  "All language packs",       "l|languagepacks|langpacks" }
     };
 }
 

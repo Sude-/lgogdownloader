@@ -49,12 +49,6 @@ struct DownloadConfig
     bool bAutomaticXMLCreation;
     bool bFreeSpaceCheck;
 
-    bool bInstallers;
-    bool bExtras;
-    bool bPatches;
-    bool bLanguagePacks;
-    bool bDLC;
-
     bool bIgnoreDLCCount;
     bool bDuplicateHandler;
     bool bGalaxyDependencies;

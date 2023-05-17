@@ -39,9 +39,11 @@ class gameDetails
         Json::Value getDetailsAsJson();
         std::vector<gameFile> getGameFileVector();
         std::vector<gameFile> getGameFileVectorFiltered(const unsigned int& iType);
+        void filterWithType(const unsigned int& iType);
         virtual ~gameDetails();
     protected:
         void filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config);
+        void filterListWithType(std::vector<gameFile>& list, const unsigned int& iType);
     private:
         std::string serialsFilepath;
         std::string changelogFilepath;

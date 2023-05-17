@@ -214,27 +214,39 @@ std::vector<gameFile> gameDetails::getGameFileVector()
 // Return vector containing all game files matching download filters
 std::vector<gameFile> gameDetails::getGameFileVectorFiltered(const unsigned int& iType)
 {
-    std::vector<gameFile> vGameFiles = this->getGameFileVector();
+    std::vector<gameFile> vGameFiles;
 
-    std::remove_if(
-        vGameFiles.begin(),
-        vGameFiles.end(),
-        [iType](gameFile gf)
-        {
-            bool bRemove = false;
-            if (gf.type & iType)
-            {
-                // Remove if DLC but DLCs not enabled
-                if ( !((iType & GFTYPE_DLC) & iType) )
-                    bRemove = true;
-            }
-            else
-            {
-                bRemove = true;
-            }
-            return bRemove;
-        }
-    );
+    for (auto gf : this->getGameFileVector())
+    {
+        if (gf.type & iType)
+            vGameFiles.push_back(gf);
+    }
 
     return vGameFiles;
+}
+
+void gameDetails::filterWithType(const unsigned int& iType)
+{
+    filterListWithType(installers, iType);
+    filterListWithType(patches, iType);
+    filterListWithType(extras, iType);
+    filterListWithType(languagepacks, iType);
+    for (unsigned int i = 0; i < dlcs.size(); ++i)
+    {
+        filterListWithType(dlcs[i].installers, iType);
+        filterListWithType(dlcs[i].patches, iType);
+        filterListWithType(dlcs[i].extras, iType);
+        filterListWithType(dlcs[i].languagepacks, iType);
+    }
+}
+
+void gameDetails::filterListWithType(std::vector<gameFile>& list, const unsigned int& iType)
+{
+    for (std::vector<gameFile>::iterator gf = list.begin(); gf != list.end();)
+    {
+        if (!(gf->type & iType))
+            gf = list.erase(gf);
+        else
+            gf++;
+    }
 }

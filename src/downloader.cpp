@@ -599,17 +599,10 @@ void Downloader::repair()
         gameSpecificConfig conf;
         conf.dlConf = Globals::globalConfig.dlConf;
         conf.dirConf = Globals::globalConfig.dirConf;
+        Util::getGameSpecificConfig(vGameFiles[i].gamename, &conf);
 
         unsigned int type = vGameFiles[i].type;
-        if (!conf.dlConf.bDLC && (type & GFTYPE_DLC))
-            continue;
-        if (!conf.dlConf.bInstallers && (type & GFTYPE_INSTALLER))
-            continue;
-        if (!conf.dlConf.bExtras && (type & GFTYPE_EXTRA))
-            continue;
-        if (!conf.dlConf.bPatches && (type & GFTYPE_PATCH))
-            continue;
-        if (!conf.dlConf.bLanguagePacks && (type & GFTYPE_LANGPACK))
+        if (!(type & conf.dlConf.iInclude))
             continue;
 
         std::string filepath = vGameFiles[i].getFilepath();
@@ -658,7 +651,7 @@ void Downloader::repair()
         bool bUseLocalXML = !conf.dlConf.bRemoteXML;
 
         // Use local XML data for extras
-        if (XML.empty() && (type & GFTYPE_EXTRA))
+        if (XML.empty() && (type & GlobalConstants::GFTYPE_EXTRA))
             bUseLocalXML = true;
 
         if (!XML.empty() || bUseLocalXML)
@@ -682,6 +675,7 @@ void Downloader::download()
         gameSpecificConfig conf;
         conf.dlConf = Globals::globalConfig.dlConf;
         conf.dirConf = Globals::globalConfig.dirConf;
+        Util::getGameSpecificConfig(games[i].gamename, &conf);
 
         if (conf.dlConf.bSaveSerials && !games[i].serials.empty())
         {
@@ -695,7 +689,7 @@ void Downloader::download()
             this->saveChangelog(games[i].changelog, filepath);
         }
 
-        if (conf.dlConf.bDLC && !games[i].dlcs.empty())
+        if ((conf.dlConf.iInclude & GlobalConstants::GFTYPE_DLC) && !games[i].dlcs.empty())
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
             {
@@ -1637,11 +1631,7 @@ static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path&
 void Downloader::checkOrphans()
 {
     // Always check everything when checking for orphaned files
-    Globals::globalConfig.dlConf.bInstallers = true;
-    Globals::globalConfig.dlConf.bExtras = true;
-    Globals::globalConfig.dlConf.bPatches = true;
-    Globals::globalConfig.dlConf.bLanguagePacks = true;
-    Globals::globalConfig.dlConf.bDLC = true;
+    Globals::globalConfig.dlConf.iInclude = Util::getOptionValue("all", GlobalConstants::INCLUDE_OPTIONS);
     Globals::globalConfig.dlConf.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
     Globals::globalConfig.dlConf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
     Globals::globalConfig.dlConf.vLanguagePriority.clear();
@@ -1794,15 +1784,7 @@ void Downloader::checkStatus()
     for (unsigned int i = 0; i < vGameFiles.size(); ++i)
     {
         unsigned int type = vGameFiles[i].type;
-        if (!Globals::globalConfig.dlConf.bDLC && (type & GFTYPE_DLC))
-            continue;
-        if (!Globals::globalConfig.dlConf.bInstallers && (type & GFTYPE_INSTALLER))
-            continue;
-        if (!Globals::globalConfig.dlConf.bExtras && (type & GFTYPE_EXTRA))
-            continue;
-        if (!Globals::globalConfig.dlConf.bPatches && (type & GFTYPE_PATCH))
-            continue;
-        if (!Globals::globalConfig.dlConf.bLanguagePacks && (type & GFTYPE_LANGPACK))
+        if (!(type & Globals::globalConfig.dlConf.iInclude))
             continue;
 
         boost::filesystem::path filepath = vGameFiles[i].getFilepath();
@@ -1856,7 +1838,7 @@ void Downloader::checkStatus()
                 bool bHashOK = true; // assume hash OK
 
                 // GOG only provides xml data for installers, patches and language packs
-                if (type & (GFTYPE_INSTALLER | GFTYPE_PATCH | GFTYPE_LANGPACK))
+                if (type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH | GlobalConstants::GFTYPE_LANGPACK))
                     remoteHash = this->getRemoteFileHash(vGameFiles[i]);
                 std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
 
@@ -2098,8 +2080,9 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
 
         gameSpecificConfig conf;
         conf.dlConf = Globals::globalConfig.dlConf;
+        conf.dirConf = Globals::globalConfig.dirConf;
         if (Util::getGameSpecificConfig(game.gamename, &conf) > 0)
-            std::cerr << game.gamename << " - Language: " << conf.dlConf.iInstallerLanguage << ", Platform: " << conf.dlConf.iInstallerPlatform << ", DLC: " << (conf.dlConf.bDLC ? "true" : "false") << std::endl;
+            std::cerr << game.gamename << " - Language: " << conf.dlConf.iInstallerLanguage << ", Platform: " << conf.dlConf.iInstallerPlatform << ", Include: " << Util::getOptionNameString(conf.dlConf.iInclude, GlobalConstants::INCLUDE_OPTIONS) << std::endl;
 
         for (unsigned int j = 0; j < nodes.size(); ++j)
         {
@@ -2134,15 +2117,27 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                             continue;
                     }
 
-                    if (nodeName == "extras" && conf.dlConf.bExtras)
+                    if (nodeName == "extras" &&
+                            (conf.dlConf.iInclude & GlobalConstants::GFTYPE_EXTRA))
+                    {
                         game.extras.push_back(fileDetails);
-                    else if (nodeName == "installers" && conf.dlConf.bInstallers)
+                    }
+                    else if (nodeName == "installers" &&
+                            (conf.dlConf.iInclude & GlobalConstants::GFTYPE_INSTALLER))
+                    {
                         game.installers.push_back(fileDetails);
-                    else if (nodeName == "patches" && conf.dlConf.bPatches)
+                    }
+                    else if (nodeName == "patches" &&
+                            (conf.dlConf.iInclude & GlobalConstants::GFTYPE_PATCH))
+                    {
                         game.patches.push_back(fileDetails);
-                    else if (nodeName == "languagepacks" && conf.dlConf.bLanguagePacks)
+                    }
+                    else if (nodeName == "languagepacks" &&
+                            (conf.dlConf.iInclude & GlobalConstants::GFTYPE_LANGPACK))
+                    {
                         game.languagepacks.push_back(fileDetails);
-                    else if (nodeName == "dlcs" && conf.dlConf.bDLC)
+                    }
+                    else if (nodeName == "dlcs" && (conf.dlConf.iInclude & GlobalConstants::GFTYPE_DLC))
                     {
                         std::vector<gameDetails> dlcs = this->getGameDetailsFromJsonNode(fileDetailsNode, recursion_level + 1);
                         game.dlcs.insert(game.dlcs.end(), dlcs.begin(), dlcs.end());
@@ -2153,6 +2148,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         if (!game.extras.empty() || !game.installers.empty() || !game.patches.empty() || !game.languagepacks.empty() || !game.dlcs.empty())
             {
                 game.filterWithPriorities(conf);
+                game.filterWithType(conf.dlConf.iInclude);
                 details.push_back(game);
             }
     }
@@ -2162,11 +2158,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
 void Downloader::updateCache()
 {
     // Make sure that all details get cached
-    Globals::globalConfig.dlConf.bExtras = true;
-    Globals::globalConfig.dlConf.bInstallers = true;
-    Globals::globalConfig.dlConf.bPatches = true;
-    Globals::globalConfig.dlConf.bLanguagePacks = true;
-    Globals::globalConfig.dlConf.bDLC = true;
+    Globals::globalConfig.dlConf.iInclude = Util::getOptionValue("all", GlobalConstants::INCLUDE_OPTIONS);
     Globals::globalConfig.sGameRegex = ".*";
     Globals::globalConfig.dlConf.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
     Globals::globalConfig.dlConf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
@@ -2296,11 +2288,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
     }
 
     DownloadConfig dlConf = Globals::globalConfig.dlConf;
-    dlConf.bInstallers = true;
-    dlConf.bExtras = true;
-    dlConf.bPatches = true;
-    dlConf.bLanguagePacks = true;
-    dlConf.bDLC = true;
+    dlConf.iInclude = Util::getOptionValue("all", GlobalConstants::INCLUDE_OPTIONS);
     dlConf.bDuplicateHandler = false; // Disable duplicate handler
 
     int res = 1;
@@ -2956,7 +2944,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
 
         std::string xml;
-        if (gf.type & (GFTYPE_INSTALLER | GFTYPE_PATCH) && conf.dlConf.bRemoteXML)
+        if (gf.type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH) && conf.dlConf.bRemoteXML)
         {
             std::string xml_url;
             if (downlinkJson.isMember("checksum"))
@@ -3227,7 +3215,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         {
             if (result == CURLE_OK)
             {
-                if ((gf.type & GFTYPE_EXTRA) || (conf.dlConf.bRemoteXML && !bLocalXMLExists && xml.empty()))
+                if ((gf.type & GlobalConstants::GFTYPE_EXTRA) || (conf.dlConf.bRemoteXML && !bLocalXMLExists && xml.empty()))
                     createXMLQueue.push(gf);
             }
         }
@@ -3503,31 +3491,31 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             if (iOptionsOverridden > 0)
             {
                 std::ostringstream ss;
-                ss << game_item.name << " - " << iOptionsOverridden << " options overridden with game specific options" << std::endl;
+                ss << game_item.name << " - " << iOptionsOverridden << " options overridden with game specific options";
                 if (config.iMsgLevel >= MSGLEVEL_DEBUG)
                 {
                     if (conf.dlConf.bIgnoreDLCCount)
-                        ss << "\tIgnore DLC count" << std::endl;
-                    if (conf.dlConf.bDLC != config.dlConf.bDLC)
-                        ss << "\tDLC: " << (conf.dlConf.bDLC ? "true" : "false") << std::endl;
+                        ss << std::endl << "\tIgnore DLC count";
+                    if (conf.dlConf.iInclude != config.dlConf.iInclude)
+                        ss << std::endl << "\tInclude: " << Util::getOptionNameString(conf.dlConf.iInclude, GlobalConstants::INCLUDE_OPTIONS);
                     if (conf.dlConf.iInstallerLanguage != config.dlConf.iInstallerLanguage)
-                        ss << "\tLanguage: " << Util::getOptionNameString(conf.dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES) << std::endl;
+                        ss << std::endl << "\tLanguage: " << Util::getOptionNameString(conf.dlConf.iInstallerLanguage, GlobalConstants::LANGUAGES);
                     if (conf.dlConf.vLanguagePriority != config.dlConf.vLanguagePriority)
                     {
-                        ss << "\tLanguage priority:" << std::endl;
+                        ss << std::endl << "\tLanguage priority:";
                         for (unsigned int j = 0; j < conf.dlConf.vLanguagePriority.size(); ++j)
                         {
-                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vLanguagePriority[j], GlobalConstants::LANGUAGES) << std::endl;
+                            ss << std::endl << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vLanguagePriority[j], GlobalConstants::LANGUAGES);
                         }
                     }
                     if (conf.dlConf.iInstallerPlatform != config.dlConf.iInstallerPlatform)
-                        ss << "\tPlatform: " << Util::getOptionNameString(conf.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS) << std::endl;
+                        ss << std::endl << "\tPlatform: " << Util::getOptionNameString(conf.dlConf.iInstallerPlatform, GlobalConstants::PLATFORMS);
                     if (conf.dlConf.vPlatformPriority != config.dlConf.vPlatformPriority)
                     {
-                        ss << "\tPlatform priority:" << std::endl;
+                        ss << std::endl << "\tPlatform priority:";
                         for (unsigned int j = 0; j < conf.dlConf.vPlatformPriority.size(); ++j)
                         {
-                            ss << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vPlatformPriority[j], GlobalConstants::PLATFORMS) << std::endl;
+                            ss << std::endl << "\t  " << j << ": " << Util::getOptionNameString(conf.dlConf.vPlatformPriority[j], GlobalConstants::PLATFORMS);
                         }
                     }
                 }
@@ -3548,6 +3536,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         Json::Value product_info = galaxy->getProductInfo(game_item.id);
         game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
         game.filterWithPriorities(conf);
+        game.filterWithType(conf.dlConf.iInclude);
 
         if ((conf.dlConf.bSaveSerials && game.serials.empty())
             || (conf.dlConf.bSaveChangelogs && game.changelog.empty())
@@ -3687,7 +3676,7 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
             items.insert(std::end(items), std::begin(vec), std::end(vec));
     }
 
-    if (!Globals::globalConfig.dlConf.bDLC)
+    if (!(Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC))
     {
         std::vector<galaxyDepotItem> items_no_dlc;
         for (auto it : items)
@@ -4365,11 +4354,7 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
 
         std::cout << "Checking for installers that can be used as repository" << std::endl;
         DownloadConfig dlConf = Globals::globalConfig.dlConf;
-        dlConf.bInstallers = true;
-        dlConf.bExtras = false;
-        dlConf.bLanguagePacks = false;
-        dlConf.bPatches = false;
-        dlConf.bDLC = true;
+        dlConf.iInclude = GlobalConstants::GFTYPE_INSTALLER;
         dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
         dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
 
@@ -5039,10 +5024,7 @@ std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<ga
 void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
 {
     DownloadConfig dlConf = Globals::globalConfig.dlConf;
-    dlConf.bInstallers = true;
-    dlConf.bExtras = false;
-    dlConf.bLanguagePacks = false;
-    dlConf.bPatches = false;
+    dlConf.iInclude |= GlobalConstants::GFTYPE_BASE_INSTALLER;
     dlConf.iInstallerPlatform = dlConf.iGalaxyPlatform;
     dlConf.iInstallerLanguage = dlConf.iGalaxyLanguage;
 
@@ -6191,182 +6173,110 @@ void Downloader::printGameDetailsAsText(gameDetails& game)
         std::cout << "serials:" << std::endl << game.serials << std::endl;
 
     // List installers
-    if (Globals::globalConfig.dlConf.bInstallers && !game.installers.empty())
+    if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_BASE_INSTALLER) && !game.installers.empty())
     {
         std::cout << "installers: " << std::endl;
-        for (unsigned int j = 0; j < game.installers.size(); ++j)
+        for (auto gf : game.installers)
         {
-            std::string filepath = game.installers[j].getFilepath();
-            if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                continue;
-            }
-
-            std::string languages = Util::getOptionNameString(game.installers[j].language, GlobalConstants::LANGUAGES);
-
-            std::cout   << "\tid: " << game.installers[j].id << std::endl
-                        << "\tname: " << game.installers[j].name << std::endl
-                        << "\tpath: " << game.installers[j].path << std::endl
-                        << "\tsize: " << game.installers[j].size << std::endl
-                        << "\tupdated: " << (game.installers[j].updated ? "True" : "False") << std::endl
-                        << "\tlanguage: " << languages << std::endl
-                        << "\tversion: " << game.installers[j].version << std::endl
-                        << std::endl;
+            this->printGameFileDetailsAsText(gf);
         }
     }
     // List extras
-    if (Globals::globalConfig.dlConf.bExtras && !game.extras.empty())
+    if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_BASE_EXTRA) && !game.extras.empty())
     {
         std::cout << "extras: " << std::endl;
-        for (unsigned int j = 0; j < game.extras.size(); ++j)
+        for (auto gf : game.extras)
         {
-            std::string filepath = game.extras[j].getFilepath();
-            if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                continue;
-            }
-
-            std::cout   << "\tid: " << game.extras[j].id << std::endl
-                        << "\tname: " << game.extras[j].name << std::endl
-                        << "\tpath: " << game.extras[j].path << std::endl
-                        << "\tsize: " << game.extras[j].size << std::endl
-                        << std::endl;
+            this->printGameFileDetailsAsText(gf);
         }
     }
     // List patches
-    if (Globals::globalConfig.dlConf.bPatches && !game.patches.empty())
+    if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_BASE_PATCH) && !game.patches.empty())
     {
         std::cout << "patches: " << std::endl;
-        for (unsigned int j = 0; j < game.patches.size(); ++j)
+        for (auto gf : game.patches)
         {
-            std::string filepath = game.patches[j].getFilepath();
-            if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                continue;
-            }
-
-            std::string languages = Util::getOptionNameString(game.patches[j].language, GlobalConstants::LANGUAGES);
-
-            std::cout   << "\tid: " << game.patches[j].id << std::endl
-                        << "\tname: " << game.patches[j].name << std::endl
-                        << "\tpath: " << game.patches[j].path << std::endl
-                        << "\tsize: " << game.patches[j].size << std::endl
-                        << "\tupdated: " << (game.patches[j].updated ? "True" : "False") << std::endl
-                        << "\tlanguage: " << languages << std::endl
-                        << "\tversion: " << game.patches[j].version << std::endl
-                        << std::endl;
+            this->printGameFileDetailsAsText(gf);
         }
     }
     // List language packs
-    if (Globals::globalConfig.dlConf.bLanguagePacks && !game.languagepacks.empty())
+    if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_BASE_LANGPACK) && !game.languagepacks.empty())
     {
         std::cout << "language packs: " << std::endl;
-        for (unsigned int j = 0; j < game.languagepacks.size(); ++j)
+        for (auto gf : game.languagepacks)
         {
-            std::string filepath = game.languagepacks[j].getFilepath();
-            if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                continue;
-            }
-
-            std::cout   << "\tid: " << game.languagepacks[j].id << std::endl
-                        << "\tname: " << game.languagepacks[j].name << std::endl
-                        << "\tpath: " << game.languagepacks[j].path << std::endl
-                        << "\tsize: " << game.languagepacks[j].size << std::endl
-                        << std::endl;
+            this->printGameFileDetailsAsText(gf);
         }
     }
-    if (Globals::globalConfig.dlConf.bDLC && !game.dlcs.empty())
+    if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC) && !game.dlcs.empty())
     {
         std::cout << "DLCs: " << std::endl;
-        for (unsigned int j = 0; j < game.dlcs.size(); ++j)
+        for (auto dlc : game.dlcs)
         {
-            if (!game.dlcs[j].serials.empty())
-            {
-                std::cout   << "\tDLC gamename: " << game.dlcs[j].gamename << std::endl
-                            << "\tserials:" << game.dlcs[j].serials << std::endl;
-            }
+            std::cout   << "DLC gamename: " << dlc.gamename << std::endl
+                        << "product id: " << dlc.product_id << std::endl;
 
-            for (unsigned int k = 0; k < game.dlcs[j].installers.size(); ++k)
+            if (!dlc.serials.empty())
+                std::cout << "serials:" << dlc.serials << std::endl;
+
+            if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC_INSTALLER) && !dlc.installers.empty())
             {
-                std::string filepath = game.dlcs[j].installers[k].getFilepath();
-                if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
+                for (auto gf : dlc.installers)
                 {
-                    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                    continue;
+                    this->printGameFileDetailsAsText(gf);
                 }
-
-                std::cout   << "\tgamename: " << game.dlcs[j].gamename << std::endl
-                            << "\tproduct id: " << game.dlcs[j].product_id << std::endl
-                            << "\tid: " << game.dlcs[j].installers[k].id << std::endl
-                            << "\tname: " << game.dlcs[j].installers[k].name << std::endl
-                            << "\tpath: " << game.dlcs[j].installers[k].path << std::endl
-                            << "\tsize: " << game.dlcs[j].installers[k].size << std::endl
-                            << "\tupdated: " << (game.dlcs[j].installers[k].updated ? "True" : "False") << std::endl
-                            << "\tversion: " << game.dlcs[j].installers[k].version << std::endl
-                            << std::endl;
             }
-            for (unsigned int k = 0; k < game.dlcs[j].patches.size(); ++k)
+            if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC_PATCH) && !dlc.patches.empty())
             {
-                std::string filepath = game.dlcs[j].patches[k].getFilepath();
-                if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                    continue;
+                for (auto gf : dlc.patches)
+                {
+                    this->printGameFileDetailsAsText(gf);
                 }
-
-                std::cout   << "\tgamename: " << game.dlcs[j].gamename << std::endl
-                            << "\tproduct id: " << game.dlcs[j].product_id << std::endl
-                            << "\tid: " << game.dlcs[j].patches[k].id << std::endl
-                            << "\tname: " << game.dlcs[j].patches[k].name << std::endl
-                            << "\tpath: " << game.dlcs[j].patches[k].path << std::endl
-                            << "\tsize: " << game.dlcs[j].patches[k].size << std::endl
-                            << "\tversion: " << game.dlcs[j].patches[k].version << std::endl
-                            << std::endl;
             }
-            for (unsigned int k = 0; k < game.dlcs[j].extras.size(); ++k)
+            if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC_EXTRA) && !dlc.extras.empty())
             {
-                std::string filepath = game.dlcs[j].extras[k].getFilepath();
-                if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                    continue;
+                for (auto gf : dlc.extras)
+                {
+                    this->printGameFileDetailsAsText(gf);
                 }
-
-                std::cout   << "\tgamename: " << game.dlcs[j].gamename << std::endl
-                            << "\tproduct id: " << game.dlcs[j].product_id << std::endl
-                            << "\tid: " << game.dlcs[j].extras[k].id << std::endl
-                            << "\tname: " << game.dlcs[j].extras[k].name << std::endl
-                            << "\tpath: " << game.dlcs[j].extras[k].path << std::endl
-                            << "\tsize: " << game.dlcs[j].extras[k].size << std::endl
-                            << std::endl;
             }
-            for (unsigned int k = 0; k < game.dlcs[j].languagepacks.size(); ++k)
+            if ((Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC_LANGPACK) && !dlc.languagepacks.empty())
             {
-                std::string filepath = game.dlcs[j].languagepacks[k].getFilepath();
-                if (Globals::globalConfig.blacklist.isBlacklisted(filepath)) {
-                    if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
-                    continue;
+                for (auto gf : dlc.languagepacks)
+                {
+                    this->printGameFileDetailsAsText(gf);
                 }
-
-                std::cout   << "\tgamename: " << game.dlcs[j].gamename << std::endl
-                            << "\tproduct id: " << game.dlcs[j].product_id << std::endl
-                            << "\tid: " << game.dlcs[j].languagepacks[k].id << std::endl
-                            << "\tname: " << game.dlcs[j].languagepacks[k].name << std::endl
-                            << "\tpath: " << game.dlcs[j].languagepacks[k].path << std::endl
-                            << "\tsize: " << game.dlcs[j].languagepacks[k].size << std::endl
-                            << std::endl;
             }
         }
     }
+}
+
+void Downloader::printGameFileDetailsAsText(gameFile& gf)
+{
+    std::string filepath = gf.getFilepath();
+    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
+    {
+        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+            std::cerr << "skipped blacklisted file " << filepath << std::endl;
+        return;
+    }
+
+    std::cout   << "\tid: " << gf.id << std::endl
+                << "\tname: " << gf.name << std::endl
+                << "\tpath: " << gf.path << std::endl
+                << "\tsize: " << gf.size << std::endl;
+
+    if (gf.type & GlobalConstants::GFTYPE_INSTALLER)
+        std::cout << "\tupdated: " << (gf.updated ? "True" : "False") << std::endl;
+
+    if (gf.type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH))
+    {
+        std::string languages = Util::getOptionNameString(gf.language, GlobalConstants::LANGUAGES);
+        std::cout << "\tlanguage: " << languages << std::endl;
+    }
+
+    if (gf.type & GlobalConstants::GFTYPE_INSTALLER)
+        std::cout << "\tversion: " << gf.version << std::endl;
+
+    std::cout << std::endl;
 }

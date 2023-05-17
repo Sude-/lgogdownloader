@@ -330,9 +330,19 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
         }
         res++;
     }
+    // Warn about deprecated option
     if (root.isMember("dlc"))
     {
-        conf->dlConf.bDLC = root["dlc"].asBool();
+        std::cerr << filepath << " contains deprecated option \"dlc\" which will be ignored, use \"include\" instead" << std::endl;
+    }
+    if (root.isMember("include"))
+    {
+        conf->dlConf.iInclude = 0;
+        std::vector<std::string> vInclude = Util::tokenize(root["include"].asString(), ",");
+        for (std::vector<std::string>::iterator it = vInclude.begin(); it != vInclude.end(); it++)
+        {
+            conf->dlConf.iInclude |= Util::getOptionValue(*it, GlobalConstants::INCLUDE_OPTIONS);
+        }
         res++;
     }
     if (root.isMember("ignore-dlc-count"))
@@ -592,7 +602,8 @@ unsigned int Util::getOptionValue(const std::string& str, const std::vector<Glob
     boost::match_results<std::string::const_iterator> what;
     if (str == "all")
     {
-        value = (1 << options.size()) - 1;
+        for (unsigned int i = 0; i < options.size(); ++i)
+            value |= options[i].id;
     }
     else if (boost::regex_search(str, what, expression) && bAllowStringToIntConversion)
     {
@@ -627,7 +638,7 @@ std::string Util::getOptionNameString(const unsigned int& value, const std::vect
     std::string str;
     for (unsigned int i = 0; i < options.size(); ++i)
     {
-        if (value & options[i].id)
+        if ((value & options[i].id) == options[i].id)
             str += (str.empty() ? "" : ", ")+options[i].str;
     }
     return str;

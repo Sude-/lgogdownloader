@@ -87,16 +87,14 @@ If the file exists lgogdownloader uses it instead of list specified with
 \fI$XDG_CONFIG_HOME/lgogdownloader/gamespecific/gamename.conf\fP
 JSON formatted file. Sets game specific settings for \fBgamename\fP.
 .br
-Allowed settings are \fBlanguage\fP, \fBplatform\fP, \fBdlc\fP, \fBignore-dlc-count\fP \fBsubdirectories\fP, \fBdirectory\fP, \fBsubdir-game\fP, \fBsubdir-installers\fP, \fBsubdir-extras\fP, \fBsubdir-patches\fP, \fBsubdir-language-packs\fP and \fBsubdir-dlc\fP.
-.br
-The \fBdlc\fP option is limited to disabling DLC for specific game. It can't enable DLC listing/downloading if \fB--no-dlc\fP option is used.
+Allowed settings are \fBlanguage\fP, \fBplatform\fP, \fBinclude\fP, \fBignore-dlc-count\fP, \fBsubdirectories\fP, \fBdirectory\fP, \fBsubdir-game\fP, \fBsubdir-installers\fP, \fBsubdir-extras\fP, \fBsubdir-patches\fP, \fBsubdir-language-packs\fP and \fBsubdir-dlc\fP.
 .br
 Must be in the following format:
 .br
 {
     "language" : <string>,
     "platform" : <string>,
-    "dlc" : <bool>,
+    "include" : <string>,
     "ignore-dlc-count" : <bool>,
     "subdirectories" : <bool>,
     "directory" : <string>,

@@ -156,6 +156,7 @@ class Downloader
         template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
         void printGameDetailsAsText(gameDetails& game);
+        void printGameFileDetailsAsText(gameFile& gf);
 
         static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         static size_t writeData(void *ptr, size_t size, size_t nmemb, FILE *stream);

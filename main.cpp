@@ -47,25 +47,6 @@ int main(int argc, char *argv[])
 
     rhash_library_init();
 
-    // Constants for option selection with include/exclude
-    /* TODO: Add options to give better control for user
-             For example: option to select base game and DLC installers separately,
-             this requires some changes to Downloader class to implement */
-    const unsigned int OPTION_INSTALLERS = 1 << 0;
-    const unsigned int OPTION_EXTRAS     = 1 << 1;
-    const unsigned int OPTION_PATCHES    = 1 << 2;
-    const unsigned int OPTION_LANGPACKS  = 1 << 3;
-    const unsigned int OPTION_DLCS       = 1 << 4;
-
-    const std::vector<GlobalConstants::optionsStruct> INCLUDE_OPTIONS =
-    {
-        { OPTION_INSTALLERS, "i", "Installers",     "i|installers"              },
-        { OPTION_EXTRAS,     "e", "Extras",         "e|extras"                  },
-        { OPTION_PATCHES,    "p", "Patches",        "p|patches"                 },
-        { OPTION_LANGPACKS,  "l", "Language packs", "l|languagepacks|langpacks" },
-        { OPTION_DLCS,       "d", "DLCs",           "d|dlc|dlcs"                }
-    };
-
     Globals::globalConfig.sVersionString = VERSION_STRING;
     Globals::globalConfig.sVersionNumber = VERSION_NUMBER;
     Globals::globalConfig.curlConf.sUserAgent = DEFAULT_USER_AGENT;
@@ -156,10 +137,11 @@ int main(int argc, char *argv[])
 
     // Help text for include and exclude options
     std::string include_options_text;
-    for (unsigned int i = 0; i < INCLUDE_OPTIONS.size(); ++i)
+    for (unsigned int i = 0; i < GlobalConstants::INCLUDE_OPTIONS.size(); ++i)
     {
-        include_options_text +=  INCLUDE_OPTIONS[i].str + " = " + INCLUDE_OPTIONS[i].regexp + "\n";
+        include_options_text += GlobalConstants::INCLUDE_OPTIONS[i].str + " = " + GlobalConstants::INCLUDE_OPTIONS[i].regexp + "\n";
     }
+    include_options_text += "All = all";
     include_options_text += "Separate with \",\" to use multiple values";
 
     // Create help text for --list-format option
@@ -576,21 +558,13 @@ int main(int argc, char *argv[])
         std::vector<std::string> vExclude = Util::tokenize(sExcludeOptions, ",");
         for (std::vector<std::string>::iterator it = vInclude.begin(); it != vInclude.end(); it++)
         {
-            include_value |= Util::getOptionValue(*it, INCLUDE_OPTIONS);
+            include_value |= Util::getOptionValue(*it, GlobalConstants::INCLUDE_OPTIONS);
         }
         for (std::vector<std::string>::iterator it = vExclude.begin(); it != vExclude.end(); it++)
         {
-            exclude_value |= Util::getOptionValue(*it, INCLUDE_OPTIONS);
+            exclude_value |= Util::getOptionValue(*it, GlobalConstants::INCLUDE_OPTIONS);
         }
         Globals::globalConfig.dlConf.iInclude = include_value & ~exclude_value;
-
-        // Assign values
-        // TODO: Use config.iInclude in Downloader class directly and get rid of this value assignment
-        Globals::globalConfig.dlConf.bInstallers = (Globals::globalConfig.dlConf.iInclude & OPTION_INSTALLERS);
-        Globals::globalConfig.dlConf.bExtras = (Globals::globalConfig.dlConf.iInclude & OPTION_EXTRAS);
-        Globals::globalConfig.dlConf.bPatches = (Globals::globalConfig.dlConf.iInclude & OPTION_PATCHES);
-        Globals::globalConfig.dlConf.bLanguagePacks = (Globals::globalConfig.dlConf.iInclude & OPTION_LANGPACKS);
-        Globals::globalConfig.dlConf.bDLC = (Globals::globalConfig.dlConf.iInclude & OPTION_DLCS);
 
         Globals::globalConfig.iListFormat = Util::getOptionValue(sListFormat, GlobalConstants::LIST_FORMAT, false);
     }
