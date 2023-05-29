@@ -258,7 +258,7 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
 
     for (unsigned int i = 0; i < json["depot"]["items"].size(); ++i)
     {
-        if (!json["depot"]["items"][i]["chunks"].empty())
+        if (json["depot"]["items"][i]["chunks"].isArray())
         {
             galaxyDepotItem item;
             item.totalSizeCompressed = 0;
@@ -287,6 +287,8 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
                 item.md5 = json["depot"]["items"][i]["md5"].asString();
             else if (json["depot"]["items"][i]["chunks"].size() == 1)
                 item.md5 = json["depot"]["items"][i]["chunks"][0]["md5"].asString();
+            else
+                item.md5 = std::string();
 
             items.push_back(item);
         }

@@ -4023,7 +4023,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             if (filesize == item.totalSizeUncompressed)
             {
                 // File is same size
-                if (Util::getFileHash(path.string(), RHASH_MD5) == item.md5)
+                if (item.totalSizeUncompressed == 0 || Util::getFileHash(path.string(), RHASH_MD5) == item.md5)
                 {
                     msgQueue.push(Message(path.string() + ": OK", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
                     continue;
@@ -4125,6 +4125,14 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
         bool bChunkFailure = false;
         std::time_t timestamp = -1;
+        // Handle empty files
+        if (item.chunks.empty())
+        {
+            // Create empty file
+            std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary);
+            if (ofs)
+                ofs.close();
+        }
         for (unsigned int j = start_chunk; j < item.chunks.size(); ++j)
         {
             // Refresh Galaxy login if token is expired
