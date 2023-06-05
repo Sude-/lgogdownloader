@@ -683,6 +683,12 @@ void Downloader::download()
             this->saveSerials(games[i].serials, filepath);
         }
 
+        if (conf.dlConf.bSaveLogo && !games[i].logo.empty())
+        {
+            std::string filepath = games[i].getLogoFilepath();
+            this->downloadFile(games[i].logo, filepath, "", games[i].gamename);
+        }
+
         if (conf.dlConf.bSaveChangelogs && !games[i].changelog.empty())
         {
             std::string filepath = games[i].getChangelogFilepath();
@@ -697,6 +703,11 @@ void Downloader::download()
                 {
                     std::string filepath = games[i].dlcs[j].getSerialsFilepath();
                     this->saveSerials(games[i].dlcs[j].serials, filepath);
+                }
+                if (conf.dlConf.bSaveLogo && !games[i].dlcs[j].logo.empty())
+                {
+                    std::string filepath = games[i].dlcs[j].getLogoFilepath();
+                    this->downloadFile(games[i].dlcs[j].logo, filepath, "", games[i].dlcs[j].gamename);
                 }
                 if (conf.dlConf.bSaveChangelogs && !games[i].dlcs[j].changelog.empty())
                 {

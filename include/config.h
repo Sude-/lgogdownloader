@@ -46,6 +46,7 @@ struct DownloadConfig
     bool bRemoteXML;
     bool bSaveChangelogs;
     bool bSaveSerials;
+    bool bSaveLogo;
     bool bAutomaticXMLCreation;
     bool bFreeSpaceCheck;
 
