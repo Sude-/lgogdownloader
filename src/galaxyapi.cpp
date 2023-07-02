@@ -312,6 +312,7 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     gamedetails.product_id = json["id"].asString();
     gamedetails.title = json["title"].asString();
     gamedetails.icon = "https:" + json["images"]["icon"].asString();
+    gamedetails.logo = "https:" + json["images"]["logo2x"].asString();
 
     if (json.isMember("changelog"))
         gamedetails.changelog = json["changelog"].asString();
