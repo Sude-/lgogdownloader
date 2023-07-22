@@ -15,7 +15,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [qtwebengine](https://www.qt.io/) if built with -DUSE_QT_GUI=ON
 
 ## Make dependencies
-* [cmake](https://cmake.org/) >= 3.0.0
+* [cmake](https://cmake.org/) >= 3.5.0
 * [ninja](https://github.com/ninja-build/ninja)
 * [help2man](https://www.gnu.org/software/help2man/help2man.html) (optional, man page generation)
 
