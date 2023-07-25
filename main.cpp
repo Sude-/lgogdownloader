@@ -185,6 +185,7 @@ int main(int argc, char *argv[])
         bool bNoPlatformDetection = false;
         bool bNoGalaxyDependencies = false;
         bool bUseDLCList = false;
+        bool bNoFastStatusCheck = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
         std::string sIncludeOptions;
@@ -209,7 +210,7 @@ int main(int argc, char *argv[])
             ("updated", bpo::value<bool>(&Globals::globalConfig.bUpdated)->zero_tokens()->default_value(false), "List/download only games with update flag set")
             ("clear-update-flags", bpo::value<bool>(&bClearUpdateNotifications)->zero_tokens()->default_value(false), "Clear update notification flags")
             ("check-orphans", bpo::value<std::string>(&Globals::globalConfig.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
-            ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download")
+            ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download\n\nSee also --no-fast-status-check option")
             ("save-config", bpo::value<bool>(&Globals::globalConfig.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&Globals::globalConfig.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
             ("report", bpo::value<std::string>(&Globals::globalConfig.sReportFilePath)->implicit_value("lgogdownloader-report.log"), "Save report of downloaded/repaired files to specified file\nDefault filename: lgogdownloader-report.log")
@@ -275,6 +276,7 @@ int main(int argc, char *argv[])
             ("size-only", bpo::value<bool>(&Globals::globalConfig.bSizeOnly)->zero_tokens()->default_value(false), "Don't check the hashes of the files whose size matches that on the server")
             ("verbosity", bpo::value<int>(&Globals::globalConfig.iMsgLevel)->default_value(0), "Set message verbosity level\n -1 = Less verbose\n 0 = Default\n 1 = Verbose\n 2 = Debug")
             ("check-free-space", bpo::value<bool>(&Globals::globalConfig.dlConf.bFreeSpaceCheck)->zero_tokens()->default_value(false), "Check for available free space before starting download")
+            ("no-fast-status-check", bpo::value<bool>(&bNoFastStatusCheck)->zero_tokens()->default_value(false), "Don't use fast status check.\nMakes --status much slower but able to catch corrupted files by calculating local file hash for all files.")
         ;
 
         options_cli_no_cfg_hidden.add_options()
@@ -515,6 +517,7 @@ int main(int argc, char *argv[])
         Globals::globalConfig.dirConf.bSubDirectories = !bNoSubDirectories;
         Globals::globalConfig.bPlatformDetection = !bNoPlatformDetection;
         Globals::globalConfig.dlConf.bGalaxyDependencies = !bNoGalaxyDependencies;
+        Globals::globalConfig.bUseFastCheck = !bNoFastStatusCheck;
 
         for (auto i = unrecognized_options_cli.begin(); i != unrecognized_options_cli.end(); ++i)
             if (i->compare(0, GlobalConstants::PROTOCOL_PREFIX.length(), GlobalConstants::PROTOCOL_PREFIX) == 0)

@@ -1851,7 +1851,7 @@ void Downloader::checkStatus()
                 // GOG only provides xml data for installers, patches and language packs
                 if (type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH | GlobalConstants::GFTYPE_LANGPACK))
                     remoteHash = this->getRemoteFileHash(vGameFiles[i]);
-                std::string localHash = this->getLocalFileHash(filepath.string(), gamename);
+                std::string localHash = Util::getLocalFileHash(Globals::globalConfig.sXMLDirectory, filepath.string(), gamename, Globals::globalConfig.bUseFastCheck);
 
                 if (!remoteHash.empty())
                 {

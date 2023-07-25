@@ -663,7 +663,7 @@ void Util::parseOptionString(const std::string &option_string, std::vector<unsig
     }
 }
 
-std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename)
+std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename, const bool& useFastCheck)
 {
     std::string localHash;
     boost::filesystem::path path = filepath;
@@ -673,7 +673,7 @@ std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string
     else
         local_xml_file = xml_dir + "/" + path.filename().string() + ".xml";
 
-    if (boost::filesystem::exists(local_xml_file))
+    if (boost::filesystem::exists(local_xml_file) && useFastCheck)
     {
         tinyxml2::XMLDocument local_xml;
         local_xml.LoadFile(local_xml_file.string().c_str());
