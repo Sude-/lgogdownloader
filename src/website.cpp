@@ -141,6 +141,7 @@ std::vector<gameItem> Website::getGames()
                 gameItem game;
                 game.name = product["slug"].asString();
                 game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
+                game.isnew = product["isNew"].asBool();
 
                 if (product.isMember("updates"))
                 {
@@ -174,6 +175,10 @@ std::vector<gameItem> Website::getGames()
                     platform |= GlobalConstants::PLATFORM_MAC;
                 if (product["worksOn"]["Linux"].asBool())
                     platform |= GlobalConstants::PLATFORM_LINUX;
+
+                // Skip if not new and flag is set
+                if (Globals::globalConfig.bNew && !game.isnew)
+                    continue;
 
                 // Skip if platform doesn't match
                 if (Globals::globalConfig.bPlatformDetection && !(platform & Globals::globalConfig.dlConf.iInstallerPlatform))

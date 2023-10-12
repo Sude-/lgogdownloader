@@ -533,8 +533,14 @@ int Downloader::listGames()
                 if (gameItems[i].updates > 0)
                 {
                     gamename += " [" + std::to_string(gameItems[i].updates) + "]";
+                    std::string color = gameItems[i].isnew ? "01;34" : "32";
                     if (Globals::globalConfig.bColor)
-                        gamename = "\033[32m" + gamename + "\033[0m";
+                        gamename = "\033[" + color + "m" + gamename + "\033[0m";
+                }
+                else
+                {
+                    if (Globals::globalConfig.bColor && gameItems[i].isnew)
+                        gamename = "\033[01;34m" + gamename + "\033[0m";
                 }
                 std::cout << gamename << std::endl;
                 for (unsigned int j = 0; j < gameItems[i].dlcnames.size(); ++j)

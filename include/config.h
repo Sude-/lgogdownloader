@@ -235,6 +235,7 @@ class Config
         bool bDownload;
         bool bRepair;
         bool bUpdated;
+        bool bNew;
         bool bCheckStatus;
         bool bShowWishlist;
         bool bNotifications;
