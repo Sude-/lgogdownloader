@@ -314,7 +314,7 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     gamedetails.icon = "https:" + json["images"]["icon"].asString();
     gamedetails.logo = "https:" + json["images"]["logo"].asString();
 
-    Util.replaceString(gamedetails.logo, "_glx_logo.jpg", ".jpg");
+    Util::replaceString(gamedetails.logo, "_glx_logo.jpg", ".jpg");
 
     if (json.isMember("changelog"))
         gamedetails.changelog = json["changelog"].asString();
