@@ -312,9 +312,9 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     gamedetails.product_id = json["id"].asString();
     gamedetails.title = json["title"].asString();
     gamedetails.icon = "https:" + json["images"]["icon"].asString();
-    std::string logo = "https:" + json["images"]["logo"].asString();
+    gamedetails.logo = "https:" + json["images"]["logo"].asString();
 
-    gamedetails.logo = logo.substr(0, logo.length() - 13) + ".jpg";
+    Util.replaceString(gamedetails.logo, "_glx_logo.jpg", ".jpg");
 
     if (json.isMember("changelog"))
         gamedetails.changelog = json["changelog"].asString();
