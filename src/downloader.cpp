@@ -1773,7 +1773,16 @@ void Downloader::checkOrphans()
     {
         for (unsigned int i = 0; i < orphans.size(); ++i)
         {
-            std::cout << orphans[i] << std::endl;
+            if (Globals::globalConfig.dlConf.bDeleteOrphans)
+            {
+                std::string filepath = orphans[i];
+                std::cout << "Deleting " << filepath << std::endl;
+                if (boost::filesystem::exists(filepath))
+                    if (!boost::filesystem::remove(filepath))
+                        std::cerr << "Failed to delete " << filepath << std::endl;
+            }
+            else
+                std::cout << orphans[i] << std::endl;
         }
     }
     else
@@ -3945,7 +3954,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     std::cout << "\t" << orphans.size() << " orphaned files" << std::endl;
     for (unsigned int i = 0; i < orphans.size(); ++i)
     {
-        if (Globals::globalConfig.dlConf.bGalaxyDeleteOrphans)
+        if (Globals::globalConfig.dlConf.bDeleteOrphans)
         {
             std::string filepath = orphans[i];
             std::cout << "Deleting " << filepath << std::endl;

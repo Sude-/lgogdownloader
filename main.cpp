@@ -211,6 +211,7 @@ int main(int argc, char *argv[])
             ("new", bpo::value<bool>(&Globals::globalConfig.bNew)->zero_tokens()->default_value(false), "List/download only games with new flag set")
             ("clear-update-flags", bpo::value<bool>(&bClearUpdateNotifications)->zero_tokens()->default_value(false), "Clear update notification flags")
             ("check-orphans", bpo::value<std::string>(&Globals::globalConfig.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
+            ("delete-orphans", bpo::value<bool>(&Globals::globalConfig.dlConf.bDeleteOrphans)->zero_tokens()->default_value(false), "Delete orphaned files during --check-orphans and --galaxy-install")
             ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download\n\nSee also --no-fast-status-check option")
             ("save-config", bpo::value<bool>(&Globals::globalConfig.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&Globals::globalConfig.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
@@ -299,7 +300,6 @@ int main(int argc, char *argv[])
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
             ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,highwinds,akamai,lumen,gog_cdn"), galaxy_cdn_priority_text.c_str())
-            ("galaxy-delete-orphans", bpo::value<bool>(&Globals::globalConfig.dlConf.bGalaxyDeleteOrphans)->zero_tokens()->default_value(false), "Delete orphaned files during --galaxy-install")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);
