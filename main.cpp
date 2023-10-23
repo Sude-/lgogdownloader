@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
     {
         include_options_text += GlobalConstants::INCLUDE_OPTIONS[i].str + " = " + GlobalConstants::INCLUDE_OPTIONS[i].regexp + "\n";
     }
-    include_options_text += "All = all";
+    include_options_text += "All = all\n";
     include_options_text += "Separate with \",\" to use multiple values";
 
     // Create help text for --list-format option
