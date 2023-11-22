@@ -695,6 +695,12 @@ void Downloader::download()
             this->downloadFile(games[i].logo, filepath, "", games[i].gamename);
         }
 
+        if (conf.dlConf.bSaveIcon && !games[i].icon.empty())
+        {
+            std::string filepath = games[i].getIconFilepath();
+            this->downloadFile(games[i].icon, filepath, "", games[i].gamename);
+        }
+
         if (conf.dlConf.bSaveChangelogs && !games[i].changelog.empty())
         {
             std::string filepath = games[i].getChangelogFilepath();
@@ -714,6 +720,11 @@ void Downloader::download()
                 {
                     std::string filepath = games[i].dlcs[j].getLogoFilepath();
                     this->downloadFile(games[i].dlcs[j].logo, filepath, "", games[i].dlcs[j].gamename);
+                }
+                if (conf.dlConf.bSaveIcon && !games[i].dlcs[j].icon.empty())
+                {
+                    std::string filepath = games[i].dlcs[j].getIconFilepath();
+                    this->downloadFile(games[i].dlcs[j].icon, filepath, "", games[i].dlcs[j].gamename);
                 }
                 if (conf.dlConf.bSaveChangelogs && !games[i].dlcs[j].changelog.empty())
                 {
