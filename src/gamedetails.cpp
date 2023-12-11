@@ -128,8 +128,8 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     {
         subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
         this->dlcs[i].serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
-        this->dlcs[i].logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0);
-        this->dlcs[i].iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
+        this->dlcs[i].logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
+        this->dlcs[i].iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
         this->dlcs[i].changelogFilepath = Util::makeFilepath(directory, "changelog_" + this->dlcs[i].gamename + ".html", this->gamename, subdir, 0);
         for (unsigned int j = 0; j < this->dlcs[i].installers.size(); ++j)
         {
