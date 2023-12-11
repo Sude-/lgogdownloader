@@ -37,6 +37,7 @@ class gameDetails
         void makeFilepaths(const DirectoryConfig& config);
         std::string getSerialsFilepath();
         std::string getLogoFilepath();
+        std::string getIconFilepath();
         std::string getChangelogFilepath();
         Json::Value getDetailsAsJson();
         std::vector<gameFile> getGameFileVector();
@@ -49,6 +50,7 @@ class gameDetails
     private:
         std::string serialsFilepath;
         std::string logoFilepath;
+        std::string iconFilepath;
         std::string changelogFilepath;
 };
 

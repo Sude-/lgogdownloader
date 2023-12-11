@@ -83,12 +83,17 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
     std::string subdir;
     std::string logo_ext = ".jpg"; // Assume jpg
+    std::string icon_ext = ".png"; // Assume png
 
     if (this->logo.rfind(".") != std::string::npos)
         logo_ext = this->logo.substr(this->logo.rfind("."));
 
+    if (this->icon.rfind(".") != std::string::npos)
+        icon_ext = this->icon.substr(this->icon.rfind("."));
+
     this->serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
     this->logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0);
+    this->iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
     this->changelogFilepath = Util::makeFilepath(directory, "changelog_" + gamename + ".html", this->gamename, subdir, 0);
 
     for (unsigned int i = 0; i < this->installers.size(); ++i)
@@ -124,6 +129,7 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
         subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
         this->dlcs[i].serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
         this->dlcs[i].logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0);
+        this->dlcs[i].iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
         this->dlcs[i].changelogFilepath = Util::makeFilepath(directory, "changelog_" + this->dlcs[i].gamename + ".html", this->gamename, subdir, 0);
         for (unsigned int j = 0; j < this->dlcs[i].installers.size(); ++j)
         {
@@ -194,6 +200,11 @@ std::string gameDetails::getSerialsFilepath()
 std::string gameDetails::getLogoFilepath()
 {
     return this->logoFilepath;
+}
+
+std::string gameDetails::getIconFilepath()
+{
+    return this->iconFilepath;
 }
 
 std::string gameDetails::getChangelogFilepath()
