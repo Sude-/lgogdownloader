@@ -280,6 +280,7 @@ int main(int argc, char *argv[])
             ("verbosity", bpo::value<int>(&Globals::globalConfig.iMsgLevel)->default_value(0), "Set message verbosity level\n -1 = Less verbose\n 0 = Default\n 1 = Verbose\n 2 = Debug")
             ("check-free-space", bpo::value<bool>(&Globals::globalConfig.dlConf.bFreeSpaceCheck)->zero_tokens()->default_value(false), "Check for available free space before starting download")
             ("no-fast-status-check", bpo::value<bool>(&bNoFastStatusCheck)->zero_tokens()->default_value(false), "Don't use fast status check.\nMakes --status much slower but able to catch corrupted files by calculating local file hash for all files.")
+            ("trust-api-for-extras", bpo::value<bool>(&Globals::globalConfig.bTrustAPIForExtras)->zero_tokens()->default_value(false), "Trust API responses for extras to be correct.")
         ;
 
         options_cli_no_cfg_hidden.add_options()

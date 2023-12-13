@@ -252,6 +252,7 @@ class Config
         bool bEnableLoginGUI;
 #endif
         bool bUseFastCheck;
+        bool bTrustAPIForExtras;
 
         // Cache
         bool bUseCache;

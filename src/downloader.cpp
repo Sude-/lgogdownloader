@@ -2868,6 +2868,13 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
     }
 
+    CURL* curlheader = curl_easy_init();
+    Util::CurlHandleSetDefaultOptions(curlheader, conf.curlConf);
+    curl_easy_setopt(curlheader, CURLOPT_NOPROGRESS, 1L);
+    curl_easy_setopt(curlheader, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
+    curl_easy_setopt(curlheader, CURLOPT_HEADER, 1L);
+    curl_easy_setopt(curlheader, CURLOPT_NOBODY, 1L);
+
     CURL* dlhandle = curl_easy_init();
     Util::CurlHandleSetDefaultOptions(dlhandle, conf.curlConf);
     curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
@@ -3045,6 +3052,54 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                             bIsComplete = true; // Set to true so we can skip after saving xml data
                         }
                     }
+                }
+                // Special case for extras because they don't have remote XML data
+                // and the API responses for extras can't be trusted
+                else if (gf.type & GlobalConstants::GFTYPE_EXTRA)
+                {
+                    off_t filesize_local = boost::filesystem::file_size(filepath);
+                    off_t filesize_api = 0;
+                    try
+                    {
+                        filesize_api = std::stol(gf.size);
+                    }
+                    catch (std::invalid_argument& e)
+                    {
+                        filesize_api = 0;
+                    }
+
+                    // Check file size against file size reported by API
+                    if(Globals::globalConfig.bTrustAPIForExtras)
+                    {
+                        if (filesize_local == filesize_api)
+                        {
+                            bIsComplete = true;
+                        }
+                    }
+                    else
+                    {
+                        // API is not trusted to give correct details for extras
+                        // Get size from content-length header and compare to it instead
+                        off_t filesize_content_length = 0;
+                        std::ostringstream memory;
+                        std::string url = downlinkJson["downlink"].asString();
+
+                        curl_easy_setopt(curlheader, CURLOPT_URL, url.c_str());
+                        curl_easy_setopt(curlheader, CURLOPT_WRITEDATA, &memory);
+                        curl_easy_perform(curlheader);
+                        curl_easy_getinfo(curlheader, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &filesize_content_length);
+                        memory.str(std::string());
+
+                        if (filesize_local == filesize_content_length)
+                        {
+                            bIsComplete = true;
+                        }
+
+                        msgQueue.push(Message(filepath.filename().string() + ": filesize_local: " + std::to_string(filesize_local) + ", filesize_api: " + std::to_string(filesize_api) + ", filesize_content_length: " + std::to_string(filesize_content_length), MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEBUG));
+                    }
+
+                    if (bIsComplete)
+                        msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
             else
@@ -3258,6 +3313,7 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
     }
 
+    curl_easy_cleanup(curlheader);
     curl_easy_cleanup(dlhandle);
     delete galaxy;
 
