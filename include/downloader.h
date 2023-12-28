@@ -148,7 +148,7 @@ class Downloader
         static std::string getSerialsFromJSON(const Json::Value& json);
         void saveSerials(const std::string& serials, const std::string& filepath);
         static std::string getChangelogFromJSON(const Json::Value& json);
-        void saveGameDetailsJson(const std::string& json, const std::string& filepath);
+        void saveJsonFile(const std::string& json, const std::string& filepath);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
         static void processDownloadQueue(Config conf, const unsigned int& tid);
         static void processCloudSaveDownloadQueue(Config conf, const unsigned int& tid);

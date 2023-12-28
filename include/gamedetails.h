@@ -34,6 +34,7 @@ class gameDetails
         std::string changelog;
         std::string logo;
         std::string gameDetailsJson;
+        std::string productJson;
         void filterWithPriorities(const gameSpecificConfig& config);
         void makeFilepaths(const DirectoryConfig& config);
         std::string getSerialsFilepath();
@@ -41,6 +42,7 @@ class gameDetails
         std::string getIconFilepath();
         std::string getChangelogFilepath();
         std::string getGameDetailsJsonFilepath();
+        std::string getProductJsonFilepath();
         Json::Value getDetailsAsJson();
         std::vector<gameFile> getGameFileVector();
         std::vector<gameFile> getGameFileVectorFiltered(const unsigned int& iType);
@@ -55,6 +57,7 @@ class gameDetails
         std::string iconFilepath;
         std::string changelogFilepath;
         std::string gameDetailsJsonFilepath;
+        std::string productJsonFilepath;
 };
 
 #endif // GAMEDETAILS_H
