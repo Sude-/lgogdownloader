@@ -3697,9 +3697,8 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             if (conf.dlConf.bSaveChangelogs && game.changelog.empty())
                 game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
 
-            if (conf.dlConf.bSaveGameDetailsJson && game.gameDetailsJson.empty()) {
+            if (conf.dlConf.bSaveGameDetailsJson && game.gameDetailsJson.empty())
                 game.gameDetailsJson = gameDetailsJSON.toStyledString();
-            }
         }
 
         game.makeFilepaths(conf.dirConf);
