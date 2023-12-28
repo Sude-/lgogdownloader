@@ -707,6 +707,12 @@ void Downloader::download()
             this->saveChangelog(games[i].changelog, filepath);
         }
 
+        if (conf.dlConf.bSaveApiJson && !games[i].apiJson.empty())
+        {
+            std::string filepath = games[i].getApiJsonFilepath();
+            this->saveApiJson(games[i].apiJson, filepath);
+        }
+
         if ((conf.dlConf.iInclude & GlobalConstants::GFTYPE_DLC) && !games[i].dlcs.empty())
         {
             for (unsigned int j = 0; j < games[i].dlcs.size(); ++j)
@@ -2210,6 +2216,47 @@ void Downloader::updateCache()
     return;
 }
 
+// Save API JSON to file
+void Downloader::saveApiJson(const std::string& json, const std::string& filepath)
+{
+    // Get directory from filepath
+    boost::filesystem::path pathname = filepath;
+    std::string directory = pathname.parent_path().string();
+
+    // Check that directory exists and create subdirectories
+    boost::filesystem::path path = directory;
+    if (boost::filesystem::exists(path))
+    {
+        if (!boost::filesystem::is_directory(path))
+        {
+            std::cout << path << " is not directory" << std::endl;
+            return;
+        }
+    }
+    else
+    {
+        if (!boost::filesystem::create_directories(path))
+        {
+            std::cout << "Failed to create directory: " << path << std::endl;
+            return;
+        }
+    }
+
+    std::ofstream ofs(filepath);
+    if (ofs)
+    {
+        std::cout << "Saving API JSON: " << filepath << std::endl;
+        ofs << json;
+        ofs.close();
+    }
+    else
+    {
+        std::cout << "Failed to create file: " << filepath << std::endl;
+    }
+
+    return;
+}
+
 // Save serials to file
 void Downloader::saveSerials(const std::string& serials, const std::string& filepath)
 {
@@ -3633,6 +3680,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
 
         if ((conf.dlConf.bSaveSerials && game.serials.empty())
             || (conf.dlConf.bSaveChangelogs && game.changelog.empty())
+            || (conf.dlConf.bSaveApiJson && game.apiJson.empty())
         )
         {
             Json::Value gameDetailsJSON;
@@ -3648,6 +3696,10 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
 
             if (conf.dlConf.bSaveChangelogs && game.changelog.empty())
                 game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
+
+            if (conf.dlConf.bSaveApiJson && game.apiJson.empty()) {
+                game.apiJson = gameDetailsJSON.toStyledString();
+            }
         }
 
         game.makeFilepaths(conf.dirConf);
