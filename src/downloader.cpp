@@ -707,10 +707,10 @@ void Downloader::download()
             this->saveChangelog(games[i].changelog, filepath);
         }
 
-        if (conf.dlConf.bSaveApiJson && !games[i].apiJson.empty())
+        if (conf.dlConf.bSaveGameDetailsJson && !games[i].gameDetailsJson.empty())
         {
-            std::string filepath = games[i].getApiJsonFilepath();
-            this->saveApiJson(games[i].apiJson, filepath);
+            std::string filepath = games[i].getGameDetailsJsonFilepath();
+            this->saveGameDetailsJson(games[i].gameDetailsJson, filepath);
         }
 
         if ((conf.dlConf.iInclude & GlobalConstants::GFTYPE_DLC) && !games[i].dlcs.empty())
@@ -2216,8 +2216,8 @@ void Downloader::updateCache()
     return;
 }
 
-// Save API JSON to file
-void Downloader::saveApiJson(const std::string& json, const std::string& filepath)
+// Save game details JSON to file
+void Downloader::saveGameDetailsJson(const std::string& json, const std::string& filepath)
 {
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
@@ -2245,7 +2245,7 @@ void Downloader::saveApiJson(const std::string& json, const std::string& filepat
     std::ofstream ofs(filepath);
     if (ofs)
     {
-        std::cout << "Saving API JSON: " << filepath << std::endl;
+        std::cout << "Saving game details JSON: " << filepath << std::endl;
         ofs << json;
         ofs.close();
     }
@@ -3680,7 +3680,7 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
 
         if ((conf.dlConf.bSaveSerials && game.serials.empty())
             || (conf.dlConf.bSaveChangelogs && game.changelog.empty())
-            || (conf.dlConf.bSaveApiJson && game.apiJson.empty())
+            || (conf.dlConf.bSaveGameDetailsJson && game.gameDetailsJson.empty())
         )
         {
             Json::Value gameDetailsJSON;
@@ -3697,8 +3697,8 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
             if (conf.dlConf.bSaveChangelogs && game.changelog.empty())
                 game.changelog = Downloader::getChangelogFromJSON(gameDetailsJSON);
 
-            if (conf.dlConf.bSaveApiJson && game.apiJson.empty()) {
-                game.apiJson = gameDetailsJSON.toStyledString();
+            if (conf.dlConf.bSaveGameDetailsJson && game.gameDetailsJson.empty()) {
+                game.gameDetailsJson = gameDetailsJSON.toStyledString();
             }
         }
 

@@ -95,7 +95,7 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     this->logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0);
     this->iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
     this->changelogFilepath = Util::makeFilepath(directory, "changelog_" + gamename + ".html", this->gamename, subdir, 0);
-    this->apiJsonFilepath = Util::makeFilepath(directory, "api.json", this->gamename, subdir, 0);
+    this->gameDetailsJsonFilepath = Util::makeFilepath(directory, "game-details.json", this->gamename, subdir, 0);
 
     for (unsigned int i = 0; i < this->installers.size(); ++i)
     {
@@ -213,9 +213,9 @@ std::string gameDetails::getChangelogFilepath()
     return this->changelogFilepath;
 }
 
-std::string gameDetails::getApiJsonFilepath()
+std::string gameDetails::getGameDetailsJsonFilepath()
 {
-    return this->apiJsonFilepath;
+    return this->gameDetailsJsonFilepath;
 }
 
 // Return vector containing all game files
