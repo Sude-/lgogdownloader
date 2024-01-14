@@ -64,6 +64,9 @@ int main(int argc, char *argv[])
 
     Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
 
+    std::string sDefaultBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    std::string sDefaultIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
+
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
@@ -233,6 +236,8 @@ int main(int argc, char *argv[])
             ("enable-login-gui", bpo::value<bool>(&Globals::globalConfig.bEnableLoginGUI)->zero_tokens()->default_value(false), "Enable login GUI when encountering reCAPTCHA on login form")
 #endif
             ("tag", bpo::value<std::string>(&tags)->default_value(""), "Filter using tags. Separate with \",\" to use multiple values")
+            ("blacklist", bpo::value<std::string>(&Globals::globalConfig.sBlacklistFilePath)->default_value(sDefaultBlacklistFilePath), "Filepath to blacklist")
+            ("ignorelist", bpo::value<std::string>(&Globals::globalConfig.sIgnorelistFilePath)->default_value(sDefaultIgnorelistFilePath), "Filepath to ignorelist")
         ;
         // Commandline options (config file)
         options_cli_cfg.add_options()
