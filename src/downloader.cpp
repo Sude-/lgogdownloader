@@ -3961,7 +3961,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     std::vector<galaxyDepotItem> items = this->galaxyGetDepotItemVectorFromJson(json, iGalaxyArch);
 
     // Remove blacklisted files from items vector
-    for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end(); it++)
+    for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end();)
     {
         std::string item_install_path = install_path + "/" + it->path;
         if (Globals::globalConfig.blacklist.isBlacklisted(item_install_path))
@@ -3969,6 +3969,10 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
             if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                 std::cout << "Skipping blacklisted file: " << item_install_path << std::endl;
             items.erase(it);
+        }
+        else
+        {
+            ++it;
         }
     }
 
