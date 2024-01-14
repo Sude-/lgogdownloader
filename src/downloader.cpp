@@ -3968,7 +3968,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
         {
             if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                 std::cout << "Skipping blacklisted file: " << item_install_path << std::endl;
-            items.erase(it);
+            it = items.erase(it);
         }
         else
         {
