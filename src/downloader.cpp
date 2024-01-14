@@ -3960,6 +3960,18 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
 
     std::vector<galaxyDepotItem> items = this->galaxyGetDepotItemVectorFromJson(json, iGalaxyArch);
 
+    // Remove blacklisted files from items vector
+    for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end(); it++)
+    {
+        std::string item_install_path = install_path + "/" + it->path;
+        if (Globals::globalConfig.blacklist.isBlacklisted(item_install_path))
+        {
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                std::cout << "Skipping blacklisted file: " << item_install_path << std::endl;
+            items.erase(it);
+        }
+    }
+
     // Check for differences between previously installed build and new build
     std::vector<galaxyDepotItem> items_old;
 
@@ -5402,6 +5414,14 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         uintmax_t totalSize = 0;
         for (std::uintmax_t i = 0; i < vZipFiles.size(); ++i)
         {
+            // Don't add blacklisted files
+            if (Globals::globalConfig.blacklist.isBlacklisted(vZipFiles[i].filepath))
+            {
+                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                    std::cout << "Skipping blacklisted file: " << vZipFiles[i].filepath << std::endl;
+
+                continue;
+            }
             dlQueueGalaxy_MojoSetupHack.push(vZipFiles[i]);
             iTotalRemainingBytes.fetch_add(vZipFiles[i].comp_size);
             totalSize += vZipFiles[i].uncomp_size;
@@ -5410,6 +5430,14 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
         // Add symlinks to download queue
         for (std::uintmax_t i = 0; i < vZipFilesSymlink.size(); ++i)
         {
+            // Don't add blacklisted files
+            if (Globals::globalConfig.blacklist.isBlacklisted(vZipFilesSymlink[i].filepath))
+            {
+                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                    std::cout << "Skipping blacklisted file: " << vZipFilesSymlink[i].filepath << std::endl;
+
+                continue;
+            }
             dlQueueGalaxy_MojoSetupHack.push(vZipFilesSymlink[i]);
             iTotalRemainingBytes.fetch_add(vZipFilesSymlink[i].comp_size);
             totalSize += vZipFilesSymlink[i].uncomp_size;
