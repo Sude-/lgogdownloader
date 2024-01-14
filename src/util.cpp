@@ -439,7 +439,7 @@ void Util::filepathReplaceReservedStrings(std::string& str, const std::string& g
             platform = "no_platform";
     }
 
-		// Don't save artwork in "no_platform" folder
+    // Don't save artwork in "no_platform" folder
     if (str.rfind("/icon.png") != std::string::npos || str.rfind("/logo.jpg") != std::string::npos)
     {
         platform = "";
