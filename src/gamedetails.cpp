@@ -96,6 +96,7 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     this->iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
     this->changelogFilepath = Util::makeFilepath(directory, "changelog_" + gamename + ".html", this->gamename, subdir, 0);
     this->gameDetailsJsonFilepath = Util::makeFilepath(directory, "game-details.json", this->gamename, subdir, 0);
+    this->productJsonFilepath = Util::makeFilepath(directory, "product.json", this->gamename, subdir, 0);
 
     for (unsigned int i = 0; i < this->installers.size(); ++i)
     {
@@ -132,6 +133,7 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
         this->dlcs[i].logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
         this->dlcs[i].iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
         this->dlcs[i].changelogFilepath = Util::makeFilepath(directory, "changelog_" + this->dlcs[i].gamename + ".html", this->gamename, subdir, 0);
+        this->dlcs[i].productJsonFilepath = Util::makeFilepath(directory, "product.json", this->gamename, subdir, 0, this->dlcs[i].gamename);
         for (unsigned int j = 0; j < this->dlcs[i].installers.size(); ++j)
         {
             subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
@@ -216,6 +218,11 @@ std::string gameDetails::getChangelogFilepath()
 std::string gameDetails::getGameDetailsJsonFilepath()
 {
     return this->gameDetailsJsonFilepath;
+}
+
+std::string gameDetails::getProductJsonFilepath()
+{
+    return this->productJsonFilepath;
 }
 
 // Return vector containing all game files

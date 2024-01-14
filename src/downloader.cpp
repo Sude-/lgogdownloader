@@ -710,7 +710,13 @@ void Downloader::download()
         if (conf.dlConf.bSaveGameDetailsJson && !games[i].gameDetailsJson.empty())
         {
             std::string filepath = games[i].getGameDetailsJsonFilepath();
-            this->saveGameDetailsJson(games[i].gameDetailsJson, filepath);
+            this->saveJsonFile(games[i].gameDetailsJson, filepath);
+        }
+
+        if (conf.dlConf.bSaveProductJson && !games[i].productJson.empty())
+        {
+            std::string filepath = games[i].getProductJsonFilepath();
+            this->saveJsonFile(games[i].productJson, filepath);
         }
 
         if ((conf.dlConf.iInclude & GlobalConstants::GFTYPE_DLC) && !games[i].dlcs.empty())
@@ -736,6 +742,11 @@ void Downloader::download()
                 {
                     std::string filepath = games[i].dlcs[j].getChangelogFilepath();
                     this->saveChangelog(games[i].dlcs[j].changelog, filepath);
+                }
+                if (conf.dlConf.bSaveProductJson && !games[i].dlcs[j].productJson.empty())
+                {
+                    std::string filepath = games[i].dlcs[j].getProductJsonFilepath();
+                    this->saveJsonFile(games[i].dlcs[j].productJson, filepath);
                 }
             }
         }
@@ -2216,8 +2227,8 @@ void Downloader::updateCache()
     return;
 }
 
-// Save game details JSON to file
-void Downloader::saveGameDetailsJson(const std::string& json, const std::string& filepath)
+// Save JSON data to file
+void Downloader::saveJsonFile(const std::string& json, const std::string& filepath)
 {
     // Get directory from filepath
     boost::filesystem::path pathname = filepath;
@@ -2245,7 +2256,7 @@ void Downloader::saveGameDetailsJson(const std::string& json, const std::string&
     std::ofstream ofs(filepath);
     if (ofs)
     {
-        std::cout << "Saving game details JSON: " << filepath << std::endl;
+        std::cout << "Saving JSON data: " << filepath << std::endl;
         ofs << json;
         ofs.close();
     }
@@ -3677,6 +3688,18 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
         game.filterWithPriorities(conf);
         game.filterWithType(conf.dlConf.iInclude);
+
+        if (conf.dlConf.bSaveProductJson && game.productJson.empty())
+            game.productJson = product_info.toStyledString();
+
+        if (conf.dlConf.bSaveProductJson && game.dlcs.size()) {
+            for (unsigned int i = 0; i < game.dlcs.size(); ++i) {
+                if (game.dlcs[i].productJson.empty()) {
+                    Json::Value dlc_info = galaxy->getProductInfo(game.dlcs[i].product_id);
+                    game.dlcs[i].productJson = dlc_info.toStyledString();
+                }
+            }
+        }
 
         if ((conf.dlConf.bSaveSerials && game.serials.empty())
             || (conf.dlConf.bSaveChangelogs && game.changelog.empty())

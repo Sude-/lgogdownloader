@@ -47,6 +47,7 @@ struct DownloadConfig
     bool bSaveChangelogs;
     bool bSaveSerials;
     bool bSaveGameDetailsJson;
+    bool bSaveProductJson;
     bool bSaveLogo;
     bool bSaveIcon;
     bool bAutomaticXMLCreation;
