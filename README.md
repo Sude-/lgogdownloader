@@ -27,6 +27,19 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
     libboost-date-time-dev libboost-iostreams-dev help2man cmake \
     pkg-config zlib1g-dev qtwebengine5-dev ninja-build
 
+### Building and installing on Fedora
+
+Update git commit in lgogdownloader.spec to the desired target.
+
+Update the version to today's date.
+
+    spectool -g lgogdownloader.spec
+    mock -r fedora-28-x86_64 --buildsrpm --sources=./ --spec=./lgogdownloader.spec
+    cp /var/lib/mock/fedora-28-x86_64/result/lgogdownloader-*.src.rpm ./
+    mock -r fedora-28-x86_64 lgogdownloader-*.src.rpm
+    cp /var/lib/mock/fedora-28-x86_64/result/lgogdownloader-*.x86_64.rpm ./
+    sudo dnf install ./lgogdownloader-*.x86_64.rpm
+
 ## Build and install
 
     $ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON -GNinja
