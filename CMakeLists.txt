@@ -45,8 +45,12 @@ file(GLOB SRC_FILES
   )
 
 if(USE_QT_GUI)
-  find_package(Qt5Widgets CONFIG REQUIRED)
-  find_package(Qt5WebEngineWidgets CONFIG REQUIRED)
+  set(QT Qt6)
+  find_package(Qt6 COMPONENTS Widgets WebEngineWidgets CONFIG)
+  if(NOT Qt6_FOUND)
+    set(QT Qt5)
+    find_package(Qt5 REQUIRED COMPONENTS Widgets WebEngineWidgets CONFIG)
+  endif()
 
   file(GLOB QT_GUI_SRC_FILES
     src/gui_login.cpp
@@ -140,10 +144,16 @@ file(REMOVE ${CMAKE_BINARY_DIR}/test_atomic.cpp)
 
 if(USE_QT_GUI)
   target_link_libraries(${PROJECT_NAME}
-    PRIVATE Qt5::Widgets
-    PRIVATE Qt5::WebEngineWidgets
+    PRIVATE ${QT}::Widgets
+    PRIVATE ${QT}::WebEngineWidgets
   )
 endif(USE_QT_GUI)
+
+if(Qt6_FOUND)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+else()
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
+endif(Qt6_FOUND)
 
 if(MSVC)
   # Force to always compile with W4
@@ -154,7 +164,7 @@ if(MSVC)
   endif()
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # Update if necessary
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wno-long-long -fexceptions")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-long-long -fexceptions")
 endif()
 
 set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
