@@ -61,6 +61,9 @@ struct xferInfo
     Timer timer;
     std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
     curl_off_t offset;
+    bool isChunk = false;
+    curl_off_t chunk_file_total = 0;
+    curl_off_t chunk_file_offset = 0;
 };
 
 typedef struct

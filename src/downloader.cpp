@@ -3398,6 +3398,12 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
         info.dltotal = dltotal;
         curl_off_t curl_rate;
 
+        if (xferinfo->isChunk)
+        {
+            info.dlnow += xferinfo->chunk_file_offset;
+            info.dltotal = xferinfo->chunk_file_total;
+        }
+
         // trying to get rate and setting to NaN if it fails
         if (CURLE_OK != curl_easy_getinfo(xferinfo->curlhandle, CURLINFO_SPEED_DOWNLOAD_T, &curl_rate))
             info.rate_avg = std::numeric_limits<double>::quiet_NaN();
@@ -4159,6 +4165,10 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
     std::vector<std::string> cdnUrlTemplates;
     while (dlQueueGalaxy.try_pop(item))
     {
+        xferinfo.isChunk = false;
+        xferinfo.chunk_file_offset = 0;
+        xferinfo.chunk_file_total = item.totalSizeCompressed;
+
         if (item.product_id != prev_product_id)
             cdnUrlTemplates.clear();
 
@@ -4318,6 +4328,9 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
         }
         for (unsigned int j = start_chunk; j < item.chunks.size(); ++j)
         {
+            xferinfo.isChunk = true;
+            xferinfo.chunk_file_offset = item.chunks[j].offset_compressed; // Set offset for progress info
+
             // Refresh Galaxy login if token is expired
             if (galaxy->isTokenExpired())
             {
