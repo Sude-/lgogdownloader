@@ -204,6 +204,9 @@ int main(int argc, char *argv[])
             ("help,h", "Print help message")
             ("version", "Print version information")
             ("login", bpo::value<bool>(&Globals::globalConfig.bLogin)->zero_tokens()->default_value(false), "Login")
+#ifdef USE_QT_GUI_LOGIN
+            ("gui-login", bpo::value<bool>(&Globals::globalConfig.bForceGUILogin)->zero_tokens()->default_value(false), "Login (force GUI login)\nImplies --enable-login-gui")
+#endif
             ("list", bpo::value<std::string>(&sListFormat)->implicit_value("games"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
@@ -460,6 +463,14 @@ int main(int argc, char *argv[])
             }
         }
 
+        #ifdef USE_QT_GUI_LOGIN
+        if (Globals::globalConfig.bForceGUILogin)
+        {
+            Globals::globalConfig.bLogin = true;
+            Globals::globalConfig.bEnableLoginGUI = true;
+        }
+        #endif
+
         if (Globals::globalConfig.bLogin)
         {
             std::string login_conf = Globals::globalConfig.sConfigDirectory + "/login.txt";
@@ -649,31 +660,31 @@ int main(int argc, char *argv[])
 
     Downloader downloader;
 
-    int iLoginTries = 0;
     bool bLoginOK = false;
 
     // Login because --login was used
     if (Globals::globalConfig.bLogin)
-        bLoginOK = downloader.login();
-
-    bool bIsLoggedin = downloader.isLoggedIn();
-    if (!bIsLoggedin)
-        Globals::globalConfig.bLogin = true;
-
-    // Login because we are not logged in
-    while (iLoginTries++ < Globals::globalConfig.iRetries && !bIsLoggedin)
     {
         bLoginOK = downloader.login();
-        if (bLoginOK)
-        {
-            bIsLoggedin = downloader.isLoggedIn();
-        }
     }
-
-    // Login failed, cleanup
-    if (!bLoginOK && !bIsLoggedin)
+    else
     {
-        return 1;
+        bool bIsLoggedin = downloader.isLoggedIn();
+        if (!bIsLoggedin)
+        {
+            Globals::globalConfig.bLogin = true;
+            bLoginOK = downloader.login();
+            if (bLoginOK)
+            {
+                bIsLoggedin = downloader.isLoggedIn();
+            }
+        }
+
+        // Login failed, cleanup
+        if (!bLoginOK && !bIsLoggedin)
+        {
+            return 1;
+        }
     }
 
     // Make sure that config file and cookie file are only readable/writable by owner

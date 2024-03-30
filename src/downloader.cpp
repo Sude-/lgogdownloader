@@ -257,13 +257,17 @@ int Downloader::login()
     std::string email;
     std::string password;
     bool headless = false;
+    bool bForceGUI = false;
+    #ifdef USE_QT_GUI_LOGIN
+        bForceGUI = Globals::globalConfig.bForceGUILogin;
+    #endif
 
     if (!Globals::globalConfig.sEmail.empty() && !Globals::globalConfig.sPassword.empty())
     {
         email = Globals::globalConfig.sEmail;
         password = Globals::globalConfig.sPassword;
     }
-    else
+    else if (!bForceGUI)
     {
         if (!isatty(STDIN_FILENO)) {
             /* Attempt to read this stuff from elsewhere */
@@ -291,7 +295,7 @@ int Downloader::login()
         }
     }
 
-    if ((email.empty() || password.empty()) && !headless)
+    if ((email.empty() || password.empty()) && (!headless && !bForceGUI))
     {
         std::cerr << "Email and/or password empty" << std::endl;
         return 0;

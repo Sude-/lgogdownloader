@@ -252,6 +252,7 @@ class Config
         bool bPlatformDetection;
 #ifdef USE_QT_GUI_LOGIN
         bool bEnableLoginGUI;
+        bool bForceGUILogin;
 #endif
         bool bUseFastCheck;
         bool bTrustAPIForExtras;
