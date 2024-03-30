@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
     bpo::options_description options_cfg_all("Configuration");
     bool bClearUpdateNotifications = false;
     bool bList = false;
+    bool bCheckLoginStatus = false;
     try
     {
         bool bInsecure = false;
@@ -207,6 +208,7 @@ int main(int argc, char *argv[])
 #ifdef USE_QT_GUI_LOGIN
             ("gui-login", bpo::value<bool>(&Globals::globalConfig.bForceGUILogin)->zero_tokens()->default_value(false), "Login (force GUI login)\nImplies --enable-login-gui")
 #endif
+            ("check-login-status", bpo::value<bool>(&bCheckLoginStatus)->zero_tokens()->default_value(false), "Check login status")
             ("list", bpo::value<std::string>(&sListFormat)->implicit_value("games"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
@@ -670,6 +672,19 @@ int main(int argc, char *argv[])
     else
     {
         bool bIsLoggedin = downloader.isLoggedIn();
+        if (bCheckLoginStatus)
+        {
+            if (bIsLoggedin)
+            {
+                std::cout << "Login status: Logged in" << std::endl;
+                return 0;
+            }
+            else
+            {
+                std::cout << "Login status: Not logged in" << std::endl;
+                return 1;
+            }
+        }
         if (!bIsLoggedin)
         {
             Globals::globalConfig.bLogin = true;
