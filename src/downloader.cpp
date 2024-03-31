@@ -565,6 +565,21 @@ int Downloader::listGames()
             }
         }
     }
+    else if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_USERDATA)
+    {
+        Json::Value userdata;
+        std::istringstream response(gogWebsite->getResponse("https://embed.gog.com/userData.json"));
+        try
+        {
+            response >> userdata;
+        }
+        catch(const Json::Exception& exc)
+        {
+            std::cerr << "Failed to get user data" << std::endl;
+            return 1;
+        }
+        std::cout << userdata << std::endl;
+    }
     else
     {
         if (this->games.empty()) {
