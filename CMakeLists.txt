@@ -37,7 +37,7 @@ file(GLOB SRC_FILES
   src/downloader.cpp
   src/progressbar.cpp
   src/util.cpp
-  src/blacklist.cpp
+  src/filelist.cpp
   src/gamefile.cpp
   src/gamedetails.cpp
   src/galaxyapi.cpp

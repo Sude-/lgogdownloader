@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
     Globals::globalConfig.curlConf.sCookiePath = Globals::globalConfig.sConfigDirectory + "/cookies.txt";
     Globals::globalConfig.sConfigFilePath = Globals::globalConfig.sConfigDirectory + "/config.cfg";
     Globals::globalConfig.sBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    Globals::globalConfig.sWhitelistFilePath = Globals::globalConfig.sConfigDirectory + "/whitelist.txt";
     Globals::globalConfig.sIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
     Globals::globalConfig.sGameHasDLCListFilePath = Globals::globalConfig.sConfigDirectory + "/game_has_dlc.txt";
     Globals::globalConfig.sTransformConfigFilePath = Globals::globalConfig.sConfigDirectory + "/transformations.json";
@@ -65,6 +66,7 @@ int main(int argc, char *argv[])
     Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
 
     std::string sDefaultBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    std::string sDefaultWhitelistFilePath = Globals::globalConfig.sConfigDirectory + "/whitelist.txt";
     std::string sDefaultIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
 
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
@@ -243,6 +245,7 @@ int main(int argc, char *argv[])
 #endif
             ("tag", bpo::value<std::string>(&tags)->default_value(""), "Filter using tags. Separate with \",\" to use multiple values")
             ("blacklist", bpo::value<std::string>(&Globals::globalConfig.sBlacklistFilePath)->default_value(sDefaultBlacklistFilePath), "Filepath to blacklist")
+            ("whitelist", bpo::value<std::string>(&Globals::globalConfig.sWhitelistFilePath)->default_value(sDefaultWhitelistFilePath), "Filepath to whitelist")
             ("ignorelist", bpo::value<std::string>(&Globals::globalConfig.sIgnorelistFilePath)->default_value(sDefaultIgnorelistFilePath), "Filepath to ignorelist")
         ;
         // Commandline options (config file)
@@ -411,6 +414,22 @@ int main(int argc, char *argv[])
                     lines.push_back(std::move(line));
                 }
                 Globals::globalConfig.blacklist.initialize(lines);
+            }
+        }
+
+        if (boost::filesystem::exists(Globals::globalConfig.sWhitelistFilePath)) {
+            std::ifstream ifs(Globals::globalConfig.sWhitelistFilePath.c_str());
+            if (!ifs) {
+                std::cerr << "Could not open whitelist file: " << Globals::globalConfig.sWhitelistFilePath << std::endl;
+                return 1;
+            } else {
+                std::string line;
+                std::vector<std::string> lines;
+                while (!ifs.eof()) {
+                    std::getline(ifs, line);
+                    lines.push_back(std::move(line));
+                }
+                Globals::globalConfig.whitelist.initialize(lines);
             }
         }
 
