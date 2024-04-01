@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
 
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
+    std::string galaxy_product_id_show_build_files;
     std::string galaxy_product_id_show_cloud_paths;
     std::string galaxy_product_id_show_local_cloud_paths;
     std::string galaxy_product_cloud_saves;
@@ -303,6 +304,7 @@ int main(int argc, char *argv[])
         options_cli_experimental.add_options()
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-show-build-files", bpo::value<std::string>(&galaxy_product_id_show_build_files)->default_value(""), "Show game build files using [product_id/build_index]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-download-cloud-saves", bpo::value<std::string>(&galaxy_product_cloud_saves)->default_value(""), "Download cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-upload-cloud-saves", bpo::value<std::string>(&galaxy_upload_product_cloud_saves)->default_value(""), "Upload cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_cloud_paths)->default_value(""), "Show game cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
@@ -831,6 +833,16 @@ int main(int argc, char *argv[])
             build_index = std::stoi(tokens[1]);
         }
         downloader.galaxyShowBuilds(product_id, build_index);
+    }
+    else if (!galaxy_product_id_show_build_files.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_build_files, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2) {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowBuildFiles(product_id, build_index);
     }
     else if (!galaxy_product_id_show_cloud_paths.empty())
     {

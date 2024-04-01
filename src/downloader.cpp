@@ -4644,6 +4644,65 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
     return;
 }
 
+void Downloader::galaxyShowBuildFiles(const std::string& product_id, int build_index) 
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyShowBuildFilesById(id, build_index);
+    }
+}
+
+void Downloader::galaxyShowBuildFilesById(const std::string& product_id, int build_index)
+{
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    if (build_index < 0) {
+        build_index = 0;
+    }
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX) {
+        std::cout << "Galaxy API doesn't have Linux support for build files" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+
+    if (json["items"][build_index]["generation"].asInt() == 1) {
+        json = gogGalaxy->getManifestV1(link);
+    } else if (json["items"][build_index]["generation"].asInt() == 2) {
+        std::string buildHash;
+        buildHash.assign(link.begin() + link.find_last_of("/") + 1, link.end());
+        json = gogGalaxy->getManifestV2(buildHash);
+    } else {
+        std::cout << "Only generation 1 and 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    const auto items = this->galaxyGetDepotItemVectorFromJson(json);
+    Json::Value json_items;
+    for (int i = 0; i < items.size(); i++) {
+        json_items[i]["product_id"] = items[i].product_id;
+        json_items[i]["path"] = items[i].path;
+        json_items[i]["size"] = static_cast<unsigned int>(items[i].totalSizeUncompressed);
+        json_items[i]["md5"] = items[i].md5;
+        json_items[i]["isDependency"] = items[i].isDependency;
+    }
+    Json::StyledStreamWriter().write(std::cout, json_items);
+
+    return;
+}
+
 std::string parseLocationHelper(const std::string &location, const std::map<std::string, std::string> &var) {
     char search_arg[2] {'?', '>'};
     auto it = std::search(std::begin(location), std::end(location), std::begin(search_arg), std::end(search_arg));
