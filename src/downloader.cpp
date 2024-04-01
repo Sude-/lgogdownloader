@@ -5552,7 +5552,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
                 if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                     std::cout << "Including whitelisted file: " << vZipFiles[i].filepath << std::endl;
             }
-            if (Globals::globalConfig.blacklist.Matches(vZipFilesSymlink[i].filepath))
+            else if (Globals::globalConfig.blacklist.Matches(vZipFilesSymlink[i].filepath))
             {
                 if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                     std::cout << "Skipping blacklisted file: " << vZipFilesSymlink[i].filepath << std::endl;
