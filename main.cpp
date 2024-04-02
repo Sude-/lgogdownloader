@@ -11,6 +11,7 @@
 #include "galaxyapi.h"
 #include "globals.h"
 
+#include <optional>
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -72,9 +73,9 @@ int main(int argc, char *argv[])
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
-    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    for (const auto& platform : GlobalConstants::PLATFORMS)
     {
-        platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
+        platform_text += platform.str + " = " + platform.regexp + "\n";
     }
     platform_text += "All = all";
     platform_text += "\n\n" + priority_help_text;
@@ -82,16 +83,16 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-platform option
     std::string galaxy_platform_text = "Select platform\n";
-    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    for (const auto& platform : GlobalConstants::PLATFORMS)
     {
-        galaxy_platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
+        galaxy_platform_text += platform.str + " = " + platform.regexp + "\n";
     }
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
-    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    for (const auto& language : GlobalConstants::LANGUAGES)
     {
-        language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        language_text += language.str + " = " + language.regexp + "\n";
     }
     language_text += "All = all";
     language_text += "\n\n" + priority_help_text;
@@ -99,16 +100,16 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-language option
     std::string galaxy_language_text = "Select language\n";
-    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    for (const auto& language : GlobalConstants::LANGUAGES)
     {
-        galaxy_language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        galaxy_language_text += language.str + " = " + language.regexp + "\n";
     }
 
     // Create help text for --galaxy-arch option
     std::string galaxy_arch_text = "Select architecture\n";
-    for (unsigned int i = 0; i < GlobalConstants::GALAXY_ARCHS.size(); ++i)
+    for (const auto& arch : GlobalConstants::GALAXY_ARCHS)
     {
-        galaxy_arch_text += GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
+        galaxy_arch_text += arch.str + " = " + arch.regexp + "\n";
     }
 
     // Create help text for --subdir-galaxy-install option
@@ -127,9 +128,9 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-cdn-priority option
     std::string galaxy_cdn_priority_text = "Set priority for used CDNs\n";
-    for (unsigned int i = 0; i < GlobalConstants::GALAXY_CDNS.size(); ++i)
+    for (const auto& cdn : GlobalConstants::GALAXY_CDNS)
     {
-        galaxy_cdn_priority_text += GlobalConstants::GALAXY_CDNS[i].str + " = " + GlobalConstants::GALAXY_CDNS[i].regexp + "\n";
+        galaxy_cdn_priority_text += cdn.str + " = " + cdn.regexp + "\n";
     }
     galaxy_cdn_priority_text += "\n" + priority_help_text;
 
@@ -142,18 +143,18 @@ int main(int argc, char *argv[])
 
     // Help text for include and exclude options
     std::string include_options_text;
-    for (unsigned int i = 0; i < GlobalConstants::INCLUDE_OPTIONS.size(); ++i)
+    for (const auto& include_option : GlobalConstants::INCLUDE_OPTIONS)
     {
-        include_options_text += GlobalConstants::INCLUDE_OPTIONS[i].str + " = " + GlobalConstants::INCLUDE_OPTIONS[i].regexp + "\n";
+        include_options_text += include_option.str + " = " + include_option.regexp + "\n";
     }
     include_options_text += "All = all\n";
     include_options_text += "Separate with \",\" to use multiple values";
 
     // Create help text for --list-format option
     std::string list_format_text = "List games/tags\n";
-    for (unsigned int i = 0; i < GlobalConstants::LIST_FORMAT.size(); ++i)
+    for (const auto& list_format: GlobalConstants::LIST_FORMAT)
     {
-        list_format_text += GlobalConstants::LIST_FORMAT[i].str + " = " + GlobalConstants::LIST_FORMAT[i].regexp + "\n";
+        list_format_text += list_format.str + " = " + list_format.regexp + "\n";
     }
 
     std::string galaxy_product_id_install;
@@ -413,7 +414,7 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                Globals::globalConfig.blacklist.initialize(lines);
+                Globals::globalConfig.blacklist = Filelist(lines);
             }
         }
 
@@ -429,7 +430,7 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                Globals::globalConfig.whitelist.initialize(lines);
+                Globals::globalConfig.whitelist = Filelist(lines);
             }
         }
 
@@ -450,7 +451,7 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                Globals::globalConfig.ignorelist.initialize(lines);
+                Globals::globalConfig.ignorelist = Filelist(lines);
             }
         }
 
@@ -481,7 +482,7 @@ int main(int argc, char *argv[])
                         std::getline(ifs, line);
                         lines.push_back(std::move(line));
                     }
-                    Globals::globalConfig.gamehasdlc.initialize(lines);
+                    Globals::globalConfig.gamehasdlc = Filelist(lines);
                 }
             }
         }

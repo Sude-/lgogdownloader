@@ -209,9 +209,8 @@ std::vector<gameItem> Website::getGames()
                         }
                     }
 
-                    if (!bDownloadDLCInfo && !Globals::globalConfig.gamehasdlc.empty())
-                    {
-                        if (Globals::globalConfig.gamehasdlc.Matches(game.name))
+                    if (!bDownloadDLCInfo && !Globals::globalConfig.gamehasdlc.has_value() && !Globals::globalConfig.gamehasdlc->empty()) {
+                        if (Globals::globalConfig.gamehasdlc->Matches(game.name))
                             bDownloadDLCInfo = true;
                     }
 

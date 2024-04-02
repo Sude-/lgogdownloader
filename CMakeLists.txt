@@ -149,11 +149,7 @@ if(USE_QT_GUI)
   )
 endif(USE_QT_GUI)
 
-if(Qt6_FOUND)
-  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
-else()
-  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
-endif(Qt6_FOUND)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 if(MSVC)
   # Force to always compile with W4

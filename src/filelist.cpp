@@ -16,7 +16,7 @@ enum {
     BLFLAG_PERL = 1 << 1
 };
 
-void Filelist::initialize(const std::vector<std::string>& lines) {
+Filelist::Filelist(const std::vector<std::string>& lines) {
     int linenr = 1;
     for (auto it = lines.begin(); it != lines.end(); ++it, ++linenr) {
         FilelistItem item;
@@ -57,12 +57,13 @@ void Filelist::initialize(const std::vector<std::string>& lines) {
             item.regex.assign(item.source, rx_flags);
             files.push_back(std::move(item));
         } else {
-            std::cout << "unknown expression type in blacklist line " << linenr << std::endl;
+            std::cerr << "unknown expression type in filelist line " << linenr << std::endl;
         }
     }
 }
 
-bool Filelist::Matches(const std::string& path) {
+bool Filelist::Matches(const std::string& path) const 
+{
     for (const auto& item : files) {
         if (item.flags & BLFLAG_RX && boost::regex_search(path, item.regex))
             return true;
@@ -70,7 +71,7 @@ bool Filelist::Matches(const std::string& path) {
     return false;
 }
 
-bool Filelist::Matches(const std::string& path, const std::string& gamename, std::string subdirectory)
+bool Filelist::Matches(const std::string& path, const std::string& gamename, std::string subdirectory) const
 {
     const std::string filepath = Util::makeRelativeFilepath(path, gamename, subdirectory);
     return Matches(filepath);

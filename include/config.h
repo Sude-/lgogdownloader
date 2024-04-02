@@ -12,6 +12,7 @@
 #include <json/json.h>
 #include <mutex>
 #include <ctime>
+#include <optional>
 
 #include "filelist.h"
 
@@ -305,10 +306,10 @@ class Config
         std::string sPassword;
 
         // Lists
-        Filelist blacklist;
-        Filelist ignorelist;
-        Filelist gamehasdlc;
-        Filelist whitelist;
+        std::optional<Filelist> blacklist;
+        std::optional<Filelist> ignorelist;
+        std::optional<Filelist> gamehasdlc;
+        std::optional<Filelist> whitelist;
 
         // Cloud save options
         std::vector<std::string> cloudWhiteList;

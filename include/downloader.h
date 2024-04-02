@@ -155,9 +155,9 @@ class Downloader
         static std::string getChangelogFromJSON(const Json::Value& json);
         void saveJsonFile(const std::string& json, const std::string& filepath);
         void saveChangelog(const std::string& changelog, const std::string& filepath);
-        static void processDownloadQueue(Config conf, const unsigned int& tid);
-        static void processCloudSaveDownloadQueue(Config conf, const unsigned int& tid);
-        static void processCloudSaveUploadQueue(Config conf, const unsigned int& tid);
+        static void processDownloadQueue(const Config& conf, const unsigned int& tid);
+        static void processCloudSaveDownloadQueue(const Config& conf, const unsigned int& tid);
+        static void processCloudSaveUploadQueue(const Config& conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
         template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
@@ -169,10 +169,10 @@ class Downloader
         static size_t readData(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
         std::vector<std::string> galaxyGetOrphanedFiles(const std::vector<galaxyDepotItem>& items, const std::string& install_path);
-        static void processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid);
+        static void processGalaxyDownloadQueue(const std::string& install_path, const Config& conf, const unsigned int& tid);
         void galaxyInstallGame_MojoSetupHack(const std::string& product_id);
         void galaxyInstallGame_MojoSetupHack_CombineSplitFiles(const splitFilesMap& mSplitFiles, const bool& bAppendtoFirst = false);
-        static void processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid);
+        static void processGalaxyDownloadQueue_MojoSetupHack(const Config& conf, const unsigned int& tid);
         int mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEntry>& vFiles);
         std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
         bool galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product);

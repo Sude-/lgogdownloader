@@ -25,14 +25,13 @@ class FilelistItem {
 class Filelist
 {
     public:
-        Filelist(){};
+        Filelist(const std::vector<std::string>& lines);
 
-        void initialize(const std::vector<std::string>& lines);
-        bool Matches(const std::string& path);
-        bool Matches(const std::string& path, const std::string& gamename, std::string subdirectory = "");
+        bool Matches(const std::string& path) const;
+        bool Matches(const std::string& path, const std::string& gamename, std::string subdirectory = "") const;
 
         std::vector<FilelistItem>::size_type size() const { return files.size(); }
-        bool empty() { return files.empty(); }
+        bool empty() const { return files.empty(); }
     private:
         std::vector<FilelistItem> files;
 };
