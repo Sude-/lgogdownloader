@@ -12,6 +12,8 @@ find_path(TIDY_INCLUDE_DIR tidy.h
   HINTS
     ${PC_TIDY_INCLUDEDIR}
     ${PC_TIDY_INCLUDE_DIRS}
+  PATH_SUFFIXES
+    tidy
   PATHS
     ${PC_TIDY_INCLUDE_DIRS}
   )
