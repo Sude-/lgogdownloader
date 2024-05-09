@@ -32,7 +32,6 @@ class Website
     private:
         CURL* curlhandle;
         bool IsloggedInSimple();
-        bool IsLoggedInComplex(const std::string& email);
         std::map<std::string, std::string> getTagsFromJson(const Json::Value& json);
         int retries;
         std::string LoginGetAuthCode(const std::string& email, const std::string& password);

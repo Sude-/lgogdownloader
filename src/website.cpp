@@ -8,8 +8,8 @@
 #include "globalconstants.h"
 #include "message.h"
 
-#include <htmlcxx/html/ParserDom.h>
 #include <boost/algorithm/string/case_conv.hpp>
+#include <tinyxml2.h>
 
 #ifdef USE_QT_GUI_LOGIN
     #include "gui_login.h"
@@ -358,23 +358,27 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
     std::string tagname_username = "login[username]";
     std::string tagname_password = "login[password]";
     std::string tagname_login = "login[login]";
-    std::string tagname_token;
+    std::string tagname_token = "login[_token]";
 
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> login_dom = parser.parseTree(login_form_html);
-    tree<htmlcxx::HTML::Node>::iterator login_it = login_dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator login_it_end = login_dom.end();
-    for (; login_it != login_it_end; ++login_it)
+    std::string login_form_xhtml = Util::htmlToXhtml(login_form_html);
+
+    tinyxml2::XMLDocument doc;
+    doc.Parse(login_form_xhtml.c_str());
+    tinyxml2::XMLNode* node = doc.FirstChildElement("html");
+    while(node)
     {
-        if (login_it->tagName()=="input")
+        tinyxml2::XMLElement *element = node->ToElement();
+        if (element->Name() && !std::string(element->Name()).compare("input"))
         {
-            login_it->parseAttributes();
-            if (login_it->attribute("id").second == "login__token")
+            std::string name = element->Attribute("name");
+            if (name == tagname_token)
             {
-                token = login_it->attribute("value").second; // login token
-                tagname_token = login_it->attribute("name").second;
+                token = element->Attribute("value");
+                break;
             }
         }
+
+        node = Util::nextXMLNode(node);
     }
 
     if (token.empty())
@@ -419,25 +423,28 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
         std::string tagname_two_step_auth_letter_2 = "second_step_authentication[token][letter_2]";
         std::string tagname_two_step_auth_letter_3 = "second_step_authentication[token][letter_3]";
         std::string tagname_two_step_auth_letter_4 = "second_step_authentication[token][letter_4]";
-        std::string tagname_two_step_token;
+        std::string tagname_two_step_token = "second_step_authentication[_token]";
         std::string token_two_step;
         std::string two_step_html = this->getResponse(redirect_url);
         redirect_url = "";
 
-        tree<htmlcxx::HTML::Node> two_step_dom = parser.parseTree(two_step_html);
-        tree<htmlcxx::HTML::Node>::iterator two_step_it = two_step_dom.begin();
-        tree<htmlcxx::HTML::Node>::iterator two_step_it_end = two_step_dom.end();
-        for (; two_step_it != two_step_it_end; ++two_step_it)
+        std::string two_step_xhtml = Util::htmlToXhtml(two_step_html);
+        doc.Parse(two_step_xhtml.c_str());
+        node = doc.FirstChildElement("html");
+        while(node)
         {
-            if (two_step_it->tagName()=="input")
+            tinyxml2::XMLElement *element = node->ToElement();
+            if (element->Name() && !std::string(element->Name()).compare("input"))
             {
-                two_step_it->parseAttributes();
-                if (two_step_it->attribute("id").second == "second_step_authentication__token")
+                std::string name = element->Attribute("name");
+                if (name == tagname_two_step_token)
                 {
-                    token_two_step = two_step_it->attribute("value").second; // two step token
-                    tagname_two_step_token = two_step_it->attribute("name").second;
+                    token_two_step = element->Attribute("value");
+                    break;
                 }
             }
+
+            node = Util::nextXMLNode(node);
         }
 
         std::cerr << "Security code: ";
@@ -566,52 +573,6 @@ std::string Website::LoginGetAuthCodeGUI(const std::string& email, const std::st
 bool Website::IsLoggedIn()
 {
     return this->IsloggedInSimple();
-}
-
-/* Complex login check. Check login by checking email address on the account settings page.
-    returns true if we are logged in
-    returns false if we are not logged in
-*/
-bool Website::IsLoggedInComplex(const std::string& email)
-{
-    bool bIsLoggedIn = false;
-    std::string html = this->getResponse("https://www.gog.com/account/settings/security");
-    std::string email_lowercase = boost::algorithm::to_lower_copy(email); // boost::algorithm::to_lower does in-place modification but "email" is read-only so we need to make a copy of it
-
-    htmlcxx::HTML::ParserDom parser;
-    tree<htmlcxx::HTML::Node> dom = parser.parseTree(html);
-    tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-    tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-    dom = parser.parseTree(html);
-    it = dom.begin();
-    end = dom.end();
-    for (; it != end; ++it)
-    {
-        if (it->tagName()=="strong")
-        {
-            it->parseAttributes();
-            if (it->attribute("class").second == "settings-item__value settings-item__section")
-            {
-                for (unsigned int i = 0; i < dom.number_of_children(it); ++i)
-                {
-                    tree<htmlcxx::HTML::Node>::iterator tag_it = dom.child(it, i);
-                    if (!tag_it->isTag() && !tag_it->isComment())
-                    {
-                        std::string tag_text = boost::algorithm::to_lower_copy(tag_it->text());
-                        if (tag_text == email_lowercase)
-                        {
-                            bIsLoggedIn = true; // We are logged in
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (bIsLoggedIn) // We are logged in so no need to go through the remaining tags
-            break;
-    }
-
-    return bIsLoggedIn;
 }
 
 /* Simple login check. Check login by trying to get account page. If response code isn't 200 then login failed.

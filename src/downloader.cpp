@@ -24,8 +24,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <tinyxml2.h>
 #include <json/json.h>
-#include <htmlcxx/html/ParserDom.h>
-#include <htmlcxx/html/Uri.h>
 #include <termios.h>
 #include <algorithm>
 #include <thread>
@@ -1630,30 +1628,18 @@ std::string Downloader::getSerialsFromJSON(const Json::Value& json)
     }
     else
     {
-        htmlcxx::HTML::ParserDom parser;
-        tree<htmlcxx::HTML::Node> dom = parser.parseTree(cdkey);
-        tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
-        tree<htmlcxx::HTML::Node>::iterator end = dom.end();
-        for (; it != end; ++it)
+        std::string xhtml = Util::htmlToXhtml(cdkey);
+        tinyxml2::XMLDocument doc;
+        doc.Parse(xhtml.c_str());
+        tinyxml2::XMLNode* node = doc.FirstChildElement("html");
+        while(node)
         {
-            std::string tag_text;
-            if (it->tagName() == "span")
-            {
-                for (unsigned int j = 0; j < dom.number_of_children(it); ++j)
-                {
-                    tree<htmlcxx::HTML::Node>::iterator span_it = dom.child(it, j);
-                    if (!span_it->isTag() && !span_it->isComment())
-                        tag_text = span_it->text();
-                }
-            }
+            tinyxml2::XMLElement *element = node->ToElement();
+            const char* text = element->GetText();
+            if (text)
+                serials << text << std::endl;
 
-            if (!tag_text.empty())
-            {
-                boost::regex expression("^\\h+|\\h+$");
-                std::string text = boost::regex_replace(tag_text, expression, "");
-                if (!text.empty())
-                    serials << text << std::endl;
-            }
+            node = Util::nextXMLNode(node);
         }
     }
 

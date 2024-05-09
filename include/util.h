@@ -24,6 +24,7 @@
 #include <json/json.h>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <curl/curl.h>
+#include <tinyxml2.h>
 
 typedef struct
 {
@@ -104,6 +105,8 @@ namespace Util
     }
     Json::Value readJsonFile(const std::string& path);
     std::string transformGamename(const std::string& gamename);
+    std::string htmlToXhtml(const std::string& html);
+    tinyxml2::XMLNode* nextXMLNode(tinyxml2::XMLNode* node);
 }
 
 #endif // UTIL_H

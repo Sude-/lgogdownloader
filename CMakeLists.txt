@@ -25,11 +25,11 @@ find_package(Boost
   )
 find_package(CURL 7.55.0 REQUIRED)
 find_package(Jsoncpp REQUIRED)
-find_package(Htmlcxx REQUIRED)
 find_package(Tinyxml2 REQUIRED)
 find_package(Rhash REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Tidy REQUIRED)
 
 file(GLOB SRC_FILES
   main.cpp
@@ -111,10 +111,10 @@ target_include_directories(${PROJECT_NAME}
   PRIVATE ${CURL_INCLUDE_DIRS}
   PRIVATE ${OAuth_INCLUDE_DIRS}
   PRIVATE ${Jsoncpp_INCLUDE_DIRS}
-  PRIVATE ${Htmlcxx_INCLUDE_DIRS}
   PRIVATE ${Tinyxml2_INCLUDE_DIRS}
   PRIVATE ${Rhash_INCLUDE_DIRS}
   PRIVATE ${ZLIB_INCLUDE_DIRS}
+  PRIVATE ${Tidy_INCLUDE_DIRS}
   )
 
 target_link_libraries(${PROJECT_NAME}
@@ -122,11 +122,11 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE ${CURL_LIBRARIES}
   PRIVATE ${OAuth_LIBRARIES}
   PRIVATE ${Jsoncpp_LIBRARIES}
-  PRIVATE ${Htmlcxx_LIBRARIES}
   PRIVATE ${Tinyxml2_LIBRARIES}
   PRIVATE ${Rhash_LIBRARIES}
   PRIVATE ${CMAKE_THREAD_LIBS_INIT}
   PRIVATE ${ZLIB_LIBRARIES}
+  PRIVATE ${Tidy_LIBRARIES}
   )
 
 # Check if libatomic is needed in order to use std::atomic, and add

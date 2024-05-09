@@ -11,10 +11,11 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
-#include <tinyxml2.h>
 #include <json/json.h>
 #include <fstream>
 #include <sys/ioctl.h>
+#include <tidy.h>
+#include <tidybuffio.h>
 
 /*
     Create filepath from specified directory and path
@@ -1006,4 +1007,50 @@ std::string Util::transformGamename(const std::string& gamename)
     }
 
     return gamename_transformed;
+}
+
+std::string Util::htmlToXhtml(const std::string& html)
+{
+    std::string xhtml;
+    TidyBuffer buffer = {0, 0, 0, 0, 0};
+    int rc = -1;
+    TidyDoc doc = tidyCreate();
+
+    tidyOptSetBool(doc, TidyXhtmlOut, yes);
+    tidyOptSetBool(doc, TidyForceOutput, yes);
+    tidyOptSetInt(doc, TidyWrapLen, 0);
+    tidyOptSetInt(doc, TidyShowInfo, 0);
+    tidyOptSetInt(doc, TidyShowWarnings, 0);
+    rc = tidyParseString(doc, html.c_str());
+    if ( rc >= 0 )
+        rc = tidyCleanAndRepair(doc);
+    if ( rc >= 0 )
+        rc = tidySaveBuffer(doc, &buffer);
+
+    xhtml = std::string((char*)buffer.bp, buffer.size);
+
+    tidyBufFree(&buffer);
+    tidyRelease(doc);
+
+    return xhtml;
+}
+
+tinyxml2::XMLNode* Util::nextXMLNode(tinyxml2::XMLNode* node)
+{
+    if (node->FirstChildElement()) // Has child element, go to first child
+        node = node->FirstChildElement();
+    else if (node->NextSiblingElement()) // Has sibling element, go to first sibling
+        node = node->NextSiblingElement();
+    else
+    {
+        // Go to parent node until it has sibling
+        while(node->Parent() && !node->Parent()->NextSiblingElement())
+            node = node->Parent();
+        if(node->Parent() && node->Parent()->NextSiblingElement())
+            node = node->Parent()->NextSiblingElement();
+        else // Reached the end
+            node = nullptr;
+    }
+
+    return node;
 }

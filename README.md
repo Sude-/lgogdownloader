@@ -8,7 +8,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [libcurl](https://curl.haxx.se/libcurl/) >= 7.55.0
 * [librhash](https://github.com/rhash/RHash)
 * [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
-* [htmlcxx](http://htmlcxx.sourceforge.net/)
+* [libtidy](https://www.html-tidy.org/)
 * [tinyxml2](https://github.com/leethomason/tinyxml2)
 * [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options, iostreams)
 * [zlib](https://www.zlib.net/)
@@ -22,7 +22,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 ## Debian/Ubuntu
 
     # apt install build-essential libcurl4-openssl-dev libboost-regex-dev \
-    libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
+    libjsoncpp-dev librhash-dev libtinyxml2-dev libtidy-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
     libboost-date-time-dev libboost-iostreams-dev help2man cmake \
     pkg-config zlib1g-dev qtwebengine5-dev ninja-build
@@ -35,7 +35,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 ## Fedora
 ```
 sudo dnf install cmake make gcc gcc-c++ glibc tinyxml2-devel rhash-devel \
-htmlcxx-devel tinyxml-devel jsoncpp-devel liboauth-devel libcurl-devel \
+libtidy-devel tinyxml-devel jsoncpp-devel liboauth-devel libcurl-devel \
 boost-devel help2man
 ```
 ### Build and Install

@@ -32,7 +32,7 @@ jobs:
         run: |
           sudo apt -y update
           sudo apt -y install ninja-build build-essential libcurl4-openssl-dev libboost-regex-dev \
-            libjsoncpp-dev librhash-dev libtinyxml2-dev libhtmlcxx-dev \
+            libjsoncpp-dev librhash-dev libtinyxml2-dev libtidy-dev \
             libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
             libboost-date-time-dev libboost-iostreams-dev help2man cmake \
             pkg-config zlib1g-dev qtwebengine5-dev
