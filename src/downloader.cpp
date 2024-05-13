@@ -2460,7 +2460,13 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
 
         if (!bFoundMatchingFile)
         {
-            std::cerr << "Failed to find file info (product id: " << product_id << " / file id: " << fileid << ")" << std::endl;
+            std::string error_msg = "Failed to find file info (";
+            error_msg += "product id: " + product_id;
+            error_msg += (bIsDLC ? " / dlc gamename: " + dlc_gamename : "");
+            error_msg += " / file id: " + fileid;
+            error_msg += ")";
+
+            std::cerr << error_msg << std::endl;
             return 1;
         }
 
