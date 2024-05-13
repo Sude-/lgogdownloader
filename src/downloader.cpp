@@ -2405,12 +2405,24 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
     }
     else
     {
-        std::string gamename, fileid, url;
-        gamename.assign(fileid_string.begin(), fileid_string.begin()+pos);
-        fileid.assign(fileid_string.begin()+pos+1, fileid_string.end());
+        bool bIsDLC = false;
+        std::string gamename, dlc_gamename, fileid, url;
+        std::vector<std::string> fileid_vector = Util::tokenize(fileid_string, "/");
+        if (fileid_vector.size() == 3)
+            bIsDLC = true;
+
+        gamename = fileid_vector[0];
+        if (bIsDLC)
+        {
+            dlc_gamename = fileid_vector[1];
+            fileid = fileid_vector[2];
+        }
+        else
+            fileid = fileid_vector[1];
 
         std::string product_id;
-        bool bSelectOK = this->galaxySelectProductIdHelper(gamename, product_id);
+        std::string gamename_select = "^" + gamename + "$";
+        bool bSelectOK = this->galaxySelectProductIdHelper(gamename_select, product_id);
 
         if (!bSelectOK || product_id.empty())
         {
@@ -2432,6 +2444,12 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         bool bFoundMatchingFile = false;
         for (auto f : vFiles)
         {
+            if (bIsDLC)
+            {
+                if (f.gamename != dlc_gamename)
+                    continue;
+            }
+
             if (f.id == fileid)
             {
                 gf = f;
