@@ -6,7 +6,7 @@
 #  Tidy_LIBRARIES - The libraries needed to use tidy
 
 find_package(PkgConfig)
-pkg_check_modules(PC_TIDY tidy)
+pkg_check_modules(PC_TIDY tidy REQUIRED)
 
 find_path(TIDY_INCLUDE_DIR tidy.h
   HINTS
