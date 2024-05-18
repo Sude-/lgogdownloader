@@ -35,7 +35,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 ## Fedora
 ```
 sudo dnf install cmake make gcc gcc-c++ glibc tinyxml2-devel rhash-devel \
-libtidy-devel tinyxml-devel jsoncpp-devel liboauth-devel libcurl-devel \
+libtidy-devel tinyxml-devel jsoncpp-devel libcurl-devel \
 boost-devel help2man
 ```
 ### Build and Install
