@@ -55,7 +55,7 @@ namespace GlobalConstants
         { LANGUAGE_FR, "fr", "French",     "fr|fra|fre|french|fr[_-]FR"     },
         { LANGUAGE_PL, "pl", "Polish",     "pl|pol|polish|pl[_-]PL"         },
         { LANGUAGE_RU, "ru", "Russian",    "ru|rus|russian|ru[_-]RU"        },
-        { LANGUAGE_CN, "cn", "Chinese",    "cn|zh|zho|chi|chinese|zh[_-]CN" },
+        { LANGUAGE_CN, "cn", "Chinese",    "cn|zh|zho|chi|chinese|zh[_-](CN|Hans)" },
         { LANGUAGE_CZ, "cz", "Czech",      "cz|cs|ces|cze|czech|cs[_-]CZ"   },
         { LANGUAGE_ES, "es", "Spanish",    "es|spa|spanish|es[_-]ES"        },
         { LANGUAGE_HU, "hu", "Hungarian",  "hu|hun|hungarian|hu[_-]HU"      },
