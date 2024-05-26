@@ -1018,9 +1018,9 @@ std::string Util::htmlToXhtml(const std::string& html)
 
     tidyOptSetBool(doc, TidyXhtmlOut, yes);
     tidyOptSetBool(doc, TidyForceOutput, yes);
+    tidyOptSetBool(doc, TidyShowInfo, no);
+    tidyOptSetBool(doc, TidyShowWarnings, no);
     tidyOptSetInt(doc, TidyWrapLen, 0);
-    tidyOptSetInt(doc, TidyShowInfo, 0);
-    tidyOptSetInt(doc, TidyShowWarnings, 0);
     rc = tidyParseString(doc, html.c_str());
     if ( rc >= 0 )
         rc = tidyCleanAndRepair(doc);
