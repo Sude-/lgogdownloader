@@ -44,6 +44,14 @@ Rp the_witcher_2/extras/extras_pack_3_hu_pl_ru_tr_zh_\.zip
 .br
 Rp the_witcher_2/extras/extras_pack_2_fr_it_jp_\.zip
 
+[whitelist]
+.fi
+Allows user to specify individual files that should always downloaded.
+.sp 1
+This follows the same syntax as the blacklist.
+.sp 1
+This takes precedent over the blacklist. If an item is match on both lists, the whitelist will take priority.
+
 [files]
 .fi
 .TP
@@ -61,6 +69,14 @@ If \fB$XDG_CACHE_HOME\fP is not set, it will use \fI$HOME/.cache/lgogdownloader/
 .TP
 \fI$XDG_CONFIG_HOME/lgogdownloader/blacklist.txt\fP
 Allows user to specify individual files that should not be downloaded.
+.br
+It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
+
+
+.TP
+\fI$XDG_CONFIG_HOME/lgogdownloader/whitelist.txt\fP
+Allows user to specify individual files that should always be downloaded.  The file has 
+the same format and interpretation as a blacklist.
 .br
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
 
@@ -165,4 +181,3 @@ You're allowed to "stack" codes in the priority string if needed. If you set \fB
 
 [availability]
 The latest version of this distribution is available from \fIhttps://github.com/Sude-/lgogdownloader\fP
-

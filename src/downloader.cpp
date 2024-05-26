@@ -83,8 +83,8 @@ void dirForEach(const std::string &location, std::function<void(boost::filesyste
 }
 
 bool whitelisted(const std::string &path) {
-    auto &whitelist = Globals::globalConfig.cloudWhiteList;
-    auto &blacklist = Globals::globalConfig.cloudBlackList;
+    const auto &whitelist = Globals::globalConfig.cloudWhiteList;
+    const auto &blacklist = Globals::globalConfig.cloudBlackList;
 
     // Check if path is whitelisted
     if(!whitelist.empty()) {
@@ -105,6 +105,28 @@ bool whitelisted(const std::string &path) {
     }
 
     return true;
+}
+
+// checks if a given path matches either the whitelist or the blacklist.
+bool shouldSkipFile(const std::string &path) {
+    const auto &whitelist = Globals::globalConfig.whitelist;
+    const auto &blacklist = Globals::globalConfig.blacklist;
+
+    if(whitelist.has_value()) {
+        if (!whitelist->Matches(path)) {
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                std::cout << "skipped non-whitelisted file: " << path << std::endl;
+            return true;
+        }
+    }
+    else if (blacklist.has_value()) {
+        if (blacklist->Matches(path)) {
+            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                std::cout << "skipped blacklisted file: " << path << std::endl;
+            return true;
+        }
+    }
+    return false;
 }
 
 Downloader::Downloader()
@@ -202,11 +224,11 @@ int Downloader::init()
 {
     if (!Globals::globalConfig.sGameHasDLCList.empty())
     {
-        if (Globals::globalConfig.gamehasdlc.empty())
+        if (Globals::globalConfig.gamehasdlc.has_value() && Globals::globalConfig.gamehasdlc->empty())
         {
             std::string game_has_dlc_list = this->getResponse(Globals::globalConfig.sGameHasDLCList);
             if (!game_has_dlc_list.empty())
-                Globals::globalConfig.gamehasdlc.initialize(Util::tokenize(game_has_dlc_list, "\n"));
+                Globals::globalConfig.gamehasdlc = Filelist(Util::tokenize(game_has_dlc_list, "\n"));
         }
     }
 
@@ -629,12 +651,8 @@ void Downloader::repair()
             continue;
 
         std::string filepath = vGameFiles[i].getFilepath();
-        if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-        {
-            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                std::cerr << "skipped blacklisted file " << filepath << std::endl;
+        if (shouldSkipFile(filepath))
             continue;
-        }
 
         // Refresh Galaxy login if token is expired
         if (gogGalaxy->isTokenExpired())
@@ -1362,7 +1380,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         std::cout << "\033[0K\rChunk " << i << " (" << chunk_size << " bytes): ";
         // use fseeko to support large files on 32 bit platforms
         fseeko(outfile, chunk_begin, SEEK_SET);
-        unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+        char *chunk = new char[chunk_size];
         if (chunk == NULL)
         {
             std::cout << "Memory error" << std::endl;
@@ -1373,7 +1391,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
         if (size != chunk_size)
         {
             std::cout << "Read error" << std::endl;
-            free(chunk);
+            delete[] chunk;
             fclose(outfile);
             return res;
         }
@@ -1383,7 +1401,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             if (bChunkRetryLimitReached)
             {
                 std::cout << "Failed - chunk retry limit reached\r" << std::flush;
-                free(chunk);
+                delete[] chunk;
                 res = 0;
                 break;
             }
@@ -1416,7 +1434,7 @@ int Downloader::repairFile(const std::string& url, const std::string& filepath, 
             iChunkRetryCount = 0; // reset retry count
             bChunkRetryLimitReached = false;
         }
-        free(chunk);
+        delete[] chunk;
         res = 1;
     }
     std::cout << std::endl;
@@ -1668,10 +1686,11 @@ std::string Downloader::getChangelogFromJSON(const Json::Value& json)
 }
 
 // Linear search.  Good thing computers are fast and lists are small.
-static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path& path, Blacklist& blacklist)
+static int isPresent(std::vector<gameFile>& list, const boost::filesystem::path& path, std::optional<Filelist>& blacklist)
 {
-    if(blacklist.isBlacklisted(path.native()))
-	return false;
+    if(blacklist.has_value() && blacklist->Matches(path.native())) {
+        return false;
+    }
     for (unsigned int k = 0; k < list.size(); ++k)
 	if (list[k].getFilepath() == path.native())
 	    return true;
@@ -1751,7 +1770,7 @@ void Downloader::checkOrphans()
                             if (boost::filesystem::is_regular_file(dir_iter->status()))
                             {
                                 std::string filepath = dir_iter->path().string();
-                                if (config.ignorelist.isBlacklisted(filepath.substr(pathlen))) {
+                                if (config.ignorelist.has_value() && config.ignorelist->Matches(filepath.substr(pathlen))) {
                                     if (config.iMsgLevel >= MSGLEVEL_VERBOSE)
                                         std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                                 } else {
@@ -1834,25 +1853,24 @@ void Downloader::checkStatus()
 
     // Create a vector containing all game files
     std::vector<gameFile> vGameFiles;
-    for (unsigned int i = 0; i < games.size(); ++i)
+    for (auto &game : games)
     {
-        std::vector<gameFile> vec = games[i].getGameFileVector();
+        auto vec = game.getGameFileVector();
         vGameFiles.insert(std::end(vGameFiles), std::begin(vec), std::end(vec));
     }
 
-    for (unsigned int i = 0; i < vGameFiles.size(); ++i)
+    for (auto& gamefile : vGameFiles)
     {
-        unsigned int type = vGameFiles[i].type;
+        const size_t type = gamefile.type;
         if (!(type & Globals::globalConfig.dlConf.iInclude))
             continue;
 
-        boost::filesystem::path filepath = vGameFiles[i].getFilepath();
-
-        if (Globals::globalConfig.blacklist.isBlacklisted(filepath.native()))
+        const boost::filesystem::path filepath = gamefile.getFilepath();
+        if (shouldSkipFile(filepath.native()))
             continue;
 
         std::string filePathString = filepath.filename().string();
-        std::string gamename = vGameFiles[i].gamename;
+        std::string gamename = gamefile.gamename;
 
         if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
         {
@@ -1898,7 +1916,7 @@ void Downloader::checkStatus()
 
                 // GOG only provides xml data for installers, patches and language packs
                 if (type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH | GlobalConstants::GFTYPE_LANGPACK))
-                    remoteHash = this->getRemoteFileHash(vGameFiles[i]);
+                    remoteHash = this->getRemoteFileHash(gamefile);
                 std::string localHash = Util::getLocalFileHash(Globals::globalConfig.sXMLDirectory, filepath.string(), gamename, Globals::globalConfig.bUseFastCheck);
 
                 if (!remoteHash.empty())
@@ -2020,13 +2038,12 @@ std::string Downloader::getRemoteFileHash(const gameFile& gf)
 */
 int Downloader::loadGameDetailsCache()
 {
-    int res = 0;
     std::string cachepath = Globals::globalConfig.sCacheDirectory + "/gamedetails.json";
 
     // Make sure file exists
     boost::filesystem::path path = cachepath;
     if (!boost::filesystem::exists(path)) {
-        return res = 1;
+        return 1;
     }
 
     bptime::ptime now = bptime::second_clock::local_time();
@@ -2560,7 +2577,7 @@ void Downloader::showWishlist()
     return;
 }
 
-void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& tid) {
+void Downloader::processCloudSaveUploadQueue(const Config& conf, const unsigned int& tid) {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
     std::unique_ptr<galaxyAPI> galaxy { new galaxyAPI(Globals::globalConfig.curlConf) };
@@ -2623,7 +2640,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
             (curl_off_t)filecontents.size()
         };
 
-        auto md5 = Util::getChunkHash((std::uint8_t*)filecontents.data(), filecontents.size(), RHASH_MD5);
+        auto md5 = Util::getChunkHash(filecontents.data(), filecontents.size(), RHASH_MD5);
 
         auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
 
@@ -2705,7 +2722,7 @@ void Downloader::processCloudSaveUploadQueue(Config conf, const unsigned int& ti
     msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 }
 
-void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& tid) {
+void Downloader::processCloudSaveDownloadQueue(const Config& conf, const unsigned int& tid) {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
     std::unique_ptr<galaxyAPI> galaxy { new galaxyAPI(Globals::globalConfig.curlConf) };
@@ -2939,7 +2956,7 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
     msgQueue.push(Message("Finished all tasks", MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEFAULT));
 }
 
-void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
+void Downloader::processDownloadQueue(const Config& conf, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
@@ -3001,10 +3018,18 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         filepath = boost::filesystem::absolute(filepath, boost::filesystem::current_path());
         boost::filesystem::path directory = filepath.parent_path();
 
-        // Skip blacklisted files
-        if (conf.blacklist.isBlacklisted(filepath.string()))
+        if (conf.whitelist.has_value())
         {
-            msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
+            if (conf.whitelist->Matches(filepath.string())) {
+                msgQueue.push(Message("Whitelisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
+            } else {
+                continue;
+            }
+        }
+        else if (conf.blacklist.has_value())
+        {
+            if (conf.blacklist->Matches(filepath.string()))
+                msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
 
@@ -3995,19 +4020,13 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
 
     std::vector<galaxyDepotItem> items = this->galaxyGetDepotItemVectorFromJson(json, iGalaxyArch);
 
-    // Remove blacklisted files from items vector
-    for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end();)
+    for (auto it = items.begin(); it != items.end();)
     {
         std::string item_install_path = install_path + "/" + it->path;
-        if (Globals::globalConfig.blacklist.isBlacklisted(item_install_path))
-        {
-            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                std::cout << "Skipping blacklisted file: " << item_install_path << std::endl;
+        if (shouldSkipFile(item_install_path)) {
             it = items.erase(it);
-        }
-        else
-        {
-            ++it;
+        } else {
+            it++;
         }
     }
 
@@ -4051,10 +4070,10 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     std::vector<std::string> deleted_filepaths;
     if (!items_old.empty())
     {
-        for (auto old_item: items_old)
+        for (const auto& old_item: items_old)
         {
             bool isDeleted = true;
-            for (auto item: items)
+            for (const auto& item: items)
             {
                 if (old_item.path == item.path)
                 {
@@ -4070,7 +4089,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     // Delete old files
     if (!deleted_filepaths.empty())
     {
-        for (auto path : deleted_filepaths)
+        for (const auto& path : deleted_filepaths)
         {
             std::string filepath = install_path + "/" + path;
             std::cout << "Deleting " << filepath << std::endl;
@@ -4159,7 +4178,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     }
 }
 
-void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid)
+void Downloader::processGalaxyDownloadQueue(const std::string& install_path, const Config& conf, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
@@ -4297,7 +4316,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     uintmax_t chunk_size = item.chunks[previous_chunk].size_uncompressed;
                     // use fseeko to support large files on 32 bit platforms
                     fseeko(f, item.chunks[previous_chunk].offset_uncompressed, SEEK_SET);
-                    unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+                    char *chunk = new char[chunk_size];
                     if (chunk == NULL)
                     {
                         msgQueue.push(Message(path.string() + ": Memory error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
@@ -4311,11 +4330,11 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     if (fread_size != chunk_size)
                     {
                         msgQueue.push(Message(path.string() + ": Read error - Chunk " + std::to_string(resume_chunk), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
-                        free(chunk);
+                        delete[] chunk;
                         continue;
                     }
                     std::string chunk_hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
-                    free(chunk);
+                    delete[] chunk;
 
                     if (chunk_hash == item.chunks[previous_chunk].md5_uncompressed)
                     {
@@ -4416,7 +4435,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             }
 
             ChunkMemoryStruct chunk;
-            chunk.memory = (char *) malloc(1);
+            chunk.memory = new char[1];
             chunk.size = 0;
 
             curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
@@ -4525,7 +4544,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             if (ofs)
                 ofs.close();
 
-            free(chunk.memory);
+            delete[] chunk.memory;
         }
 
         if (bChunkFailure)
@@ -4654,6 +4673,71 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
     return;
 }
 
+void Downloader::galaxyShowBuildFiles(const std::string& product_id, int build_index) 
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyShowBuildFilesById(id, build_index);
+    }
+}
+
+void Downloader::galaxyShowBuildFilesById(const std::string& product_id, int build_index)
+{
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    if (build_index < 0) {
+        build_index = 0;
+    }
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id);
+
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX) {
+        std::cout << "Galaxy API doesn't have Linux support for build files" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+
+    if (json["items"][build_index]["generation"].asInt() == 1) {
+        json = gogGalaxy->getManifestV1(link);
+    } else if (json["items"][build_index]["generation"].asInt() == 2) {
+        std::string buildHash;
+        buildHash.assign(link.begin() + link.find_last_of("/") + 1, link.end());
+        json = gogGalaxy->getManifestV2(buildHash);
+    } else {
+        std::cout << "Only generation 1 and 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    const auto items = this->galaxyGetDepotItemVectorFromJson(json);
+    Json::Value json_items;
+    for (unsigned int i = 0; i < items.size(); i++) {
+        json_items[i]["product_id"] = items[i].product_id;
+        json_items[i]["path"] = items[i].path;
+        json_items[i]["size"] = static_cast<unsigned int>(items[i].totalSizeUncompressed);
+        json_items[i]["md5"] = items[i].md5;
+        json_items[i]["isDependency"] = items[i].isDependency;
+        if (Globals::globalConfig.whitelist.has_value()) {
+            json_items[i]["whitelisted"] = Globals::globalConfig.whitelist->Matches(items[i].path);
+        }
+        if (Globals::globalConfig.blacklist.has_value()) {
+            json_items[i]["blacklisted"] = Globals::globalConfig.blacklist->Matches(items[i].path);
+        }
+    }
+    Json::StyledStreamWriter().write(std::cout, json_items);
+
+    return;
+}
+
 std::string parseLocationHelper(const std::string &location, const std::map<std::string, std::string> &var) {
     char search_arg[2] {'?', '>'};
     auto it = std::search(std::begin(location), std::end(location), std::begin(search_arg), std::end(search_arg));
@@ -4676,6 +4760,7 @@ std::string parseLocationHelper(const std::string &location, const std::map<std:
 
     return parsedLocation;
 }
+
 std::string parseLocation(const std::string &location, const std::map<std::string, std::string> &var) {
     auto parsedLocation = parseLocationHelper(location, var);
     Util::replaceAllString(parsedLocation, "\\", "/");
@@ -5206,7 +5291,7 @@ std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<ga
                     if (boost::filesystem::is_regular_file(dir_iter->status()))
                     {
                         std::string filepath = dir_iter->path().string();
-                        if (Globals::globalConfig.ignorelist.isBlacklisted(filepath.substr(pathlen)))
+                        if (Globals::globalConfig.ignorelist.has_value() && Globals::globalConfig.ignorelist->Matches(filepath.substr(pathlen)))
                         {
                             if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped ignorelisted file " << filepath << std::endl;
@@ -5458,35 +5543,22 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
 
         // Add files to download queue
         uintmax_t totalSize = 0;
-        for (std::uintmax_t i = 0; i < vZipFiles.size(); ++i)
+        for (const auto& zipfile : vZipFiles)
         {
-            // Don't add blacklisted files
-            if (Globals::globalConfig.blacklist.isBlacklisted(vZipFiles[i].filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cout << "Skipping blacklisted file: " << vZipFiles[i].filepath << std::endl;
-
+            if (shouldSkipFile(zipfile.filepath))
                 continue;
-            }
-            dlQueueGalaxy_MojoSetupHack.push(vZipFiles[i]);
-            iTotalRemainingBytes.fetch_add(vZipFiles[i].comp_size);
-            totalSize += vZipFiles[i].uncomp_size;
+            dlQueueGalaxy_MojoSetupHack.push(zipfile);
+            iTotalRemainingBytes.fetch_add(zipfile.comp_size);
+            totalSize += zipfile.uncomp_size;
         }
 
         // Add symlinks to download queue
-        for (std::uintmax_t i = 0; i < vZipFilesSymlink.size(); ++i)
-        {
-            // Don't add blacklisted files
-            if (Globals::globalConfig.blacklist.isBlacklisted(vZipFilesSymlink[i].filepath))
-            {
-                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-                    std::cout << "Skipping blacklisted file: " << vZipFilesSymlink[i].filepath << std::endl;
-
+        for (const auto& symlink_zipfile : vZipFilesSymlink) {
+            if (shouldSkipFile(symlink_zipfile.filepath))
                 continue;
-            }
-            dlQueueGalaxy_MojoSetupHack.push(vZipFilesSymlink[i]);
-            iTotalRemainingBytes.fetch_add(vZipFilesSymlink[i].comp_size);
-            totalSize += vZipFilesSymlink[i].uncomp_size;
+            dlQueueGalaxy_MojoSetupHack.push(symlink_zipfile);
+            iTotalRemainingBytes.fetch_add(symlink_zipfile.comp_size);
+            totalSize += symlink_zipfile.uncomp_size;
         }
 
         std::cout << game.title << std::endl;
@@ -5681,7 +5753,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack_CombineSplitFiles(const splitFi
     return;
 }
 
-void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const unsigned int& tid)
+void Downloader::processGalaxyDownloadQueue_MojoSetupHack(const Config& conf, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";
 
@@ -6505,13 +6577,9 @@ void Downloader::printGameDetailsAsText(gameDetails& game)
 
 void Downloader::printGameFileDetailsAsText(gameFile& gf)
 {
-    std::string filepath = gf.getFilepath();
-    if (Globals::globalConfig.blacklist.isBlacklisted(filepath))
-    {
-        if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
-            std::cerr << "skipped blacklisted file " << filepath << std::endl;
+    const std::string filepath = gf.getFilepath();
+    if(shouldSkipFile(filepath))
         return;
-    }
 
     std::cout   << "\tid: " << gf.id << std::endl
                 << "\tname: " << gf.name << std::endl

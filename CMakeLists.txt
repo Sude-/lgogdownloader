@@ -37,7 +37,7 @@ file(GLOB SRC_FILES
   src/downloader.cpp
   src/progressbar.cpp
   src/util.cpp
-  src/blacklist.cpp
+  src/filelist.cpp
   src/gamefile.cpp
   src/gamedetails.cpp
   src/galaxyapi.cpp
@@ -149,11 +149,7 @@ if(USE_QT_GUI)
   )
 endif(USE_QT_GUI)
 
-if(Qt6_FOUND)
-  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
-else()
-  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
-endif(Qt6_FOUND)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 if(MSVC)
   # Force to always compile with W4

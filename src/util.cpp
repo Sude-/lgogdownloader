@@ -110,7 +110,7 @@ std::string Util::getFileHashRange(const std::string& filepath, unsigned hash_id
         if ((i == chunks-1) && (remaining != 0))
             chunk_size = remaining;
 
-        unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+        char *chunk = new char[chunk_size];
         if (chunk == NULL)
         {
             std::cerr << "Memory error" << std::endl;
@@ -121,13 +121,13 @@ std::string Util::getFileHashRange(const std::string& filepath, unsigned hash_id
         if (size != chunk_size)
         {
             std::cerr << "Read error" << std::endl;
-            free(chunk);
+            delete[] chunk;
             fclose(infile);
             return result;
         }
 
         rhash_update(rhash_context, chunk, chunk_size);
-        free(chunk);
+        delete[] chunk;
     }
     fclose(infile);
 
@@ -138,7 +138,7 @@ std::string Util::getFileHashRange(const std::string& filepath, unsigned hash_id
     return result;
 }
 
-std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsigned hash_id)
+std::string Util::getChunkHash(const char *chunk, uintmax_t chunk_size, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
     char result[rhash_get_hash_length(hash_id) + 1];
@@ -222,7 +222,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         if ((i == chunks-1) && (remaining != 0))
             chunk_size = remaining;
         uintmax_t range_end = range_begin + chunk_size - 1;
-        unsigned char *chunk = (unsigned char *) malloc(chunk_size * sizeof(unsigned char *));
+        char *chunk = new char[chunk_size];
         if (chunk == NULL)
         {
             std::cerr << "Memory error" << std::endl;
@@ -233,7 +233,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         if (size != chunk_size)
         {
             std::cerr << "Read error" << std::endl;
-            free(chunk);
+            delete[] chunk;
             fclose(infile);
             return res;
         }
@@ -241,7 +241,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
         std::string hash = Util::getChunkHash(chunk, chunk_size, RHASH_MD5);
         rhash_update(rhash_context, chunk, chunk_size); // Update hash for the whole file
 
-        free(chunk);
+        delete[] chunk;
 
         tinyxml2::XMLElement *chunkElem = xml.NewElement("chunk");
         chunkElem->SetAttribute("id", i);

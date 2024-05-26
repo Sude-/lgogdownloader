@@ -11,6 +11,7 @@
 #include "galaxyapi.h"
 #include "globals.h"
 
+#include <optional>
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -58,6 +59,7 @@ int main(int argc, char *argv[])
     Globals::globalConfig.curlConf.sCookiePath = Globals::globalConfig.sConfigDirectory + "/cookies.txt";
     Globals::globalConfig.sConfigFilePath = Globals::globalConfig.sConfigDirectory + "/config.cfg";
     Globals::globalConfig.sBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    Globals::globalConfig.sWhitelistFilePath = Globals::globalConfig.sConfigDirectory + "/whitelist.txt";
     Globals::globalConfig.sIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
     Globals::globalConfig.sGameHasDLCListFilePath = Globals::globalConfig.sConfigDirectory + "/game_has_dlc.txt";
     Globals::globalConfig.sTransformConfigFilePath = Globals::globalConfig.sConfigDirectory + "/transformations.json";
@@ -65,14 +67,15 @@ int main(int argc, char *argv[])
     Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
 
     std::string sDefaultBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
+    std::string sDefaultWhitelistFilePath = Globals::globalConfig.sConfigDirectory + "/whitelist.txt";
     std::string sDefaultIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
 
     std::string priority_help_text = "Set priority by separating values with \",\"\nCombine values by separating with \"+\"";
     // Create help text for --platform option
     std::string platform_text = "Select which installers are downloaded\n";
-    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    for (const auto& platform : GlobalConstants::PLATFORMS)
     {
-        platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
+        platform_text += platform.str + " = " + platform.regexp + "\n";
     }
     platform_text += "All = all";
     platform_text += "\n\n" + priority_help_text;
@@ -80,16 +83,16 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-platform option
     std::string galaxy_platform_text = "Select platform\n";
-    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    for (const auto& platform : GlobalConstants::PLATFORMS)
     {
-        galaxy_platform_text += GlobalConstants::PLATFORMS[i].str + " = " + GlobalConstants::PLATFORMS[i].regexp + "\n";
+        galaxy_platform_text += platform.str + " = " + platform.regexp + "\n";
     }
 
     // Create help text for --language option
     std::string language_text = "Select which language installers are downloaded\n";
-    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    for (const auto& language : GlobalConstants::LANGUAGES)
     {
-        language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        language_text += language.str + " = " + language.regexp + "\n";
     }
     language_text += "All = all";
     language_text += "\n\n" + priority_help_text;
@@ -97,16 +100,16 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-language option
     std::string galaxy_language_text = "Select language\n";
-    for (unsigned int i = 0; i < GlobalConstants::LANGUAGES.size(); ++i)
+    for (const auto& language : GlobalConstants::LANGUAGES)
     {
-        galaxy_language_text += GlobalConstants::LANGUAGES[i].str + " = " + GlobalConstants::LANGUAGES[i].regexp + "\n";
+        galaxy_language_text += language.str + " = " + language.regexp + "\n";
     }
 
     // Create help text for --galaxy-arch option
     std::string galaxy_arch_text = "Select architecture\n";
-    for (unsigned int i = 0; i < GlobalConstants::GALAXY_ARCHS.size(); ++i)
+    for (const auto& arch : GlobalConstants::GALAXY_ARCHS)
     {
-        galaxy_arch_text += GlobalConstants::GALAXY_ARCHS[i].str + " = " + GlobalConstants::GALAXY_ARCHS[i].regexp + "\n";
+        galaxy_arch_text += arch.str + " = " + arch.regexp + "\n";
     }
 
     // Create help text for --subdir-galaxy-install option
@@ -125,9 +128,9 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-cdn-priority option
     std::string galaxy_cdn_priority_text = "Set priority for used CDNs\n";
-    for (unsigned int i = 0; i < GlobalConstants::GALAXY_CDNS.size(); ++i)
+    for (const auto& cdn : GlobalConstants::GALAXY_CDNS)
     {
-        galaxy_cdn_priority_text += GlobalConstants::GALAXY_CDNS[i].str + " = " + GlobalConstants::GALAXY_CDNS[i].regexp + "\n";
+        galaxy_cdn_priority_text += cdn.str + " = " + cdn.regexp + "\n";
     }
     galaxy_cdn_priority_text += "\n" + priority_help_text;
 
@@ -140,22 +143,23 @@ int main(int argc, char *argv[])
 
     // Help text for include and exclude options
     std::string include_options_text;
-    for (unsigned int i = 0; i < GlobalConstants::INCLUDE_OPTIONS.size(); ++i)
+    for (const auto& include_option : GlobalConstants::INCLUDE_OPTIONS)
     {
-        include_options_text += GlobalConstants::INCLUDE_OPTIONS[i].str + " = " + GlobalConstants::INCLUDE_OPTIONS[i].regexp + "\n";
+        include_options_text += include_option.str + " = " + include_option.regexp + "\n";
     }
     include_options_text += "All = all\n";
     include_options_text += "Separate with \",\" to use multiple values";
 
     // Create help text for --list-format option
     std::string list_format_text = "List games/tags\n";
-    for (unsigned int i = 0; i < GlobalConstants::LIST_FORMAT.size(); ++i)
+    for (const auto& list_format: GlobalConstants::LIST_FORMAT)
     {
-        list_format_text += GlobalConstants::LIST_FORMAT[i].str + " = " + GlobalConstants::LIST_FORMAT[i].regexp + "\n";
+        list_format_text += list_format.str + " = " + list_format.regexp + "\n";
     }
 
     std::string galaxy_product_id_install;
     std::string galaxy_product_id_show_builds;
+    std::string galaxy_product_id_show_build_files;
     std::string galaxy_product_id_show_cloud_paths;
     std::string galaxy_product_id_show_local_cloud_paths;
     std::string galaxy_product_cloud_saves;
@@ -242,6 +246,7 @@ int main(int argc, char *argv[])
 #endif
             ("tag", bpo::value<std::string>(&tags)->default_value(""), "Filter using tags. Separate with \",\" to use multiple values")
             ("blacklist", bpo::value<std::string>(&Globals::globalConfig.sBlacklistFilePath)->default_value(sDefaultBlacklistFilePath), "Filepath to blacklist")
+            ("whitelist", bpo::value<std::string>(&Globals::globalConfig.sWhitelistFilePath)->default_value(sDefaultWhitelistFilePath), "Filepath to whitelist")
             ("ignorelist", bpo::value<std::string>(&Globals::globalConfig.sIgnorelistFilePath)->default_value(sDefaultIgnorelistFilePath), "Filepath to ignorelist")
         ;
         // Commandline options (config file)
@@ -303,6 +308,7 @@ int main(int argc, char *argv[])
         options_cli_experimental.add_options()
             ("galaxy-install", bpo::value<std::string>(&galaxy_product_id_install)->default_value(""), "Install game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-builds", bpo::value<std::string>(&galaxy_product_id_show_builds)->default_value(""), "Show game builds using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-show-build-files", bpo::value<std::string>(&galaxy_product_id_show_build_files)->default_value(""), "Show game build files using [product_id/build_index]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-download-cloud-saves", bpo::value<std::string>(&galaxy_product_cloud_saves)->default_value(""), "Download cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-upload-cloud-saves", bpo::value<std::string>(&galaxy_upload_product_cloud_saves)->default_value(""), "Upload cloud saves using product-id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-show-cloud-saves", bpo::value<std::string>(&galaxy_product_id_show_cloud_paths)->default_value(""), "Show game cloud-saves using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
@@ -408,7 +414,23 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                Globals::globalConfig.blacklist.initialize(lines);
+                Globals::globalConfig.blacklist = Filelist(lines);
+            }
+        }
+
+        if (boost::filesystem::exists(Globals::globalConfig.sWhitelistFilePath)) {
+            std::ifstream ifs(Globals::globalConfig.sWhitelistFilePath.c_str());
+            if (!ifs) {
+                std::cerr << "Could not open whitelist file: " << Globals::globalConfig.sWhitelistFilePath << std::endl;
+                return 1;
+            } else {
+                std::string line;
+                std::vector<std::string> lines;
+                while (!ifs.eof()) {
+                    std::getline(ifs, line);
+                    lines.push_back(std::move(line));
+                }
+                Globals::globalConfig.whitelist = Filelist(lines);
             }
         }
 
@@ -429,7 +451,7 @@ int main(int argc, char *argv[])
                     std::getline(ifs, line);
                     lines.push_back(std::move(line));
                 }
-                Globals::globalConfig.ignorelist.initialize(lines);
+                Globals::globalConfig.ignorelist = Filelist(lines);
             }
         }
 
@@ -460,7 +482,7 @@ int main(int argc, char *argv[])
                         std::getline(ifs, line);
                         lines.push_back(std::move(line));
                     }
-                    Globals::globalConfig.gamehasdlc.initialize(lines);
+                    Globals::globalConfig.gamehasdlc = Filelist(lines);
                 }
             }
         }
@@ -831,6 +853,16 @@ int main(int argc, char *argv[])
             build_index = std::stoi(tokens[1]);
         }
         downloader.galaxyShowBuilds(product_id, build_index);
+    }
+    else if (!galaxy_product_id_show_build_files.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_build_files, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2) {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyShowBuildFiles(product_id, build_index);
     }
     else if (!galaxy_product_id_show_cloud_paths.empty())
     {

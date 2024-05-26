@@ -12,8 +12,9 @@
 #include <json/json.h>
 #include <mutex>
 #include <ctime>
+#include <optional>
 
-#include "blacklist.h"
+#include "filelist.h"
 
 struct DirectoryConfig
 {
@@ -281,6 +282,7 @@ class Config
         // File paths
         std::string sConfigFilePath;
         std::string sBlacklistFilePath;
+        std::string sWhitelistFilePath;
         std::string sIgnorelistFilePath;
         std::string sGameHasDLCListFilePath;
         std::string sReportFilePath;
@@ -304,9 +306,10 @@ class Config
         std::string sPassword;
 
         // Lists
-        Blacklist blacklist;
-        Blacklist ignorelist;
-        Blacklist gamehasdlc;
+        std::optional<Filelist> blacklist;
+        std::optional<Filelist> ignorelist;
+        std::optional<Filelist> gamehasdlc;
+        std::optional<Filelist> whitelist;
 
         // Cloud save options
         std::vector<std::string> cloudWhiteList;
