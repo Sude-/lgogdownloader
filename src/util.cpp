@@ -1012,9 +1012,10 @@ std::string Util::transformGamename(const std::string& gamename)
 std::string Util::htmlToXhtml(const std::string& html)
 {
     std::string xhtml;
-    TidyBuffer buffer = {0, 0, 0, 0, 0};
+    TidyBuffer buffer;
     int rc = -1;
     TidyDoc doc = tidyCreate();
+    tidyBufInit(&buffer);
 
     tidyOptSetBool(doc, TidyXhtmlOut, yes);
     tidyOptSetBool(doc, TidyForceOutput, yes);
