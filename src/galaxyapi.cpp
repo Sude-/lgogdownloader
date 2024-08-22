@@ -567,6 +567,11 @@ std::string galaxyAPI::getPathFromDownlinkUrl(const std::string& downlink_url, c
     else
         filename_end_pos = downlink_url_unescaped.find_first_of("?");
 
+    // Downlink doesn't contain "?path=" or "?"
+    // Set end pos to length
+    if (filename_end_pos == std::string::npos)
+        filename_end_pos = downlink_url_unescaped.length();
+
     if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
     {
         path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
