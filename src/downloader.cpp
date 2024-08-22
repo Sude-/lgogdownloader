@@ -265,7 +265,7 @@ int Downloader::login()
         email = Globals::globalConfig.sEmail;
         password = Globals::globalConfig.sPassword;
     }
-    else if (!bForceGUI)
+    else if (!(bForceGUI || Globals::globalConfig.bForceBrowserLogin))
     {
         if (!isatty(STDIN_FILENO)) {
             /* Attempt to read this stuff from elsewhere */
@@ -293,48 +293,49 @@ int Downloader::login()
         }
     }
 
-    if ((email.empty() || password.empty()) && (!headless && !bForceGUI))
+    if ((email.empty() || password.empty())
+        && !(Globals::globalConfig.bForceBrowserLogin || headless || bForceGUI)
+    )
     {
         std::cerr << "Email and/or password empty" << std::endl;
         return 0;
     }
-    else
+
+    // Login to website and Galaxy API
+    if (Globals::globalConfig.bLogin)
     {
-        // Login to website and Galaxy API
-        if (Globals::globalConfig.bLogin)
+        // Delete old cookies
+        if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
+            if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
+                std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
+
+        int iLoginResult = gogWebsite->Login(email, password);
+
+        if (iLoginResult < 1)
         {
-            // Delete old cookies
-            if (boost::filesystem::exists(Globals::globalConfig.curlConf.sCookiePath))
-                if (!boost::filesystem::remove(Globals::globalConfig.curlConf.sCookiePath))
-                    std::cerr << "Failed to delete " << Globals::globalConfig.curlConf.sCookiePath << std::endl;
-
-            int iLoginResult = gogWebsite->Login(email, password);
-
-            if (iLoginResult < 1)
+            std::cerr << "Galaxy: Login failed" << std::endl;
+            return 0;
+        }
+        else
+        {
+            std::cerr << "Galaxy: Login successful" << std::endl;
+            if (!Globals::galaxyConf.getJSON().empty())
             {
-                std::cerr << "Galaxy: Login failed" << std::endl;
-                return 0;
-            }
-            else
-            {
-                std::cerr << "Galaxy: Login successful" << std::endl;
-                if (!Globals::galaxyConf.getJSON().empty())
-                {
-                    this->saveGalaxyJSON();
-                }
-            }
-
-            if (gogWebsite->IsLoggedIn())
-            {
-                std::cerr << "HTTP: Login successful" << std::endl;
-            }
-            else
-            {
-                std::cerr << "HTTP: Login failed" << std::endl;
-                return 0;
+                this->saveGalaxyJSON();
             }
         }
+
+        if (gogWebsite->IsLoggedIn())
+        {
+            std::cerr << "HTTP: Login successful" << std::endl;
+        }
+        else
+        {
+            std::cerr << "HTTP: Login failed" << std::endl;
+            return 0;
+        }
     }
+
     return 1;
 }
 

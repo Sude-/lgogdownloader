@@ -206,6 +206,7 @@ int main(int argc, char *argv[])
 #ifdef USE_QT_GUI_LOGIN
             ("gui-login", bpo::value<bool>(&Globals::globalConfig.bForceGUILogin)->zero_tokens()->default_value(false), "Login (force GUI login)\nImplies --enable-login-gui")
 #endif
+            ("browser-login", bpo::value<bool>(&Globals::globalConfig.bForceBrowserLogin)->zero_tokens()->default_value(false), "Login (force browser login)")
             ("check-login-status", bpo::value<bool>(&bCheckLoginStatus)->zero_tokens()->default_value(false), "Check login status")
             ("list", bpo::value<std::string>(&sListFormat)->implicit_value("games"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
@@ -471,6 +472,11 @@ int main(int argc, char *argv[])
             Globals::globalConfig.bEnableLoginGUI = true;
         }
         #endif
+
+        if (Globals::globalConfig.bForceBrowserLogin)
+        {
+            Globals::globalConfig.bLogin = true;
+        }
 
         if (Globals::globalConfig.bLogin)
         {

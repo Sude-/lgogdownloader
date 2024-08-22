@@ -326,8 +326,8 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
         bRecaptcha = true;
     }
 
-    // Try normal login if GUI is not forced
-    if (!bForceGUI)
+    // Try normal login if GUI or browser is not forced
+    if (!(bForceGUI || Globals::globalConfig.bForceBrowserLogin))
     {
         auth_code = this->LoginGetAuthCodeCurl(login_form_html, email, password);
     }
@@ -343,7 +343,7 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
     }
     #endif
 
-    if (auth_code.empty() && bRecaptcha)
+    if ((auth_code.empty() && bRecaptcha) || Globals::globalConfig.bForceBrowserLogin)
         auth_code = this->LoginGetAuthCodeBrowser(auth_url);
 
     return auth_code;

@@ -232,6 +232,7 @@ class Config
 
         // Booleans
         bool bLogin;
+        bool bForceBrowserLogin;
         bool bSaveConfig;
         bool bResetConfig;
 
