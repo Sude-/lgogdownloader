@@ -36,7 +36,7 @@ struct DownloadConfig
     unsigned int iGalaxyCDN;
     std::vector<unsigned int> vPlatformPriority;
     std::vector<unsigned int> vLanguagePriority;
-    std::vector<unsigned int> vGalaxyCDNPriority;
+    std::vector<std::string> vGalaxyCDNPriority;
     std::vector<std::string> vTags;
     unsigned int iInclude;
     unsigned int iGalaxyPlatform;
@@ -256,6 +256,7 @@ class Config
 #endif
         bool bUseFastCheck;
         bool bTrustAPIForExtras;
+        bool bGalaxyListCDNs;
 
         // Cache
         bool bUseCache;

@@ -4159,6 +4159,69 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     }
 }
 
+void Downloader::galaxyListCDNs(const std::string& product_id, int build_index)
+{
+    std::string id;
+    if(this->galaxySelectProductIdHelper(product_id, id))
+    {
+        if (!id.empty())
+            this->galaxyListCDNsById(id, build_index);
+    }
+}
+
+void Downloader::galaxyListCDNsById(const std::string& product_id, int build_index)
+{
+    if (build_index < 0)
+        build_index = 0;
+
+    std::string sPlatform;
+    unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
+    if (iPlatform == GlobalConstants::PLATFORM_LINUX)
+        sPlatform = "linux";
+    else if (iPlatform == GlobalConstants::PLATFORM_MAC)
+        sPlatform = "osx";
+    else
+        sPlatform = "windows";
+
+    Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+
+    // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
+    if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
+    {
+        std::cout << "Galaxy API doesn't have Linux support" << std::endl;
+
+        return;
+    }
+
+    if (json["items"][build_index]["generation"].asInt() != 2)
+    {
+        std::cout << "Only generation 2 builds are supported currently" << std::endl;
+        return;
+    }
+
+    std::string link = json["items"][build_index]["link"].asString();
+    std::string buildHash;
+    buildHash.assign(link.begin()+link.find_last_of("/")+1, link.end());
+
+    json = gogGalaxy->getSecureLink(product_id, "/");
+
+    std::vector<std::string> vEndpointNames;
+    if (!json.empty())
+    {
+        for (unsigned int i = 0; i < json["urls"].size(); ++i)
+        {
+            std::string endpoint_name = json["urls"][i]["endpoint_name"].asString();
+            if (!endpoint_name.empty())
+                vEndpointNames.push_back(endpoint_name);
+        }
+    }
+
+    for (auto endpoint : vEndpointNames)
+        std::cout << endpoint << std::endl;
+
+    return;
+}
+
 void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Config conf, const unsigned int& tid)
 {
     std::string msg_prefix = "[Thread #" + std::to_string(tid) + "]";

@@ -68,7 +68,7 @@ class galaxyAPI
         Json::Value getDependenciesJson();
         std::vector<galaxyDepotItem> getFilteredDepotItemsVectorFromJson(const Json::Value& depot_json, const std::string& galaxy_language, const std::string& galaxy_arch, const bool& is_dependency = false);
         std::string getPathFromDownlinkUrl(const std::string& downlink_url, const std::string& gamename);
-        std::vector<std::string> cdnUrlTemplatesFromJson(const Json::Value& json, const std::vector<unsigned int>& cdnPriority);
+        std::vector<std::string> cdnUrlTemplatesFromJson(const Json::Value& json, const std::vector<std::string>& cdnPriority);
     protected:
     private:
         CurlConfig curlConf;

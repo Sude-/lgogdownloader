@@ -561,24 +561,21 @@ is removed:
 .br
 > \- _ . ( ) [ ] { }
 .TP
-\fB\-\-galaxy\-cdn\-priority\fR arg (=edgecast,highwinds,akamai,lumen,gog_cdn)
+\fB\-\-galaxy\-cdn\-priority\fR arg (=edgecast,akamai_edgecast_proxy,fastly)
 Set priority for used CDNs
 .br
-Edgecast = ec|edgecast
+Use \-\-galaxy\-list\-cdns to list available CDNs
 .br
-Highwinds = hw|highwinds|high_winds
-.br
-GOG = gog|gog_cdn
-.br
-Lumen = lumen|lumen_cdn
-.br
-Akamai = akamai|akamai_cdn|akamai_ec|ak
-.br
-amai_edgecast_proxy
-.sp 1
 Set priority by separating values with ","
+.TP
+\fB\-\-galaxy\-list-cdns\fR arg
+List available CDNs for a game using product id [product_id/build_index] or
+gamename regex [gamename/build_id]
 .br
-Combine values by separating with "+"
+Build index is used to select a build and defaults to 0 if not specified.
+.br
+Example: 12345/2 selects build 2 for product 12345
+.br
 .SH LANGUAGES
 Languages available to select with \fB\-\-language\fR and \fB\-\-galaxy\-language\fR options
 .br

@@ -124,6 +124,8 @@ class Downloader
 
         void galaxyInstallGame(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
         void galaxyInstallGameById(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
+        void galaxyListCDNs(const std::string& product_id, int build_index = -1);
+        void galaxyListCDNsById(const std::string& product_id, int build_index = -1);
         void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
         void galaxyShowCloudSaves(const std::string& product_id, int build_index = -1);
         void galaxyShowLocalCloudSaves(const std::string& product_id, int build_index = -1);

@@ -125,11 +125,8 @@ int main(int argc, char *argv[])
 
     // Create help text for --galaxy-cdn-priority option
     std::string galaxy_cdn_priority_text = "Set priority for used CDNs\n";
-    for (unsigned int i = 0; i < GlobalConstants::GALAXY_CDNS.size(); ++i)
-    {
-        galaxy_cdn_priority_text += GlobalConstants::GALAXY_CDNS[i].str + " = " + GlobalConstants::GALAXY_CDNS[i].regexp + "\n";
-    }
-    galaxy_cdn_priority_text += "\n" + priority_help_text;
+    galaxy_cdn_priority_text += "Use --galaxy-list-cdns to list available CDNs\n";
+    galaxy_cdn_priority_text += "Set priority by separating values with \",\"";
 
     // Create help text for --check-orphans
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh|mp4)$"; // Limit to files with these extensions (".old" is for renamed older version files)
@@ -155,6 +152,7 @@ int main(int argc, char *argv[])
     }
 
     std::string galaxy_product_id_install;
+    std::string galaxy_product_id_list_cdns;
     std::string galaxy_product_id_show_builds;
     std::string galaxy_product_id_show_cloud_paths;
     std::string galaxy_product_id_show_local_cloud_paths;
@@ -313,7 +311,8 @@ int main(int argc, char *argv[])
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
-            ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,highwinds,akamai,lumen,gog_cdn"), galaxy_cdn_priority_text.c_str())
+            ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,akamai_edgecast_proxy,fastly"), galaxy_cdn_priority_text.c_str())
+            ("galaxy-list-cdns", bpo::value<std::string>(&galaxy_product_id_list_cdns)->default_value(""), "List available CDNs for game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);
@@ -577,7 +576,7 @@ int main(int argc, char *argv[])
         if (Globals::globalConfig.dlConf.iGalaxyArch == 0 || Globals::globalConfig.dlConf.iGalaxyArch == Util::getOptionValue("all", GlobalConstants::GALAXY_ARCHS, false))
             Globals::globalConfig.dlConf.iGalaxyArch = GlobalConstants::ARCH_X64;
 
-        Util::parseOptionString(sGalaxyCDN, Globals::globalConfig.dlConf.vGalaxyCDNPriority, Globals::globalConfig.dlConf.iGalaxyCDN, GlobalConstants::GALAXY_CDNS);
+        Globals::globalConfig.dlConf.vGalaxyCDNPriority = Util::tokenize(sGalaxyCDN, ",");
 
         unsigned int include_value = 0;
         unsigned int exclude_value = 0;
@@ -875,6 +874,17 @@ int main(int argc, char *argv[])
             build_index = std::stoi(tokens[1]);
         }
         downloader.galaxyInstallGame(product_id, build_index, Globals::globalConfig.dlConf.iGalaxyArch);
+    }
+    else if (!galaxy_product_id_list_cdns.empty())
+    {
+        int build_index = -1;
+        std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_list_cdns, "/");
+        std::string product_id = tokens[0];
+        if (tokens.size() == 2)
+        {
+            build_index = std::stoi(tokens[1]);
+        }
+        downloader.galaxyListCDNs(product_id, build_index);
     }
     else if (!galaxy_product_cloud_saves.empty()) {
         int build_index = -1;
