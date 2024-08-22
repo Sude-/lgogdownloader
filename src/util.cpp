@@ -1028,7 +1028,15 @@ std::string Util::htmlToXhtml(const std::string& html)
     if ( rc >= 0 )
         rc = tidySaveBuffer(doc, &buffer);
 
-    xhtml = std::string((char*)buffer.bp, buffer.size);
+    if (rc >= 0)
+    {
+        if (buffer.size > 0)
+            xhtml = std::string((char*)buffer.bp, buffer.size);
+    }
+    else
+    {
+        std::cerr << "Severe error occured: " << std::string(strerror(rc)) << std::endl;
+    }
 
     tidyBufFree(&buffer);
     tidyRelease(doc);
