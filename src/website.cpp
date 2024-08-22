@@ -595,9 +595,27 @@ bool Website::IsloggedInSimple()
     memory.str(std::string());
 
     curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
-    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
+    std::vector<long> response_codes = { 301, 302, 307, 308 };
     if (response_code == 200)
         bIsLoggedIn = true; // We are logged in
+    else if (std::any_of(response_codes.begin(), response_codes.end(),
+            [response_code](long code){return code == response_code;}))
+    {
+        response_code = 0;
+        std::string redir_url = Util::CurlHandleGetInfoString(curlhandle, CURLINFO_REDIRECT_URL);;
+        if (redir_url == "https://embed.gog.com/account")
+        {
+            curl_easy_setopt(curlhandle, CURLOPT_URL, redir_url.c_str());
+            curl_easy_perform(curlhandle);
+            memory.str(std::string());
+
+            curl_easy_getinfo(curlhandle, CURLINFO_RESPONSE_CODE, &response_code);
+            if (response_code == 200)
+                bIsLoggedIn = true; // We are logged in
+        }
+    }
+
+    curl_easy_setopt(curlhandle, CURLOPT_FOLLOWLOCATION, 1);
 
     return bIsLoggedIn;
 }
