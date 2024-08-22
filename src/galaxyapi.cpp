@@ -547,40 +547,51 @@ std::string galaxyAPI::getPathFromDownlinkUrl(const std::string& downlink_url, c
 {
     std::string path;
     std::string downlink_url_unescaped = (std::string)curl_easy_unescape(curlhandle, downlink_url.c_str(), downlink_url.size(), NULL);
+    size_t filename_start_pos = 0;
 
-    // GOG has changed the url formatting few times between 2 different formats.
-    // Try to get proper file name in both cases.
-    size_t filename_end_pos;
-    if (downlink_url_unescaped.find("?path=") != std::string::npos)
+    // If url ends in "/" then remove it
+    if (downlink_url_unescaped.back() == '/')
+        downlink_url_unescaped.assign(downlink_url_unescaped.begin(), downlink_url_unescaped.end()-1);
+
+    // Assume that filename starts after last "/" in url
+    if (downlink_url_unescaped.find_last_of("/") != std::string::npos)
+        filename_start_pos = downlink_url_unescaped.find_last_of("/") + 1;
+
+    // Url contains "/gamename/"
+    if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
+        filename_start_pos = downlink_url_unescaped.find("/" + gamename + "/");
+
+    // Assume that filename ends at the end of url
+    size_t filename_end_pos = downlink_url_unescaped.length();
+
+    // Check to see if url has any query strings
+    if (downlink_url_unescaped.find("?") != std::string::npos)
     {
-        size_t token_pos = downlink_url_unescaped.find("&token=");
-        size_t access_token_pos = downlink_url_unescaped.find("&access_token=");
-        if ((token_pos != std::string::npos) && (access_token_pos != std::string::npos))
-        {
-            filename_end_pos = std::min(token_pos, access_token_pos);
-        }
-        else
-        {
-            filename_end_pos = downlink_url_unescaped.find_first_of("&");
-        }
-    }
-    else
+        // Assume that filename ends at first "?"
         filename_end_pos = downlink_url_unescaped.find_first_of("?");
 
-    // Downlink doesn't contain "?path=" or "?"
-    // Set end pos to length
-    if (filename_end_pos == std::string::npos)
-        filename_end_pos = downlink_url_unescaped.length();
+        // Check for "?path="
+        if (downlink_url_unescaped.find("?path=") != std::string::npos)
+        {
+            size_t token_pos = downlink_url_unescaped.find("&token=");
+            size_t access_token_pos = downlink_url_unescaped.find("&access_token=");
+            if ((token_pos != std::string::npos) && (access_token_pos != std::string::npos))
+            {
+                filename_end_pos = std::min(token_pos, access_token_pos);
+            }
+            else
+            {
+                if (downlink_url_unescaped.find_first_of("&") != std::string::npos)
+                    filename_end_pos = downlink_url_unescaped.find_first_of("&");
+            }
+        }
+    }
 
-    if (downlink_url_unescaped.find("/" + gamename + "/") != std::string::npos)
-    {
-        path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find("/" + gamename + "/"), downlink_url_unescaped.begin()+filename_end_pos);
-    }
-    else
-    {
-        path.assign(downlink_url_unescaped.begin()+downlink_url_unescaped.find_last_of("/")+1, downlink_url_unescaped.begin()+filename_end_pos);
+    path.assign(downlink_url_unescaped.begin()+filename_start_pos, downlink_url_unescaped.begin()+filename_end_pos);
+
+    // Make sure that path contains "/gamename/"
+    if (path.find("/" + gamename + "/") == std::string::npos)
         path = "/" + gamename + "/" + path;
-    }
 
     // Workaround for filename issue caused by different (currently unknown) url formatting scheme
     // https://github.com/Sude-/lgogdownloader/issues/126
