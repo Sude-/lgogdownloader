@@ -1,6 +1,6 @@
 # LGOGDownloader
 
-This repository contains the code of LGOGDownloader which is unoffcial open source downloader for [GOG.com](https://www.gog.com/).
+This repository contains the code of LGOGDownloader which is unofficial open source downloader for [GOG.com](https://www.gog.com/).
 It uses the same API as GOG Galaxy which doesn't have Linux support at the moment.
 
 ## Dependencies
@@ -15,7 +15,7 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [qtwebengine](https://www.qt.io/) if built with -DUSE_QT_GUI=ON
 
 ## Make dependencies
-* [cmake](https://cmake.org/) >= 3.5.0
+* [cmake](https://cmake.org/) >= 3.18.0
 * [ninja](https://github.com/ninja-build/ninja)
 
 ## Debian/Ubuntu
