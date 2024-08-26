@@ -702,10 +702,13 @@ std::vector<wishlistItem> Website::getWishlistItems()
                 item.store_credit = product["price"]["bonusStoreCreditAmount"].isDouble() ? std::to_string(product["price"]["bonusStoreCreditAmount"].asDouble()) + item.currency : product["price"]["bonusStoreCreditAmount"].asString() + item.currency;
 
                 item.url = product["url"].asString();
-                if (item.url.find("/game/") == 0)
-                    item.url = "https://www.gog.com" + item.url;
-                else if (item.url.find("/movie/") == 0)
-                    item.url = "https://www.gog.com" + item.url;
+                if (!(item.url.find("http") == 0))
+                {
+                    if (item.url.front() == '/')
+                        item.url = "https://www.gog.com" + item.url;
+                    else
+                        item.url = "https://www.gog.com/" + item.url;
+                }
 
                 item.title = product["title"].asString();
                 item.bIsBonusStoreCreditIncluded = product["price"]["isBonusStoreCreditIncluded"].asBool();
