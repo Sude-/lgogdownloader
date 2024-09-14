@@ -5278,6 +5278,11 @@ std::vector<std::string> Downloader::galaxyGetOrphanedFiles(const std::vector<ga
                             if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
                                 std::cerr << "skipped ignorelisted file " << filepath << std::endl;
                         }
+                        else if (Globals::globalConfig.blacklist.isBlacklisted(filepath.substr(pathlen)))
+                        {
+                            if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                                std::cerr << "skipped blacklisted file " << filepath << std::endl;
+                        }
                         else
                         {
                             filepath_vector.push_back(dir_iter->path());
