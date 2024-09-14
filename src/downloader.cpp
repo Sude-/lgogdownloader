@@ -1755,6 +1755,9 @@ void Downloader::checkOrphans()
                                 if (config.ignorelist.isBlacklisted(filepath.substr(pathlen))) {
                                     if (config.iMsgLevel >= MSGLEVEL_VERBOSE)
                                         std::cerr << "skipped ignorelisted file " << filepath << std::endl;
+                                } else if (config.blacklist.isBlacklisted(filepath.substr(pathlen))) {
+                                    if (config.iMsgLevel >= MSGLEVEL_VERBOSE)
+                                        std::cerr << "skipped blacklisted file " << filepath << std::endl;
                                 } else {
                                     boost::regex expression(config.sOrphanRegex); // Limit to files matching the regex
                                     boost::match_results<std::string::const_iterator> what;
