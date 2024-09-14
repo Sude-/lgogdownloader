@@ -639,8 +639,11 @@ Hebrew = he|heb|hebrew|he[_\-]IL
 Thai = th|tha|thai|th[_\-]TH
 .SH BLACKLIST
 .fi
+\fI$XDG_CONFIG_HOME/lgogdownloader/blacklist.txt\fP
+.br
 Allows user to specify individual files that should not be downloaded or
-mentioned as orphans.
+mentioned as orphans. See also \fBIGNORELIST\fP for ignoring files during
+orphan check.
 .sp 1
 Each line in the file specifies one blacklist expression, except for empty
 lines and lines starting with #.
@@ -670,6 +673,17 @@ Rp the_witcher_2/extras/the_witcher_2_redkit\.zip
 Rp the_witcher_2/extras/extras_pack_3_hu_pl_ru_tr_zh_\.zip
 .br
 Rp the_witcher_2/extras/extras_pack_2_fr_it_jp_\.zip
+.SH IGNORELIST
+.fi
+\fI$XDG_CONFIG_HOME/lgogdownloader/ignorelist.txt\fP
+.br
+Allows user to specify individual files that should not be mentioned as orphans.
+.br
+Basically the same as blacklist but is used only when checking for orphaned files.
+.br
+See \fBBLACKLIST\fP for details about formatting.
+
+
 .SH PRIORITIES
 Separating values with "," when using \fBlanguage\fP and \fBplatform\fP switches
 enables a priority-based mode: only the first matching one will be downloaded.
