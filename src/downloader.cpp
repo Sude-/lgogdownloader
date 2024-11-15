@@ -3083,6 +3083,21 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         }
 
         std::string xml;
+        bool bFileAlreadyExists = false;
+        bool bIsComplete = false;
+        off_t filesize_api = 0;
+        try
+        {
+            filesize_api = std::stol(gf.size);
+        }
+        catch (std::invalid_argument& e)
+        {
+            filesize_api = 0;
+        }
+
+        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
+            bFileAlreadyExists = true;
+
         if (gf.type & (GlobalConstants::GFTYPE_INSTALLER | GlobalConstants::GFTYPE_PATCH) && conf.dlConf.bRemoteXML)
         {
             std::string xml_url;
@@ -3112,10 +3127,95 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                 }
             }
         }
+        else if ((gf.type & GlobalConstants::GFTYPE_EXTRA) && bFileAlreadyExists)
+        {
+            off_t filesize_local = boost::filesystem::file_size(filepath);
+            off_t filesize_xml = 0;
+            off_t filesize_compare = 0;
 
-        bool bIsComplete = false;
+            if (bLocalXMLExists)
+            {
+                tinyxml2::XMLDocument local_xml;
+                local_xml.LoadFile(local_xml_file.string().c_str());
+                tinyxml2::XMLElement *fileElem = local_xml.FirstChildElement("file");
+
+                if (fileElem)
+                {
+                    std::string total_size = fileElem->Attribute("total_size");
+                    if (!total_size.empty())
+                    {
+                        filesize_xml = std::stol(total_size);
+                        try
+                        {
+                            filesize_xml = std::stol(total_size);
+                        }
+                        catch (std::invalid_argument& e)
+                        {
+                            filesize_xml = 0;
+                        }
+                    }
+                }
+            }
+
+            if(Globals::globalConfig.bTrustAPIForExtras)
+            {
+                filesize_compare = filesize_api;
+            }
+            else
+            {
+                // API is not trusted to give correct details for extras
+                // Get size from content-length header and compare to it instead
+                off_t filesize_content_length = 0;
+                std::ostringstream memory;
+                std::string url = downlinkJson["downlink"].asString();
+
+                curl_easy_setopt(curlheader, CURLOPT_URL, url.c_str());
+                curl_easy_setopt(curlheader, CURLOPT_WRITEDATA, &memory);
+                curl_easy_perform(curlheader);
+                curl_easy_getinfo(curlheader, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &filesize_content_length);
+                memory.str(std::string());
+
+                filesize_compare = filesize_content_length;
+
+                msgQueue.push(Message(filepath.filename().string() + ": filesize_local: " + std::to_string(filesize_local) + ", filesize_api: " + std::to_string(filesize_api) + ", filesize_content_length: " + std::to_string(filesize_content_length), MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEBUG));
+            }
+
+            bool bLocalAssumedComplete = false;
+            if (filesize_xml > 0)
+            {
+                bLocalAssumedComplete = (filesize_local == filesize_xml);
+            }
+
+            if (bLocalAssumedComplete)
+            {
+                bSameVersion = (filesize_local == filesize_compare);
+
+                if (bSameVersion)
+                    bIsComplete = true;
+            }
+            else
+            {
+                if (filesize_local == filesize_compare)
+                {
+                    bIsComplete = true;
+                    bSameVersion = true;
+                }
+                else
+                {
+                    bIsComplete = false;
+                    // Assume same version if smaller than remote file
+                    bSameVersion = (filesize_local < filesize_compare);
+                }
+            }
+        }
+
+        if (bIsComplete)
+        {
+            msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
+        }
+
         bool bResume = false;
-        if (boost::filesystem::exists(filepath) && boost::filesystem::is_regular_file(filepath))
+        if (bFileAlreadyExists && !bIsComplete)
         {
             if (bSameVersion)
             {
@@ -3147,54 +3247,6 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
                             bIsComplete = true; // Set to true so we can skip after saving xml data
                         }
                     }
-                }
-                // Special case for extras because they don't have remote XML data
-                // and the API responses for extras can't be trusted
-                else if (gf.type & GlobalConstants::GFTYPE_EXTRA)
-                {
-                    off_t filesize_local = boost::filesystem::file_size(filepath);
-                    off_t filesize_api = 0;
-                    try
-                    {
-                        filesize_api = std::stol(gf.size);
-                    }
-                    catch (std::invalid_argument& e)
-                    {
-                        filesize_api = 0;
-                    }
-
-                    // Check file size against file size reported by API
-                    if(Globals::globalConfig.bTrustAPIForExtras)
-                    {
-                        if (filesize_local == filesize_api)
-                        {
-                            bIsComplete = true;
-                        }
-                    }
-                    else
-                    {
-                        // API is not trusted to give correct details for extras
-                        // Get size from content-length header and compare to it instead
-                        off_t filesize_content_length = 0;
-                        std::ostringstream memory;
-                        std::string url = downlinkJson["downlink"].asString();
-
-                        curl_easy_setopt(curlheader, CURLOPT_URL, url.c_str());
-                        curl_easy_setopt(curlheader, CURLOPT_WRITEDATA, &memory);
-                        curl_easy_perform(curlheader);
-                        curl_easy_getinfo(curlheader, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &filesize_content_length);
-                        memory.str(std::string());
-
-                        if (filesize_local == filesize_content_length)
-                        {
-                            bIsComplete = true;
-                        }
-
-                        msgQueue.push(Message(filepath.filename().string() + ": filesize_local: " + std::to_string(filesize_local) + ", filesize_api: " + std::to_string(filesize_api) + ", filesize_content_length: " + std::to_string(filesize_content_length), MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEBUG));
-                    }
-
-                    if (bIsComplete)
-                        msgQueue.push(Message("Skipping complete file: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
                 }
             }
             else
