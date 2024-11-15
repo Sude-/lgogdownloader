@@ -3793,6 +3793,40 @@ void Downloader::saveGalaxyJSON()
     }
 }
 
+int Downloader::galaxyGetBuildIndexWithBuildId(Json::Value json, const std::string& build_id)
+{
+    int build_index = -1;
+
+    for (unsigned int i = 0; i < json["items"].size(); ++i)
+    {
+        std::string build_id_json = json["items"][i]["build_id"].asString();
+        if (build_id == build_id_json)
+        {
+            build_index = i;
+            break;
+        }
+    }
+
+    // If we didn't match any build index with given id
+    // Try to use build id as index
+    if (build_index == -1)
+    {
+        int build_id_as_int = -1;
+        try
+        {
+            build_id_as_int = std::stoi(build_id);
+        }
+        catch (...)
+        {
+            // Failed to cast build id to int
+        }
+
+        build_index = build_id_as_int;
+    }
+
+    return build_index;
+}
+
 bool Downloader::galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product)
 {
     selected_product = product_id;
@@ -3935,21 +3969,18 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
     return items;
 }
 
-void Downloader::galaxyInstallGame(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+void Downloader::galaxyInstallGame(const std::string& product_id, const std::string& build_id, const unsigned int& iGalaxyArch)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->galaxyInstallGameById(id, build_index, iGalaxyArch);
+            this->galaxyInstallGameById(id, build_id, iGalaxyArch);
     }
 }
 
-void Downloader::galaxyInstallGameById(const std::string& product_id, int build_index, const unsigned int& iGalaxyArch)
+void Downloader::galaxyInstallGameById(const std::string& product_id, const std::string& build_id, const unsigned int& iGalaxyArch)
 {
-    if (build_index < 0)
-        build_index = 0;
-
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
     if (iPlatform == GlobalConstants::PLATFORM_LINUX)
@@ -3972,6 +4003,9 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
 
         return;
     }
+
+    int build_index = this->galaxyGetBuildIndexWithBuildId(json, build_id);
+    build_index = std::max(0, build_index);
 
     if (json["items"][build_index]["generation"].asInt() != 2)
     {
@@ -4029,15 +4063,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
 
         if (!old_build_id.empty())
         {
-            for (unsigned int i = 0; i < json_builds["items"].size(); ++i)
-            {
-                std::string build_id = json_builds["items"][i]["build_id"].asString();
-                if (build_id == old_build_id)
-                {
-                    old_build_index = i;
-                    break;
-                }
-            }
+            old_build_index = this->galaxyGetBuildIndexWithBuildId(json_builds, old_build_id);
         }
     }
 
@@ -4163,21 +4189,18 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, int build_
     }
 }
 
-void Downloader::galaxyListCDNs(const std::string& product_id, int build_index)
+void Downloader::galaxyListCDNs(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->galaxyListCDNsById(id, build_index);
+            this->galaxyListCDNsById(id, build_id);
     }
 }
 
-void Downloader::galaxyListCDNsById(const std::string& product_id, int build_index)
+void Downloader::galaxyListCDNsById(const std::string& product_id, const std::string& build_id)
 {
-    if (build_index < 0)
-        build_index = 0;
-
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
     if (iPlatform == GlobalConstants::PLATFORM_LINUX)
@@ -4196,6 +4219,9 @@ void Downloader::galaxyListCDNsById(const std::string& product_id, int build_ind
 
         return;
     }
+
+    int build_index = this->galaxyGetBuildIndexWithBuildId(json, build_id);
+    build_index = std::max(0, build_index);
 
     if (json["items"][build_index]["generation"].asInt() != 2)
     {
@@ -4624,17 +4650,17 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
     return;
 }
 
-void Downloader::galaxyShowBuilds(const std::string& product_id, int build_index)
+void Downloader::galaxyShowBuilds(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->galaxyShowBuildsById(id, build_index);
+            this->galaxyShowBuildsById(id, build_id);
     }
 }
 
-void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_index)
+void Downloader::galaxyShowBuildsById(const std::string& product_id, const std::string& build_id)
 {
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
@@ -4685,6 +4711,8 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, int build_i
 
         return;
     }
+
+    int build_index = this->galaxyGetBuildIndexWithBuildId(json, build_id);
 
     if (build_index < 0)
     {
@@ -4765,57 +4793,57 @@ std::pair<std::string::const_iterator, std::string::const_iterator> getline(std:
     return { end, end };
 }
 
-void Downloader::uploadCloudSaves(const std::string& product_id, int build_index)
+void Downloader::uploadCloudSaves(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->uploadCloudSavesById(id, build_index);
+            this->uploadCloudSavesById(id, build_id);
     }
 }
 
-void Downloader::deleteCloudSaves(const std::string& product_id, int build_index)
+void Downloader::deleteCloudSaves(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->deleteCloudSavesById(id, build_index);
+            this->deleteCloudSavesById(id, build_id);
     }
 }
 
-void Downloader::downloadCloudSaves(const std::string& product_id, int build_index)
+void Downloader::downloadCloudSaves(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->downloadCloudSavesById(id, build_index);
+            this->downloadCloudSavesById(id, build_id);
     }
 }
 
-void Downloader::galaxyShowCloudSaves(const std::string& product_id, int build_index)
+void Downloader::galaxyShowCloudSaves(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->galaxyShowCloudSavesById(id, build_index);
+            this->galaxyShowCloudSavesById(id, build_id);
     }
 }
 
-void Downloader::galaxyShowLocalCloudSaves(const std::string& product_id, int build_index)
+void Downloader::galaxyShowLocalCloudSaves(const std::string& product_id, const std::string& build_id)
 {
     std::string id;
     if(this->galaxySelectProductIdHelper(product_id, id))
     {
         if (!id.empty())
-            this->galaxyShowLocalCloudSavesById(id, build_index);
+            this->galaxyShowLocalCloudSavesById(id, build_id);
     }
 }
 
-std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::string& product_id, int build_index) {
+std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::string& product_id, const std::string& build_id) {
     std::string sPlatform;
     unsigned int iPlatform = Globals::globalConfig.dlConf.iGalaxyPlatform;
     if (iPlatform == GlobalConstants::PLATFORM_LINUX) {
@@ -4832,6 +4860,7 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
 
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
 
+    int build_index = this->galaxyGetBuildIndexWithBuildId(json, build_id);
     build_index = std::max(0, build_index);
 
     std::string link = json["items"][build_index]["link"].asString();
@@ -4917,8 +4946,8 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
     return name_to_location;
 }
 
-int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f) {
-    auto name_to_location = this->cloudSaveLocations(product_id, build_index);
+int Downloader::cloudSaveListByIdForEach(const std::string& product_id, const std::string& build_id, const std::function<void(cloudSaveFile &)> &f) {
+    auto name_to_location = this->cloudSaveLocations(product_id, build_id);
     if(name_to_location.empty()) {
         std::cout << "No cloud save locations found" << std::endl;
         return -1;
@@ -4955,9 +4984,9 @@ int Downloader::cloudSaveListByIdForEach(const std::string& product_id, int buil
     return 0;
 }
 
-void Downloader::uploadCloudSavesById(const std::string& product_id, int build_index)
+void Downloader::uploadCloudSavesById(const std::string& product_id, const std::string& build_id)
 {
-    auto name_to_locations = cloudSaveLocations(product_id, build_index);
+    auto name_to_locations = cloudSaveLocations(product_id, build_id);
 
     if(name_to_locations.empty()) {
         std::cout << "Cloud saves not supported for this game" << std::endl;
@@ -5007,7 +5036,7 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
         return;
     }
 
-    auto res = this->cloudSaveListByIdForEach(product_id, build_index, [&](cloudSaveFile &csf) {
+    auto res = this->cloudSaveListByIdForEach(product_id, build_id, [&](cloudSaveFile &csf) {
         auto it = path_to_cloudSaveFile.find(csf.path);
 
         //If remote save is not locally stored, skip
@@ -5061,7 +5090,7 @@ void Downloader::uploadCloudSavesById(const std::string& product_id, int build_i
     vDownloadInfo.clear();
 }
 
-void Downloader::deleteCloudSavesById(const std::string& product_id, int build_index) {
+void Downloader::deleteCloudSavesById(const std::string& product_id, const std::string& build_id) {
     if(Globals::globalConfig.cloudWhiteList.empty() && !Globals::globalConfig.bCloudForce) {
         std::cout << "No files have been whitelisted, either use \'--cloud-whitelist\' or \'--cloud-force\'" << std::endl;
         return;
@@ -5085,7 +5114,7 @@ void Downloader::deleteCloudSavesById(const std::string& product_id, int build_i
     curl_easy_setopt(dlhandle, CURLOPT_HTTPHEADER, header);
     curl_easy_setopt(dlhandle, CURLOPT_CUSTOMREQUEST, "DELETE");
 
-    this->cloudSaveListByIdForEach(product_id, build_index, [dlhandle](cloudSaveFile &csf) {
+    this->cloudSaveListByIdForEach(product_id, build_id, [dlhandle](cloudSaveFile &csf) {
         auto url = "https://cloudstorage.gog.com/v1/" + Globals::galaxyConf.getUserId() + '/' + Globals::galaxyConf.getClientId() + '/' + csf.path;
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
 
@@ -5103,8 +5132,8 @@ void Downloader::deleteCloudSavesById(const std::string& product_id, int build_i
     curl_easy_cleanup(dlhandle);
 }
 
-void Downloader::downloadCloudSavesById(const std::string& product_id, int build_index) {
-    auto res = this->cloudSaveListByIdForEach(product_id, build_index, [](cloudSaveFile &csf) {
+void Downloader::downloadCloudSavesById(const std::string& product_id, const std::string& build_id) {
+    auto res = this->cloudSaveListByIdForEach(product_id, build_id, [](cloudSaveFile &csf) {
         boost::filesystem::path filepath = csf.location;
 
         if(boost::filesystem::exists(filepath)) {
@@ -5155,9 +5184,9 @@ void Downloader::downloadCloudSavesById(const std::string& product_id, int build
     vDownloadInfo.clear();
 }
 
-void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int build_index)
+void Downloader::galaxyShowCloudSavesById(const std::string& product_id, const std::string& build_id)
 {
-    this->cloudSaveListByIdForEach(product_id, build_index, [](cloudSaveFile &csf) {
+    this->cloudSaveListByIdForEach(product_id, build_id, [](cloudSaveFile &csf) {
         boost::filesystem::path filepath = csf.location;
         filepath = boost::filesystem::absolute(filepath, boost::filesystem::current_path());
 
@@ -5183,8 +5212,8 @@ void Downloader::galaxyShowCloudSavesById(const std::string& product_id, int bui
     });
 }
 
-void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, int build_index) {
-    auto name_to_locations = cloudSaveLocations(product_id, build_index);
+void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, const std::string& build_id) {
+    auto name_to_locations = cloudSaveLocations(product_id, build_id);
 
     if(name_to_locations.empty()) {
         std::cout << "Cloud saves not supported for this game" << std::endl;
@@ -5223,7 +5252,7 @@ void Downloader::galaxyShowLocalCloudSavesById(const std::string& product_id, in
         return;
     }
 
-    this->cloudSaveListByIdForEach(product_id, build_index, [&](cloudSaveFile &csf) {
+    this->cloudSaveListByIdForEach(product_id, build_id, [&](cloudSaveFile &csf) {
         auto it = path_to_cloudSaveFile.find(csf.path);
 
         //If remote save is not locally stored, skip

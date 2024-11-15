@@ -828,89 +828,89 @@ int main(int argc, char *argv[])
         downloader.checkStatus();
     else if (!galaxy_product_id_show_builds.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_builds, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.galaxyShowBuilds(product_id, build_index);
+        downloader.galaxyShowBuilds(product_id, build_id);
     }
     else if (!galaxy_product_id_show_cloud_paths.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_cloud_paths, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.galaxyShowCloudSaves(product_id, build_index);
+        downloader.galaxyShowCloudSaves(product_id, build_id);
     }
     else if (!galaxy_product_id_show_local_cloud_paths.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_show_local_cloud_paths, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.galaxyShowLocalCloudSaves(product_id, build_index);
+        downloader.galaxyShowLocalCloudSaves(product_id, build_id);
     }
     else if (!galaxy_product_cloud_saves_delete.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_cloud_saves_delete, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.deleteCloudSaves(product_id, build_index);
+        downloader.deleteCloudSaves(product_id, build_id);
     }
     else if (!galaxy_product_id_install.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_install, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.galaxyInstallGame(product_id, build_index, Globals::globalConfig.dlConf.iGalaxyArch);
+        downloader.galaxyInstallGame(product_id, build_id, Globals::globalConfig.dlConf.iGalaxyArch);
     }
     else if (!galaxy_product_id_list_cdns.empty())
     {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_id_list_cdns, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.galaxyListCDNs(product_id, build_index);
+        downloader.galaxyListCDNs(product_id, build_id);
     }
     else if (!galaxy_product_cloud_saves.empty()) {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_product_cloud_saves, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.downloadCloudSaves(product_id, build_index);
+        downloader.downloadCloudSaves(product_id, build_id);
     }
     else if (!galaxy_upload_product_cloud_saves.empty()) {
-        int build_index = -1;
+        std::string build_id;
         std::vector<std::string> tokens = Util::tokenize(galaxy_upload_product_cloud_saves, "/");
         std::string product_id = tokens[0];
         if (tokens.size() == 2)
         {
-            build_index = std::stoi(tokens[1]);
+            build_id = tokens[1];
         }
-        downloader.uploadCloudSaves(product_id, build_index);
+        downloader.uploadCloudSaves(product_id, build_id);
     }
     else
     {

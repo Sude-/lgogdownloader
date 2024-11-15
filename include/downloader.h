@@ -104,12 +104,12 @@ class Downloader
         void repair();
         void download();
 
-        void downloadCloudSaves(const std::string& product_id, int build_index = -1);
-        void downloadCloudSavesById(const std::string& product_id, int build_index = -1);
-        void uploadCloudSaves(const std::string& product_id, int build_index = -1);
-        void uploadCloudSavesById(const std::string& product_id, int build_index = -1);
-        void deleteCloudSaves(const std::string& product_id, int build_index = -1);
-        void deleteCloudSavesById(const std::string& product_id, int build_index = -1);
+        void downloadCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
+        void downloadCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
+        void uploadCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
+        void uploadCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
+        void deleteCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
+        void deleteCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
 
         void checkOrphans();
         void checkStatus();
@@ -122,20 +122,20 @@ class Downloader
         std::deque< std::pair<time_t, uintmax_t> > TimeAndSize;
         void saveGalaxyJSON();
 
-        void galaxyInstallGame(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
-        void galaxyInstallGameById(const std::string& product_id, int build_index = -1, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
-        void galaxyListCDNs(const std::string& product_id, int build_index = -1);
-        void galaxyListCDNsById(const std::string& product_id, int build_index = -1);
-        void galaxyShowBuilds(const std::string& product_id, int build_index = -1);
-        void galaxyShowCloudSaves(const std::string& product_id, int build_index = -1);
-        void galaxyShowLocalCloudSaves(const std::string& product_id, int build_index = -1);
-        void galaxyShowLocalCloudSavesById(const std::string& product_id, int build_index = -1);
-        void galaxyShowBuildsById(const std::string& product_id, int build_index = -1);
-        void galaxyShowCloudSavesById(const std::string& product_id, int build_index = -1);
+        void galaxyInstallGame(const std::string& product_id, const std::string& build_id = std::string(), const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
+        void galaxyInstallGameById(const std::string& product_id, const std::string& build_id = std::string(), const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
+        void galaxyListCDNs(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyListCDNsById(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowBuilds(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowLocalCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowLocalCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowBuildsById(const std::string& product_id, const std::string& build_id = std::string());
+        void galaxyShowCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
     protected:
     private:
-        std::map<std::string, std::string> cloudSaveLocations(const std::string& product_id, int build_index);
-        int cloudSaveListByIdForEach(const std::string& product_id, int build_index, const std::function<void(cloudSaveFile &)> &f);
+        std::map<std::string, std::string> cloudSaveLocations(const std::string& product_id, const std::string& build_id = std::string());
+        int cloudSaveListByIdForEach(const std::string& product_id, const std::string& build_id, const std::function<void(cloudSaveFile &)> &f);
 
         CURLcode downloadFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
         int repairFile(const std::string& url, const std::string& filepath, const std::string& xml_data = std::string(), const std::string& gamename = std::string());
@@ -177,6 +177,7 @@ class Downloader
         std::string getGalaxyInstallDirectory(galaxyAPI *galaxyHandle, const Json::Value& manifest);
         bool galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product);
         std::vector<galaxyDepotItem> galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
+        int galaxyGetBuildIndexWithBuildId(Json::Value json, const std::string& build_id = std::string());
 
         Website *gogWebsite;
         galaxyAPI *gogGalaxy;
