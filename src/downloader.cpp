@@ -579,6 +579,10 @@ int Downloader::listGames()
         }
         std::cout << userdata << std::endl;
     }
+    else if (Globals::globalConfig.iListFormat == GlobalConstants::LIST_FORMAT_WISHLIST)
+    {
+        this->showWishlist();
+    }
     else
     {
         if (this->games.empty()) {

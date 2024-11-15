@@ -108,6 +108,7 @@ namespace GlobalConstants
     const unsigned int LIST_FORMAT_TAGS            = 1 << 3;
     const unsigned int LIST_FORMAT_TRANSFORMATIONS = 1 << 4;
     const unsigned int LIST_FORMAT_USERDATA        = 1 << 5;
+    const unsigned int LIST_FORMAT_WISHLIST        = 1 << 6;
 
     const std::vector<optionsStruct> LIST_FORMAT =
     {
@@ -116,7 +117,8 @@ namespace GlobalConstants
         { LIST_FORMAT_DETAILS_JSON, "json",    "JSON",    "j|json"    },
         { LIST_FORMAT_TAGS,         "tags",    "Tags",    "t|tags"    },
         { LIST_FORMAT_TRANSFORMATIONS, "transform", "Transformations", "tr|transform|transformations" },
-        { LIST_FORMAT_USERDATA,     "userdata", "User data", "ud|userdata" }
+        { LIST_FORMAT_USERDATA,     "userdata", "User data", "ud|userdata" },
+        { LIST_FORMAT_WISHLIST,     "wishlist", "Wishlist", "w|wishlist" }
     };
 
     const unsigned int GFTYPE_BASE_INSTALLER = 1 << 0;

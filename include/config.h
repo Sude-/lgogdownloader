@@ -242,7 +242,6 @@ class Config
         bool bUpdated;
         bool bNew;
         bool bCheckStatus;
-        bool bShowWishlist;
         bool bNotifications;
         bool bIncludeHiddenProducts;
         bool bSizeOnly;

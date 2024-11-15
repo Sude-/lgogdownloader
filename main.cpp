@@ -227,7 +227,6 @@ int main(int argc, char *argv[])
             ("no-platform-detection", bpo::value<bool>(&bNoPlatformDetection)->zero_tokens()->default_value(false), "Don't try to detect supported platforms from game shelf.\nSkips the initial fast platform detection and detects the supported platforms from game details which is slower but more accurate.\nUseful in case platform identifier is missing for some games in the game shelf.\nUsing --platform with --list doesn't work with this option.")
             ("download-file", bpo::value<std::string>(&Globals::globalConfig.sFileIdString)->default_value(""), "Download files using fileid\n\nFormat:\n\"gamename/fileid\"\n\"gamename/dlc_gamename/fileid\"\n\"gogdownloader://gamename/fileid\"\n\"gogdownloader://gamename/dlc_name/fileid\"\n\nMultiple files:\n\"gamename1/fileid1,gamename2/fileid2,gamename2/dlcname/fileid1\"\n\nThis option ignores all subdir options. The files are downloaded to directory specified with --directory option.")
             ("output-file,o", bpo::value<std::string>(&Globals::globalConfig.sOutputFilename)->default_value(""), "Set filename of file downloaded with --download-file.")
-            ("wishlist", bpo::value<bool>(&Globals::globalConfig.bShowWishlist)->zero_tokens()->default_value(false), "Show wishlist")
             ("cacert", bpo::value<std::string>(&Globals::globalConfig.curlConf.sCACertPath)->default_value(""), "Path to CA certificate bundle in PEM format")
             ("respect-umask", bpo::value<bool>(&Globals::globalConfig.bRespectUmask)->zero_tokens()->default_value(false), "Do not adjust permissions of sensitive files")
             ("user-agent", bpo::value<std::string>(&Globals::globalConfig.curlConf.sUserAgent)->default_value(DEFAULT_USER_AGENT), "Set user agent")
@@ -802,9 +801,7 @@ int main(int argc, char *argv[])
 
     int res = 0;
 
-    if (Globals::globalConfig.bShowWishlist)
-        downloader.showWishlist();
-    else if (Globals::globalConfig.bUpdateCache)
+    if (Globals::globalConfig.bUpdateCache)
         downloader.updateCache();
     else if (Globals::globalConfig.bNotifications)
         downloader.checkNotifications();
