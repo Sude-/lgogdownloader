@@ -817,6 +817,12 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
 
     if (!conf.sCACertPath.empty())
         curl_easy_setopt(curlhandle, CURLOPT_CAINFO, conf.sCACertPath.c_str());
+
+    if (!conf.sInterface.empty())
+    {
+        curl_easy_setopt(curlhandle, CURLOPT_DNS_INTERFACE, conf.sInterface.c_str());
+        curl_easy_setopt(curlhandle, CURLOPT_INTERFACE, conf.sInterface.c_str());
+    }
 }
 
 std::string Util::CurlHandleGetInfoString(CURL* curlhandle, CURLINFO info)

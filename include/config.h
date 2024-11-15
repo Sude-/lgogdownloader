@@ -222,6 +222,7 @@ struct CurlConfig
     curl_off_t iDownloadRate;
     long int iLowSpeedTimeout;
     long int iLowSpeedTimeoutRate;
+    std::string sInterface;
 };
 
 class Config

@@ -292,6 +292,7 @@ int main(int argc, char *argv[])
             ("check-free-space", bpo::value<bool>(&Globals::globalConfig.dlConf.bFreeSpaceCheck)->zero_tokens()->default_value(false), "Check for available free space before starting download")
             ("no-fast-status-check", bpo::value<bool>(&bNoFastStatusCheck)->zero_tokens()->default_value(false), "Don't use fast status check.\nMakes --status much slower but able to catch corrupted files by calculating local file hash for all files.")
             ("trust-api-for-extras", bpo::value<bool>(&Globals::globalConfig.bTrustAPIForExtras)->zero_tokens()->default_value(false), "Trust API responses for extras to be correct.")
+            ("interface", bpo::value<std::string>(&Globals::globalConfig.curlConf.sInterface)->default_value(""), "Perform operations using a specified network interface")
         ;
 
         options_cli_no_cfg_hidden.add_options()
