@@ -57,6 +57,7 @@ struct DownloadConfig
     bool bDuplicateHandler;
     bool bGalaxyDependencies;
     bool bDeleteOrphans;
+    bool bGalaxyLowercasePath;
 };
 
 struct gameSpecificConfig

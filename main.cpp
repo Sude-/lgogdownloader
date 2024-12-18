@@ -314,6 +314,7 @@ int main(int argc, char *argv[])
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
             ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,akamai_edgecast_proxy,fastly"), galaxy_cdn_priority_text.c_str())
             ("galaxy-list-cdns", bpo::value<std::string>(&galaxy_product_id_list_cdns)->default_value(""), "List available CDNs for game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
+            ("galaxy-lowercase-path", bpo::value<bool>(&Globals::globalConfig.dlConf.bGalaxyLowercasePath)->zero_tokens()->default_value(false), "Make filepath lowercase for Windows game files")
         ;
 
         options_cli_all.add(options_cli_no_cfg).add(options_cli_cfg).add(options_cli_experimental);

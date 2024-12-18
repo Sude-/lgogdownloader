@@ -312,6 +312,12 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
                 item.sfc_size = json["depot"]["items"][i]["sfcRef"]["size"].asLargestUInt();
             }
 
+            if (Globals::globalConfig.dlConf.bGalaxyLowercasePath &&
+                Globals::globalConfig.dlConf.iGalaxyPlatform == GlobalConstants::PLATFORM_WINDOWS)
+            {
+                boost::algorithm::to_lower(item.path);
+            }
+
             while (Util::replaceString(item.path, "\\", "/"));
             for (unsigned int j = 0; j < json["depot"]["items"][i]["chunks"].size(); ++j)
             {
