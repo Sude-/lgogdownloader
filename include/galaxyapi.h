@@ -38,6 +38,10 @@ struct galaxyDepotItem
     std::string md5;
     std::string product_id;
     bool isDependency = false;
+    bool isSmallFilesContainer = false;
+    bool isInSFC = false;
+    uintmax_t sfc_offset;
+    uintmax_t sfc_size;
 };
 
 class galaxyAPI

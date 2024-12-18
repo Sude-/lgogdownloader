@@ -4013,12 +4013,16 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
         }
     }
 
-    // Set product id for items
+    // Set product id for items and add product id to small files container name
     for (auto it = items.begin(); it != items.end(); ++it)
     {
         if (it->product_id.empty())
         {
             it->product_id = product_id;
+        }
+        if (it->isSmallFilesContainer)
+        {
+            it->path += "_" + it->product_id;
         }
     }
 
@@ -4102,6 +4106,49 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, const std:
         else
         {
             ++it;
+        }
+    }
+
+    std::vector<galaxyDepotItem> items_smallfiles;
+    std::vector<galaxyDepotItem> sfc_vector;
+    bool bUseSmallFilesContainer = true;
+    for (auto item : items)
+    {
+        if (item.isInSFC)
+        {
+            std::string item_install_path = install_path + "/" + item.path;
+            if (boost::filesystem::exists(item_install_path))
+            {
+                bUseSmallFilesContainer = false;
+                break;
+            }
+        }
+    }
+
+    if (!bUseSmallFilesContainer)
+    {
+        for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end();)
+        {
+            if (it->isSmallFilesContainer)
+                it = items.erase(it);
+            else
+                ++it;
+        }
+    }
+    else
+    {
+        for (std::vector<galaxyDepotItem>::iterator it = items.begin(); it != items.end();)
+        {
+            if (it->isSmallFilesContainer)
+                sfc_vector.push_back(*it);
+
+            if (it->isInSFC)
+            {
+                items_smallfiles.push_back(*it);
+                it = items.erase(it);
+            }
+            else
+                ++it;
         }
     }
 
@@ -4227,7 +4274,66 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, const std:
     vThreads.clear();
     vDownloadInfo.clear();
 
+    if (bUseSmallFilesContainer)
+    {
+        for (auto container : sfc_vector)
+        {
+            std::string container_install_path = install_path + "/" + container.path;
+            if (!boost::filesystem::exists(container_install_path))
+                continue;
+
+            std::cout << "Extracting small files container " << container_install_path << std::endl;
+
+            for (auto item : items_smallfiles)
+            {
+                if (item.product_id != container.product_id)
+                    continue;
+
+                std::string item_install_path = install_path + "/" + item.path;
+                std::cout << item_install_path << std::endl;
+                std::ifstream sfc(container_install_path, std::ifstream::binary);
+                if (sfc)
+                {
+                    sfc.seekg(item.sfc_offset, sfc.beg);
+                    char *filecontents = (char *) malloc(item.sfc_size);
+                    sfc.read(filecontents, item.sfc_size);
+                    sfc.close();
+
+                    // Check that directory exists and create it
+                    boost::filesystem::path path = item_install_path;
+                    boost::filesystem::path directory = path.parent_path();
+                    if (!boost::filesystem::exists(directory))
+                    {
+                        if (!boost::filesystem::create_directories(directory))
+                        {
+                            std::cout << "Failed to create directory: " << directory << std::endl;
+                            free(filecontents);
+                            continue;
+                        }
+                    }
+
+                    std::ofstream output(item_install_path, std::ofstream::binary);
+                    if (output)
+                    {
+                        output.write(filecontents, item.sfc_size);
+                        output.close();
+                    }
+                    free(filecontents);
+                }
+            }
+
+            std::cout << "Deleting small files container " << container_install_path << std::endl;
+            if (!boost::filesystem::remove(container_install_path))
+                std::cerr << "Failed to delete " << container_install_path << std::endl;
+        }
+    }
+
     std::cout << "Checking for orphaned files" << std::endl;
+    if (bUseSmallFilesContainer)
+    {
+        // Add small files back to items vector for ophan checking
+        items.insert(std::end(items), std::begin(items_smallfiles), std::end(items_smallfiles));
+    }
     std::vector<std::string> orphans = this->galaxyGetOrphanedFiles(items, install_path);
     std::cout << "\t" << orphans.size() << " orphaned files" << std::endl;
     for (unsigned int i = 0; i < orphans.size(); ++i)

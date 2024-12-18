@@ -255,6 +255,45 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
     Json::Value json = this->getManifestV2(hash, is_dependency);
 
     std::vector<galaxyDepotItem> items;
+    if (json["depot"].isMember("smallFilesContainer"))
+    {
+        if (json["depot"]["smallFilesContainer"]["chunks"].isArray())
+        {
+            galaxyDepotItem item;
+            item.totalSizeCompressed = 0;
+            item.totalSizeUncompressed = 0;
+            item.path = "galaxy_smallfilescontainer";
+            item.isDependency = is_dependency;
+            item.isSmallFilesContainer = true;
+
+            for (unsigned int i = 0; i < json["depot"]["smallFilesContainer"]["chunks"].size(); ++i)
+            {
+                Json::Value json_chunk = json["depot"]["smallFilesContainer"]["chunks"][i];
+
+                galaxyDepotItemChunk chunk;
+                chunk.md5_compressed = json_chunk["compressedMd5"].asString();
+                chunk.md5_uncompressed = json_chunk["md5"].asString();
+                chunk.size_compressed = json_chunk["compressedSize"].asLargestUInt();
+                chunk.size_uncompressed = json_chunk["size"].asLargestUInt();
+
+                chunk.offset_compressed = item.totalSizeCompressed;
+                chunk.offset_uncompressed = item.totalSizeUncompressed;
+
+                item.totalSizeCompressed += chunk.size_compressed;
+                item.totalSizeUncompressed += chunk.size_uncompressed;
+                item.chunks.push_back(chunk);
+            }
+
+            if (json["depot"]["smallFilesContainer"].isMember("md5"))
+                item.md5 = json["depot"]["smallFilesContainer"]["md5"].asString();
+            else if (json["depot"]["smallFilesContainer"]["chunks"].size() == 1)
+                item.md5 = json["depot"]["smallFilesContainer"]["chunks"][0]["md5"].asString();
+            else
+                item.md5 = std::string();
+
+            items.push_back(item);
+        }
+    }
 
     for (unsigned int i = 0; i < json["depot"]["items"].size(); ++i)
     {
@@ -266,14 +305,23 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
             item.path = json["depot"]["items"][i]["path"].asString();
             item.isDependency = is_dependency;
 
+            if (json["depot"]["items"][i].isMember("sfcRef"))
+            {
+                item.isInSFC = true;
+                item.sfc_offset = json["depot"]["items"][i]["sfcRef"]["offset"].asLargestUInt();
+                item.sfc_size = json["depot"]["items"][i]["sfcRef"]["size"].asLargestUInt();
+            }
+
             while (Util::replaceString(item.path, "\\", "/"));
             for (unsigned int j = 0; j < json["depot"]["items"][i]["chunks"].size(); ++j)
             {
+                Json::Value json_chunk = json["depot"]["items"][i]["chunks"][j];
+
                 galaxyDepotItemChunk chunk;
-                chunk.md5_compressed = json["depot"]["items"][i]["chunks"][j]["compressedMd5"].asString();
-                chunk.md5_uncompressed = json["depot"]["items"][i]["chunks"][j]["md5"].asString();
-                chunk.size_compressed = json["depot"]["items"][i]["chunks"][j]["compressedSize"].asLargestUInt();
-                chunk.size_uncompressed = json["depot"]["items"][i]["chunks"][j]["size"].asLargestUInt();
+                chunk.md5_compressed = json_chunk["compressedMd5"].asString();
+                chunk.md5_uncompressed = json_chunk["md5"].asString();
+                chunk.size_compressed = json_chunk["compressedSize"].asLargestUInt();
+                chunk.size_uncompressed = json_chunk["size"].asLargestUInt();
 
                 chunk.offset_compressed = item.totalSizeCompressed;
                 chunk.offset_uncompressed = item.totalSizeUncompressed;
