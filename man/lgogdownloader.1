@@ -411,12 +411,6 @@ Number of download threads
 \fB\-\-info\-threads\fR arg (=4)
 Number of threads for getting product info
 .TP
-\fB\-\-use\-dlc\-list\fR
-Use DLC list specified with \fB\-\-dlc\-list\fR
-.TP
-\fB\-\-dlc\-list\fR arg (=https://raw.githubusercontent.com/Sude\-/lgogdownloader\-lists/master/game_has_dlc.txt)
-Set URL for list of games that have DLC
-.TP
 \fB\-\-progress\-interval\fR arg (=100)
 Set interval for progress bar update (milliseconds)
 .br
@@ -741,17 +735,6 @@ as orphans.  The file has the same format and interpretation as a
 blacklist.
 .br
 It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
-
-.TP
-\fI$XDG_CONFIG_HOME/lgogdownloader/game_has_dlc.txt\fP
-Allows user to specify which games have dlc and should have their DLC count
-information ignored. The file has the same format and interpretation as a
-blacklist.
-.br
-It doesn't have to exist, but if it does exist, it must be readable to lgogdownloader.
-.br
-If the file exists lgogdownloader uses it instead of list specified with
-\fB--dlc-list\fP option
 
 .TP
 \fI$XDG_CONFIG_HOME/lgogdownloader/gamespecific/gamename.conf\fP

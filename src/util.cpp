@@ -498,6 +498,8 @@ std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
     {
         std::string gamename;
         std::string url_prefix = "/downloads/";
+        if (urls[i].find(url_prefix) == std::string::npos)
+            continue;
 
         gamename.assign(urls[i].begin()+urls[i].find(url_prefix)+url_prefix.length(), urls[i].begin()+urls[i].find_last_of("/"));
         bool bDuplicate = false;

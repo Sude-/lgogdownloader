@@ -59,7 +59,6 @@ int main(int argc, char *argv[])
     Globals::globalConfig.sConfigFilePath = Globals::globalConfig.sConfigDirectory + "/config.cfg";
     Globals::globalConfig.sBlacklistFilePath = Globals::globalConfig.sConfigDirectory + "/blacklist.txt";
     Globals::globalConfig.sIgnorelistFilePath = Globals::globalConfig.sConfigDirectory + "/ignorelist.txt";
-    Globals::globalConfig.sGameHasDLCListFilePath = Globals::globalConfig.sConfigDirectory + "/game_has_dlc.txt";
     Globals::globalConfig.sTransformConfigFilePath = Globals::globalConfig.sConfigDirectory + "/transformations.json";
 
     Globals::galaxyConf.setFilepath(Globals::globalConfig.sConfigDirectory + "/galaxy_tokens.json");
@@ -196,7 +195,6 @@ int main(int argc, char *argv[])
         bool bNoSubDirectories = false;
         bool bNoPlatformDetection = false;
         bool bNoGalaxyDependencies = false;
-        bool bUseDLCList = false;
         bool bNoFastStatusCheck = false;
         std::string sInstallerPlatform;
         std::string sInstallerLanguage;
@@ -290,8 +288,6 @@ int main(int argc, char *argv[])
             ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
             ("info-threads", bpo::value<unsigned int>(&Globals::globalConfig.iInfoThreads)->default_value(4), "Number of threads for getting product info")
-            ("use-dlc-list", bpo::value<bool>(&bUseDLCList)->zero_tokens()->default_value(false), "Use DLC list specified with --dlc-list")
-            ("dlc-list", bpo::value<std::string>(&Globals::globalConfig.sGameHasDLCList)->default_value("https://raw.githubusercontent.com/Sude-/lgogdownloader-lists/master/game_has_dlc.txt"), "Set URL for list of games that have DLC")
             ("progress-interval", bpo::value<int>(&Globals::globalConfig.iProgressInterval)->default_value(100), "Set interval for progress bar update (milliseconds)\nValue must be between 1 and 10000")
             ("lowspeed-timeout", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeout)->default_value(30), "Set time in number seconds that the transfer speed should be below the rate set with --lowspeed-rate for it to considered too slow and aborted")
             ("lowspeed-rate", bpo::value<long int>(&Globals::globalConfig.curlConf.iLowSpeedTimeoutRate)->default_value(200), "Set average transfer speed in bytes per second that the transfer should be below during time specified with --lowspeed-timeout for it to be considered too slow and aborted")
@@ -447,33 +443,6 @@ int main(int argc, char *argv[])
         if (boost::filesystem::exists(Globals::globalConfig.sTransformConfigFilePath))
         {
             Globals::globalConfig.transformationsJSON = Util::readJsonFile(Globals::globalConfig.sTransformConfigFilePath);
-        }
-
-        if (!bUseDLCList)
-            Globals::globalConfig.sGameHasDLCList = "";
-
-        if (Globals::globalConfig.sIgnoreDLCCountRegex.empty())
-        {
-            if (boost::filesystem::exists(Globals::globalConfig.sGameHasDLCListFilePath) && bUseDLCList)
-            {
-                std::ifstream ifs(Globals::globalConfig.sGameHasDLCListFilePath.c_str());
-                if (!ifs)
-                {
-                    std::cerr << "Could not open list of games that have dlc: " << Globals::globalConfig.sGameHasDLCListFilePath << std::endl;
-                    return 1;
-                }
-                else
-                {
-                    std::string line;
-                    std::vector<std::string> lines;
-                    while (!ifs.eof())
-                    {
-                        std::getline(ifs, line);
-                        lines.push_back(std::move(line));
-                    }
-                    Globals::globalConfig.gamehasdlc.initialize(lines);
-                }
-            }
         }
 
         #ifdef USE_QT_GUI_LOGIN

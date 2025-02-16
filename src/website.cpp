@@ -97,7 +97,7 @@ std::vector<gameItem> Website::getGames()
 {
     std::vector<gameItem> games;
     Json::Value root;
-    int i = 1;
+    int iPage = 1;
     bool bAllPagesParsed = false;
     int iUpdated = Globals::globalConfig.bUpdated ? 1 : 0;
     int iHidden = 0;
@@ -111,15 +111,18 @@ std::vector<gameItem> Website::getGames()
     }
 
     Globals::vOwnedGamesIds = this->getOwnedGamesIds();
+    std::vector<Json::Value> jsonProductInfo;
     do
     {
-        std::string url = "https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(i);
+        std::string url = "https://www.gog.com/account/getFilteredProducts?hiddenFlag=" + std::to_string(iHidden) + "&isUpdated=" + std::to_string(iUpdated) + "&mediaType=1&sortBy=title&system=&page=" + std::to_string(iPage);
         if (!tags.empty())
             url += "&tags=" + tags;
 
         Json::Value root = this->getResponseJson(url);
         if (root.empty())
             continue;
+
+        std::cerr << "\033[KGetting product data " << root["page"].asInt() << " / " << root["totalPages"].asInt() << "\r" << std::flush;
 
         if (root["page"].asInt() == root["totalPages"].asInt() || root["totalPages"].asInt() == 0)
             bAllPagesParsed = true;
@@ -129,124 +132,124 @@ std::vector<gameItem> Website::getGames()
         {
             bAllPagesParsed = false;
             iHidden = 1;
-            i = 0; // Set to 0 because we increment it at the end of the loop
+            iPage = 0; // Set to 0 because we increment it at the end of the loop
         }
 
         if (root["products"].isArray())
         {
-            for (unsigned int i = 0; i < root["products"].size(); ++i)
+            for (auto product : root["products"])
+                jsonProductInfo.push_back(product);
+        }
+        iPage++;
+    } while (!bAllPagesParsed);
+    std::cerr << std::endl;
+
+    unsigned int iProduct = 0;
+    unsigned int iProductTotal = jsonProductInfo.size();
+    for (auto product : jsonProductInfo)
+    {
+        iProduct++;
+        std::cerr << "\033[KGetting game names " << iProduct << " / " << iProductTotal << "\r" << std::flush;
+        gameItem game;
+        game.name = product["slug"].asString();
+        game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
+        game.isnew = product["isNew"].asBool();
+
+        if (product.isMember("updates"))
+        {
+            if (product["updates"].isNull())
             {
-                std::cerr << "\033[KGetting game names " << "(" << root["page"].asInt() << "/" << root["totalPages"].asInt() << ") " << i+1 << " / " << root["products"].size() << "\r" << std::flush;
-                Json::Value product = root["products"][i];
-                gameItem game;
-                game.name = product["slug"].asString();
-                game.id = product["id"].isInt() ? std::to_string(product["id"].asInt()) : product["id"].asString();
-                game.isnew = product["isNew"].asBool();
-
-                if (product.isMember("updates"))
+                /* In some cases the value can be null.
+                 * For example when user owns a dlc but not the base game
+                 * https://github.com/Sude-/lgogdownloader/issues/101
+                 * Assume that there are no updates in this case */
+                game.updates = 0;
+            }
+            else if (product["updates"].isInt())
+                game.updates = product["updates"].asInt();
+            else
+            {
+                try
                 {
-                    if (product["updates"].isNull())
-                    {
-                        /* In some cases the value can be null.
-                         * For example when user owns a dlc but not the base game
-                         * https://github.com/Sude-/lgogdownloader/issues/101
-                         * Assume that there are no updates in this case */
-                        game.updates = 0;
-                    }
-                    else if (product["updates"].isInt())
-                        game.updates = product["updates"].asInt();
-                    else
-                    {
-                        try
-                        {
-                            game.updates = std::stoi(product["updates"].asString());
-                        }
-                        catch (std::invalid_argument& e)
-                        {
-                            game.updates = 0; // Assume no updates
-                        }
-                    }
+                    game.updates = std::stoi(product["updates"].asString());
                 }
-
-                unsigned int platform = 0;
-                if (product["worksOn"]["Windows"].asBool())
-                    platform |= GlobalConstants::PLATFORM_WINDOWS;
-                if (product["worksOn"]["Mac"].asBool())
-                    platform |= GlobalConstants::PLATFORM_MAC;
-                if (product["worksOn"]["Linux"].asBool())
-                    platform |= GlobalConstants::PLATFORM_LINUX;
-
-                // Skip if not new and flag is set
-                if (Globals::globalConfig.bNew && !game.isnew)
-                    continue;
-
-                // Skip if platform doesn't match
-                if (Globals::globalConfig.bPlatformDetection && !(platform & Globals::globalConfig.dlConf.iInstallerPlatform))
-                    continue;
-
-                // Filter the game list
-                if (!Globals::globalConfig.sGameRegex.empty())
+                catch (std::invalid_argument& e)
                 {
-                    boost::regex expression(Globals::globalConfig.sGameRegex);
-                    boost::match_results<std::string::const_iterator> what;
-                    if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
-                        continue;
+                    game.updates = 0; // Assume no updates
                 }
-
-                if (Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
-                {
-                    int dlcCount = product["dlcCount"].asInt();
-
-                    bool bDownloadDLCInfo = (dlcCount != 0);
-
-                    if (!bDownloadDLCInfo && !Globals::globalConfig.sIgnoreDLCCountRegex.empty())
-                    {
-                        boost::regex expression(Globals::globalConfig.sIgnoreDLCCountRegex);
-                        boost::match_results<std::string::const_iterator> what;
-                        if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
-                        {
-                            bDownloadDLCInfo = true;
-                        }
-                    }
-
-                    if (!bDownloadDLCInfo && !Globals::globalConfig.gamehasdlc.empty())
-                    {
-                        if (Globals::globalConfig.gamehasdlc.isBlacklisted(game.name))
-                            bDownloadDLCInfo = true;
-                    }
-
-                    // Check game specific config
-                    if (!Globals::globalConfig.bUpdateCache) // Disable game specific config files for cache update
-                    {
-                        gameSpecificConfig conf;
-                        conf.dlConf.bIgnoreDLCCount = bDownloadDLCInfo;
-                        Util::getGameSpecificConfig(game.name, &conf);
-                        bDownloadDLCInfo = conf.dlConf.bIgnoreDLCCount;
-                    }
-
-                    if (bDownloadDLCInfo && !Globals::globalConfig.sGameRegex.empty())
-                    {
-                        // don't download unnecessary info if user is only interested in a subset of his account
-                        boost::regex expression(Globals::globalConfig.sGameRegex);
-                        boost::match_results<std::string::const_iterator> what;
-                        if (!boost::regex_search(game.name, what, expression))
-                        {
-                            bDownloadDLCInfo = false;
-                        }
-                    }
-
-                    if (bDownloadDLCInfo)
-                    {
-                        game.gamedetailsjson = this->getGameDetailsJSON(game.id);
-                        if (!game.gamedetailsjson.empty())
-                            game.dlcnames = Util::getDLCNamesFromJSON(game.gamedetailsjson["dlcs"]);
-                    }
-                }
-                games.push_back(game);
             }
         }
-        i++;
-    } while (!bAllPagesParsed);
+
+        unsigned int platform = 0;
+        if (product["worksOn"]["Windows"].asBool())
+            platform |= GlobalConstants::PLATFORM_WINDOWS;
+        if (product["worksOn"]["Mac"].asBool())
+            platform |= GlobalConstants::PLATFORM_MAC;
+        if (product["worksOn"]["Linux"].asBool())
+            platform |= GlobalConstants::PLATFORM_LINUX;
+
+        // Skip if not new and flag is set
+        if (Globals::globalConfig.bNew && !game.isnew)
+            continue;
+
+        // Skip if platform doesn't match
+        if (Globals::globalConfig.bPlatformDetection && !(platform & Globals::globalConfig.dlConf.iInstallerPlatform))
+            continue;
+
+        // Filter the game list
+        if (!Globals::globalConfig.sGameRegex.empty())
+        {
+            boost::regex expression(Globals::globalConfig.sGameRegex);
+            boost::match_results<std::string::const_iterator> what;
+            if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                continue;
+        }
+
+        if (Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
+        {
+            int dlcCount = product["dlcCount"].asInt();
+
+            bool bDownloadDLCInfo = (dlcCount != 0);
+
+            if (!bDownloadDLCInfo && !Globals::globalConfig.sIgnoreDLCCountRegex.empty())
+            {
+                boost::regex expression(Globals::globalConfig.sIgnoreDLCCountRegex);
+                boost::match_results<std::string::const_iterator> what;
+                if (boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                {
+                    bDownloadDLCInfo = true;
+                }
+            }
+
+            // Check game specific config
+            if (!Globals::globalConfig.bUpdateCache) // Disable game specific config files for cache update
+            {
+                gameSpecificConfig conf;
+                conf.dlConf.bIgnoreDLCCount = bDownloadDLCInfo;
+                Util::getGameSpecificConfig(game.name, &conf);
+                bDownloadDLCInfo = conf.dlConf.bIgnoreDLCCount;
+            }
+
+            if (bDownloadDLCInfo && !Globals::globalConfig.sGameRegex.empty())
+            {
+                // don't download unnecessary info if user is only interested in a subset of his account
+                boost::regex expression(Globals::globalConfig.sGameRegex);
+                boost::match_results<std::string::const_iterator> what;
+                if (!boost::regex_search(game.name, what, expression))
+                {
+                    bDownloadDLCInfo = false;
+                }
+            }
+
+            if (bDownloadDLCInfo)
+            {
+                game.gamedetailsjson = this->getGameDetailsJSON(game.id);
+                if (!game.gamedetailsjson.empty())
+                    game.dlcnames = Util::getDLCNamesFromJSON(game.gamedetailsjson["dlcs"]);
+            }
+        }
+        games.push_back(game);
+    }
     std::cerr << std::endl;
 
     if (Globals::globalConfig.bIncludeHiddenProducts)

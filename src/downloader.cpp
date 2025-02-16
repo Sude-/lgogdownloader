@@ -200,16 +200,6 @@ bool Downloader::isLoggedIn()
 */
 int Downloader::init()
 {
-    if (!Globals::globalConfig.sGameHasDLCList.empty())
-    {
-        if (Globals::globalConfig.gamehasdlc.empty())
-        {
-            std::string game_has_dlc_list = this->getResponse(Globals::globalConfig.sGameHasDLCList);
-            if (!game_has_dlc_list.empty())
-                Globals::globalConfig.gamehasdlc.initialize(Util::tokenize(game_has_dlc_list, "\n"));
-        }
-    }
-
     if (!gogGalaxy->init())
     {
         if (gogGalaxy->refreshLogin())
