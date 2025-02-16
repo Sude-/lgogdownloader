@@ -12,7 +12,7 @@
 
 namespace GlobalConstants
 {
-    const int GAMEDETAILS_CACHE_VERSION = 5;
+    const int GAMEDETAILS_CACHE_VERSION = 6;
     const int ZLIB_WINDOW_SIZE = 15;
 
     struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};
@@ -129,14 +129,19 @@ namespace GlobalConstants
     const unsigned int GFTYPE_DLC_EXTRA      = 1 << 5;
     const unsigned int GFTYPE_DLC_PATCH      = 1 << 6;
     const unsigned int GFTYPE_DLC_LANGPACK   = 1 << 7;
+    const unsigned int GFTYPE_CUSTOM_BASE    = 1 << 8;
+    const unsigned int GFTYPE_CUSTOM_DLC     = 1 << 9;
     const unsigned int GFTYPE_DLC = GFTYPE_DLC_INSTALLER | GFTYPE_DLC_EXTRA |
-                                    GFTYPE_DLC_PATCH | GFTYPE_DLC_LANGPACK;
+                                    GFTYPE_DLC_PATCH | GFTYPE_DLC_LANGPACK |
+                                    GFTYPE_CUSTOM_DLC;
     const unsigned int GFTYPE_BASE = GFTYPE_BASE_INSTALLER | GFTYPE_BASE_EXTRA |
-                                     GFTYPE_BASE_PATCH | GFTYPE_BASE_LANGPACK;
+                                     GFTYPE_BASE_PATCH | GFTYPE_BASE_LANGPACK |
+                                     GFTYPE_CUSTOM_BASE;
     const unsigned int GFTYPE_INSTALLER = GFTYPE_BASE_INSTALLER | GFTYPE_DLC_INSTALLER;
     const unsigned int GFTYPE_EXTRA     = GFTYPE_BASE_EXTRA | GFTYPE_DLC_EXTRA;
     const unsigned int GFTYPE_PATCH     = GFTYPE_BASE_PATCH | GFTYPE_DLC_PATCH;
     const unsigned int GFTYPE_LANGPACK  = GFTYPE_BASE_LANGPACK | GFTYPE_DLC_LANGPACK;
+    const unsigned int GFTYPE_CUSTOM    = GFTYPE_CUSTOM_BASE | GFTYPE_CUSTOM_DLC;
 
     const std::vector<GlobalConstants::optionsStruct> INCLUDE_OPTIONS =
     {

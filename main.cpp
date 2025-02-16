@@ -133,7 +133,17 @@ int main(int argc, char *argv[])
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
 
     // Help text for subdir options
-    std::string subdir_help_text = "\nTemplates:\n- %platform%\n- %gamename%\n- %gamename_firstletter%\n- %dlcname%\n- %gamename_transformed%\n- %gamename_transformed_firstletter%";
+    std::string subdir_help_text = "\nTemplates:\n"
+        "- %platform%\n"
+        "- %gamename%\n"
+        "- %gamename_firstletter%\n"
+        "- %dlcname%\n"
+        "- %gamename_transformed%\n"
+        "- %gamename_transformed_firstletter%\n"
+        "- %title%\n"
+        "- %title_stripped%\n"
+        "- %dlc_title%\n"
+        "- %dlc_title_stripped%";
 
     // Help text for include and exclude options
     std::string include_options_text;

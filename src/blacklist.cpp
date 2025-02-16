@@ -70,10 +70,3 @@ bool Blacklist::isBlacklisted(const std::string& path) {
     }
     return false;
 }
-
-bool Blacklist::isBlacklisted(const std::string& path, const std::string& gamename, std::string subdirectory)
-{
-    std::string filepath = Util::makeRelativeFilepath(path, gamename, subdirectory);
-    return isBlacklisted(filepath);
-}
-

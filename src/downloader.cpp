@@ -2173,6 +2173,9 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                         fileDetails.language = fileDetailsNode["language"].asUInt();
                         fileDetails.silent = fileDetailsNode["silent"].asInt();
                         fileDetails.gamename = fileDetailsNode["gamename"].asString();
+                        fileDetails.title = fileDetailsNode["title"].asString();
+                        fileDetails.gamename_basegame = fileDetailsNode["gamename_basegame"].asString();
+                        fileDetails.title_basegame = fileDetailsNode["title_basegame"].asString();
                         fileDetails.type = fileDetailsNode["type"].asUInt();
                         fileDetails.galaxy_downlink_json_url = fileDetailsNode["galaxy_downlink_json_url"].asString();
                         if (!fileDetailsNode["version"].empty())
@@ -2446,6 +2449,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         }
 
         gameDetails gd = gogGalaxy->productInfoJsonToGameDetails(productInfo, dlConf);
+        gd.makeFilepaths(Globals::globalConfig.dirConf);
 
         auto vFiles = gd.getGameFileVector();
         gameFile gf;
@@ -2517,7 +2521,7 @@ int Downloader::downloadFileWithId(const std::string& fileid_string, const std::
         std::string filename, filepath;
         filename = gogGalaxy->getPathFromDownlinkUrl(url, gf.gamename);
         if (output_filepath.empty())
-            filepath = Util::makeFilepath(Globals::globalConfig.dirConf.sDirectory, filename, gf.gamename);
+            filepath = gf.getFilepath();
         else
             filepath = output_filepath;
         std::cout << "Downloading: " << filepath << std::endl;

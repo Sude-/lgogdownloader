@@ -60,8 +60,6 @@ struct wishlistItem
 
 namespace Util
 {
-    std::string makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory = "", const unsigned int& platformId = 0, const std::string& dlcname = "");
-    std::string makeRelativeFilepath(const std::string& path, const std::string& gamename, std::string subdirectory = "");
     std::string getFileHash(const std::string& filename, unsigned hash_id);
     std::string getFileHashRange(const std::string& filepath, unsigned hash_id, off_t range_start = 0, off_t range_end = 0);
     std::string getChunkHash(unsigned char* chunk, uintmax_t chunk_size, unsigned hash_id);

@@ -25,7 +25,7 @@ void gameFile::setFilepath(const std::string& path)
     this->filepath = path;
 }
 
-std::string gameFile::getFilepath()
+std::string gameFile::getFilepath() const
 {
     return this->filepath;
 }
@@ -43,6 +43,9 @@ Json::Value gameFile::getAsJson()
     json["language"] = this->language;
     json["silent"] = this->silent;
     json["gamename"] = this->gamename;
+    json["title"] = this->title;
+    json["gamename_basegame"] = this->gamename_basegame;
+    json["title_basegame"] = this->title_basegame;
     json["type"] = this->type;
     json["galaxy_downlink_json_url"] = this->galaxy_downlink_json_url;
     if (!this->version.empty())

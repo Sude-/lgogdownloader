@@ -91,75 +91,67 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     if (this->icon.rfind(".") != std::string::npos)
         icon_ext = this->icon.substr(this->icon.rfind("."));
 
-    this->serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
-    this->logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0);
-    this->iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0);
-    this->changelogFilepath = Util::makeFilepath(directory, "changelog_" + gamename + ".html", this->gamename, subdir, 0);
-    this->gameDetailsJsonFilepath = Util::makeFilepath(directory, "game-details.json", this->gamename, subdir, 0);
-    this->productJsonFilepath = Util::makeFilepath(directory, "product.json", this->gamename, subdir, 0);
+    this->serialsFilepath = this->makeCustomFilepath(std::string("serials.txt"), *this, config);
+    this->logoFilepath = this->makeCustomFilepath(std::string("logo") + logo_ext, *this, config);
+    this->iconFilepath = this->makeCustomFilepath(std::string("icon") + icon_ext, *this, config);
+    this->changelogFilepath = this->makeCustomFilepath(std::string("changelog_") + gamename + ".html", *this, config);
+    this->gameDetailsJsonFilepath = this->makeCustomFilepath(std::string("game-details.json"), *this, config);
+    this->productJsonFilepath = this->makeCustomFilepath(std::string("product.json"), *this, config);
 
-    for (unsigned int i = 0; i < this->installers.size(); ++i)
+    for (auto &installer : this->installers)
     {
-        subdir = config.bSubDirectories ? config.sInstallersSubdir : "";
-        filepath = Util::makeFilepath(directory, this->installers[i].path, this->gamename, subdir, this->installers[i].platform);
-        this->installers[i].setFilepath(filepath);
+        filepath = this->makeFilepath(installer, config);
+        installer.setFilepath(filepath);
     }
 
-    for (unsigned int i = 0; i < this->extras.size(); ++i)
+    for (auto &extra : this->extras)
     {
-        subdir = config.bSubDirectories ? config.sExtrasSubdir : "";
-        filepath = Util::makeFilepath(directory, this->extras[i].path, this->gamename, subdir, 0);
-        this->extras[i].setFilepath(filepath);
+        filepath = this->makeFilepath(extra, config);
+        extra.setFilepath(filepath);
     }
 
-    for (unsigned int i = 0; i < this->patches.size(); ++i)
+    for (auto &patch : this->patches)
     {
-        subdir = config.bSubDirectories ? config.sPatchesSubdir : "";
-        filepath = Util::makeFilepath(directory, this->patches[i].path, this->gamename, subdir, this->patches[i].platform);
-        this->patches[i].setFilepath(filepath);
+        filepath = this->makeFilepath(patch, config);
+        patch.setFilepath(filepath);
     }
 
-    for (unsigned int i = 0; i < this->languagepacks.size(); ++i)
+    for (auto &languagepack : this->languagepacks)
     {
-        subdir = config.bSubDirectories ? config.sLanguagePackSubdir : "";
-        filepath = Util::makeFilepath(directory, this->languagepacks[i].path, this->gamename, subdir, 0);
-        this->languagepacks[i].setFilepath(filepath);
+        filepath = this->makeFilepath(languagepack, config);
+        languagepack.setFilepath(filepath);
     }
 
     for (unsigned int i = 0; i < this->dlcs.size(); ++i)
     {
-        subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
-        this->dlcs[i].serialsFilepath = Util::makeFilepath(directory, "serials.txt", this->gamename, subdir, 0);
-        this->dlcs[i].logoFilepath = Util::makeFilepath(directory, "logo" + logo_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
-        this->dlcs[i].iconFilepath = Util::makeFilepath(directory, "icon" + icon_ext, this->gamename, subdir, 0, this->dlcs[i].gamename);
-        this->dlcs[i].changelogFilepath = Util::makeFilepath(directory, "changelog_" + this->dlcs[i].gamename + ".html", this->gamename, subdir, 0);
-        this->dlcs[i].productJsonFilepath = Util::makeFilepath(directory, "product.json", this->gamename, subdir, 0, this->dlcs[i].gamename);
-        for (unsigned int j = 0; j < this->dlcs[i].installers.size(); ++j)
+        this->dlcs[i].serialsFilepath = this->makeCustomFilepath(std::string("serials.txt"), this->dlcs[i], config);
+        this->dlcs[i].logoFilepath = this->makeCustomFilepath(std::string("logo") + logo_ext, this->dlcs[i], config);
+        this->dlcs[i].iconFilepath = this->makeCustomFilepath(std::string("icon") + icon_ext, this->dlcs[i], config);
+        this->dlcs[i].changelogFilepath = this->makeCustomFilepath(std::string("changelog_") + this->dlcs[i].gamename + ".html", this->dlcs[i], config);
+        this->dlcs[i].productJsonFilepath = this->makeCustomFilepath(std::string("product.json"), this->dlcs[i], config);
+
+        for (auto &installer : this->dlcs[i].installers)
         {
-            subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sInstallersSubdir : "";
-            filepath = Util::makeFilepath(directory, this->dlcs[i].installers[j].path, this->gamename, subdir, this->dlcs[i].installers[j].platform, this->dlcs[i].gamename);
-            this->dlcs[i].installers[j].setFilepath(filepath);
+            filepath = this->makeFilepath(installer, config);
+            installer.setFilepath(filepath);
         }
 
-        for (unsigned int j = 0; j < this->dlcs[i].patches.size(); ++j)
+        for (auto &extra : this->dlcs[i].extras)
         {
-            subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sPatchesSubdir : "";
-            filepath = Util::makeFilepath(directory, this->dlcs[i].patches[j].path, this->gamename, subdir, this->dlcs[i].patches[j].platform, this->dlcs[i].gamename);
-            this->dlcs[i].patches[j].setFilepath(filepath);
+            filepath = this->makeFilepath(extra, config);
+            extra.setFilepath(filepath);
         }
 
-        for (unsigned int j = 0; j < this->dlcs[i].extras.size(); ++j)
+        for (auto &patch : this->dlcs[i].patches)
         {
-            subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sExtrasSubdir : "";
-            filepath = Util::makeFilepath(directory, this->dlcs[i].extras[j].path, this->gamename, subdir, 0, this->dlcs[i].gamename);
-            this->dlcs[i].extras[j].setFilepath(filepath);
+            filepath = this->makeFilepath(patch, config);
+            patch.setFilepath(filepath);
         }
 
-        for (unsigned int j = 0; j < this->dlcs[i].languagepacks.size(); ++j)
+        for (auto &languagepack : this->dlcs[i].languagepacks)
         {
-            subdir = config.bSubDirectories ? config.sDLCSubdir + "/" + config.sLanguagePackSubdir : "";
-            filepath = Util::makeFilepath(directory, this->dlcs[i].languagepacks[j].path, this->gamename, subdir, 0, this->dlcs[i].gamename);
-            this->dlcs[i].languagepacks[j].setFilepath(filepath);
+            filepath = this->makeFilepath(languagepack, config);
+            languagepack.setFilepath(filepath);
         }
     }
 }
@@ -285,4 +277,144 @@ void gameDetails::filterListWithType(std::vector<gameFile>& list, const unsigned
         else
             gf++;
     }
+}
+
+std::string gameDetails::makeFilepath(const gameFile& gf, const DirectoryConfig& dirConf)
+{
+    std::map<std::string, std::string> templates;
+
+    std::string path = gf.path;
+    std::string filename = path;
+    if (path.find_last_of("/") != std::string::npos)
+        filename = path.substr(path.find_last_of("/")+1, path.length());
+
+    std::string subdir;
+    if (dirConf.bSubDirectories)
+    {
+        if (gf.type & GlobalConstants::GFTYPE_INSTALLER)
+        {
+            subdir = dirConf.sInstallersSubdir;
+        }
+        else if (gf.type & GlobalConstants::GFTYPE_EXTRA)
+        {
+            subdir = dirConf.sExtrasSubdir;
+        }
+        else if (gf.type & GlobalConstants::GFTYPE_PATCH)
+        {
+            subdir = dirConf.sPatchesSubdir;
+        }
+        else if (gf.type & GlobalConstants::GFTYPE_LANGPACK)
+        {
+            subdir = dirConf.sLanguagePackSubdir;
+        }
+
+        if (gf.type & GlobalConstants::GFTYPE_DLC)
+        {
+            subdir = dirConf.sDLCSubdir + "/" + subdir;
+        }
+
+        if (!dirConf.sGameSubdir.empty())
+        {
+            subdir = dirConf.sGameSubdir + "/" + subdir;
+        }
+    }
+    std::string gamename = gf.gamename;
+    std::string title = gf.title;
+    std::string dlc_gamename;
+    std::string dlc_title;
+    if (gf.type & GlobalConstants::GFTYPE_DLC)
+    {
+        gamename = gf.gamename_basegame;
+        title = gf.title_basegame;
+        dlc_gamename = gf.gamename;
+        dlc_title = gf.title;
+    }
+
+    std::string filepath = dirConf.sDirectory + "/" + subdir + "/" + filename;
+
+    std::string platform;
+    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
+    {
+        if ((gf.platform & GlobalConstants::PLATFORMS[i].id) == GlobalConstants::PLATFORMS[i].id)
+        {
+            platform = boost::algorithm::to_lower_copy(GlobalConstants::PLATFORMS[i].str);
+            break;
+        }
+    }
+    if (platform.empty())
+    {
+        if (filepath.find("%gamename%/%platform%") != std::string::npos)
+            platform = "";
+        else
+            platform = "no_platform";
+    }
+
+    // Don't save certain files in "no_platform" folder
+    if (
+           filepath.rfind("/icon.png") != std::string::npos
+        || filepath.rfind("/logo.jpg") != std::string::npos
+        || filepath.rfind("/product.json") != std::string::npos
+    )
+        platform = "";
+
+    std::string gamename_firstletter;
+    if (!gamename.empty())
+    {
+        if (std::isdigit(gamename.front()))
+            gamename_firstletter = "0";
+        else
+            gamename_firstletter = gamename.front();
+    }
+
+    std::string gamename_transformed;
+    std::string gamename_transformed_firstletter;
+    if (filepath.find("%gamename_transformed%") != std::string::npos || filepath.find("%gamename_transformed_firstletter%") != std::string::npos)
+    {
+        gamename_transformed = Util::transformGamename(gamename);
+        if (!gamename_transformed.empty())
+        {
+            if (std::isdigit(gamename_transformed.front()))
+                gamename_transformed_firstletter = "0";
+            else
+                gamename_transformed_firstletter = gamename_transformed.front();
+        }
+    }
+
+    templates["%gamename%"] = gamename;
+    templates["%gamename_firstletter%"] = gamename_firstletter;
+    templates["%title%"] = title;
+    templates["%title_stripped%"] = Util::getStrippedString(title);
+    templates["%dlcname%"] = dlc_gamename;
+    templates["%dlc_title%"] = dlc_title;
+    templates["%dlc_title_stripped%"] = Util::getStrippedString(dlc_title);
+    templates["%platform%"] = platform;
+    templates["%gamename_transformed%"] = gamename_transformed;
+    templates["%gamename_transformed_firstletter%"] = gamename_transformed_firstletter;
+
+    for (auto t : templates)
+        Util::replaceAllString(filepath, t.first, t.second);
+
+    Util::replaceAllString(filepath, "//", "/"); // Replace any double slashes with single slash
+
+    return filepath;
+}
+
+std::string gameDetails::makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf)
+{
+    gameFile gf;
+    gf.gamename = gd.gamename;
+    gf.path = "/" + filename;
+    gf.title = gd.title;
+    gf.gamename_basegame = gd.gamename_basegame;
+    gf.title_basegame = gd.title_basegame;
+
+    if (gf.gamename_basegame.empty())
+        gf.type = GlobalConstants::GFTYPE_CUSTOM_BASE;
+    else
+        gf.type = GlobalConstants::GFTYPE_CUSTOM_DLC;
+
+    std::string filepath;
+    filepath = this->makeFilepath(gf, dirConf);
+
+    return filepath;
 }

@@ -376,21 +376,29 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     if (dlConf.iInclude & GlobalConstants::GFTYPE_INSTALLER)
     {
         gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GlobalConstants::GFTYPE_BASE_INSTALLER, dlConf);
+        for (auto &item : gamedetails.installers)
+            item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_EXTRA)
     {
         gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GlobalConstants::GFTYPE_BASE_EXTRA, dlConf);
+        for (auto &item : gamedetails.extras)
+            item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_PATCH)
     {
         gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GlobalConstants::GFTYPE_BASE_PATCH, dlConf);
+        for (auto &item : gamedetails.patches)
+            item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_LANGPACK)
     {
         gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GlobalConstants::GFTYPE_BASE_LANGPACK, dlConf);
+        for (auto &item : gamedetails.languagepacks)
+            item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
@@ -408,16 +416,34 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
                 }
 
                 gameDetails dlc_gamedetails = this->productInfoJsonToGameDetails(json["expanded_dlcs"][i], dlConf);
+                dlc_gamedetails.title_basegame = gamedetails.title;
+                dlc_gamedetails.gamename_basegame = gamedetails.gamename;
 
                 // Add DLC type to all DLC files
                 for (unsigned int j = 0; j < dlc_gamedetails.installers.size(); ++j)
+                {
                     dlc_gamedetails.installers[j].type = GlobalConstants::GFTYPE_DLC_INSTALLER;
+                    dlc_gamedetails.installers[j].title_basegame = dlc_gamedetails.title_basegame;
+                    dlc_gamedetails.installers[j].gamename_basegame = dlc_gamedetails.gamename_basegame;
+                }
                 for (unsigned int j = 0; j < dlc_gamedetails.extras.size(); ++j)
+                {
                     dlc_gamedetails.extras[j].type = GlobalConstants::GFTYPE_DLC_EXTRA;
+                    dlc_gamedetails.extras[j].title_basegame = dlc_gamedetails.title_basegame;
+                    dlc_gamedetails.extras[j].gamename_basegame = dlc_gamedetails.gamename_basegame;
+                }
                 for (unsigned int j = 0; j < dlc_gamedetails.patches.size(); ++j)
+                {
                     dlc_gamedetails.patches[j].type = GlobalConstants::GFTYPE_DLC_PATCH;
+                    dlc_gamedetails.patches[j].title_basegame = dlc_gamedetails.title_basegame;
+                    dlc_gamedetails.patches[j].gamename_basegame = dlc_gamedetails.gamename_basegame;
+                }
                 for (unsigned int j = 0; j < dlc_gamedetails.languagepacks.size(); ++j)
+                {
                     dlc_gamedetails.languagepacks[j].type = GlobalConstants::GFTYPE_DLC_LANGPACK;
+                    dlc_gamedetails.languagepacks[j].title_basegame = dlc_gamedetails.title_basegame;
+                    dlc_gamedetails.languagepacks[j].gamename_basegame = dlc_gamedetails.gamename_basegame;
+                }
 
                 // Add DLC only if it has any files
                 if (!dlc_gamedetails.installers.empty() || !dlc_gamedetails.extras.empty() || !dlc_gamedetails.patches.empty() || !dlc_gamedetails.languagepacks.empty())

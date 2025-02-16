@@ -26,13 +26,16 @@ class gameFile
         std::string size;
         std::string galaxy_downlink_json_url;
         std::string version;
+        std::string title;
+        std::string gamename_basegame = "";
+        std::string title_basegame = "";
         unsigned int platform;
         unsigned int language;
         unsigned int type;
         int score;
         int silent;
         void setFilepath(const std::string& path);
-        std::string getFilepath();
+        std::string getFilepath() const;
         Json::Value getAsJson();
         virtual ~gameFile();
     protected:

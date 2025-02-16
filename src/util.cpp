@@ -17,49 +17,6 @@
 #include <tidy.h>
 #include <tidybuffio.h>
 
-/*
-    Create filepath from specified directory and path
-    Remove the leading slash from path if needed
-    Use gamename as base directory if specified
-*/
-std::string Util::makeFilepath(const std::string& directory, const std::string& path, const std::string& gamename, std::string subdirectory, const unsigned int& platformId, const std::string& dlcname)
-{
-    std::string dir = directory + makeRelativeFilepath(path, gamename, subdirectory);
-    Util::filepathReplaceReservedStrings(dir, gamename, platformId, dlcname);
-    return dir;
-}
-
-/* Create filepath relative to download base directory specified in config.
- */
-std::string Util::makeRelativeFilepath(const std::string& path, const std::string& gamename, std::string subdirectory)
-{
-    std::string filepath;
-
-    if (gamename.empty())
-    {
-        if (path.at(0)=='/')
-        {
-            std::string tmp_path = path.substr(1,path.length());
-            filepath = tmp_path;
-        }
-        else
-        {
-            filepath = path;
-        }
-    }
-    else
-    {
-        std::string filename = path.substr(path.find_last_of("/")+1, path.length());
-        if (!subdirectory.empty())
-        {
-            subdirectory = "/" + subdirectory;
-        }
-        filepath = subdirectory + "/" + filename;
-    }
-
-    return filepath;
-}
-
 std::string Util::getFileHash(const std::string& filename, unsigned hash_id)
 {
     unsigned char digest[rhash_get_digest_size(hash_id)];
