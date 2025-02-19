@@ -371,70 +371,10 @@ int Util::replaceAllString(std::string& str, const std::string& to_replace, cons
 
     do {
         str.replace(str.begin()+pos, str.begin()+pos+to_replace.length(), replace_with);
-
-        pos = str.find(to_replace, pos + to_replace.length());
+        pos = str.find(to_replace);
     } while(pos != std::string::npos);
 
     return 1;
-}
-
-void Util::filepathReplaceReservedStrings(std::string& str, const std::string& gamename, const unsigned int& platformId, const std::string& dlcname)
-{
-    std::string platform;
-    for (unsigned int i = 0; i < GlobalConstants::PLATFORMS.size(); ++i)
-    {
-        if ((platformId & GlobalConstants::PLATFORMS[i].id) == GlobalConstants::PLATFORMS[i].id)
-        {
-            platform = boost::algorithm::to_lower_copy(GlobalConstants::PLATFORMS[i].str);
-            break;
-        }
-    }
-    if (platform.empty())
-    {
-        if (str.find("%gamename%/%platform%") != std::string::npos)
-            platform = "";
-        else
-            platform = "no_platform";
-    }
-
-    // Don't save certain files in "no_platform" folder
-    if (
-           str.rfind("/icon.png") != std::string::npos
-        || str.rfind("/logo.jpg") != std::string::npos
-        || str.rfind("/product.json") != std::string::npos
-    )
-        platform = "";
-
-    std::string gamename_firstletter;
-    if (!gamename.empty())
-    {
-        if (std::isdigit(gamename.front()))
-            gamename_firstletter = "0";
-        else
-            gamename_firstletter = gamename.front();
-    }
-
-    if (str.find("%gamename_transformed%") != std::string::npos || str.find("%gamename_transformed_firstletter%") != std::string::npos)
-    {
-        std::string gamename_transformed = transformGamename(gamename);
-        std::string gamename_transformed_firstletter;
-        if (!gamename_transformed.empty())
-        {
-            if (std::isdigit(gamename_transformed.front()))
-                gamename_transformed_firstletter = "0";
-            else
-                gamename_transformed_firstletter = gamename_transformed.front();
-        }
-
-        while (Util::replaceString(str, "%gamename_transformed%", gamename_transformed));
-        while (Util::replaceString(str, "%gamename_transformed_firstletter%", gamename_transformed_firstletter));
-    }
-
-    while (Util::replaceString(str, "%gamename_firstletter%", gamename_firstletter));
-    while (Util::replaceString(str, "%gamename%", gamename));
-    while (Util::replaceString(str, "%dlcname%", dlcname));
-    while (Util::replaceString(str, "%platform%", platform));
-    while (Util::replaceString(str, "//", "/")); // Replace any double slashes with single slash
 }
 
 void Util::setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions)

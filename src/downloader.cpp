@@ -1712,8 +1712,7 @@ void Downloader::checkOrphans()
             }
             for (unsigned int j = 0; j < platformIds.size(); ++j)
             {
-                std::string directory = config.dirConf.sDirectory + "/" + config.dirConf.sGameSubdir + "/";
-                Util::filepathReplaceReservedStrings(directory, games[i].gamename, platformIds[j]);
+                std::string directory = games[i].makeCustomFilepath("", games[i], config.dirConf);
                 boost::filesystem::path path (directory);
                 if (boost::filesystem::exists(path))
                 {
