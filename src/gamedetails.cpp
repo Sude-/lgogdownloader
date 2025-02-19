@@ -80,8 +80,6 @@ void gameDetails::filterListWithPriorities(std::vector<gameFile>& list, const ga
 void gameDetails::makeFilepaths(const DirectoryConfig& config)
 {
     std::string filepath;
-    std::string directory = config.sDirectory + "/" + config.sGameSubdir + "/";
-    std::string subdir;
     std::string logo_ext = ".jpg"; // Assume jpg
     std::string icon_ext = ".png"; // Assume png
 
@@ -91,12 +89,18 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
     if (this->icon.rfind(".") != std::string::npos)
         icon_ext = this->icon.substr(this->icon.rfind("."));
 
+    // Add gamename to filenames to make sure we don't overwrite them with files from dlcs
+    std::string serials_filename = "serials_" + this->gamename + ".txt";
+    std::string logo_filename = "logo_" + this->gamename + logo_ext;
+    std::string icon_filename = "icon_" + this->gamename + icon_ext;
+    std::string product_json_filename = "product_" + this->gamename + ".json";
+
     this->serialsFilepath = this->makeCustomFilepath(std::string("serials.txt"), *this, config);
-    this->logoFilepath = this->makeCustomFilepath(std::string("logo") + logo_ext, *this, config);
-    this->iconFilepath = this->makeCustomFilepath(std::string("icon") + icon_ext, *this, config);
+    this->logoFilepath = this->makeCustomFilepath(logo_filename, *this, config);
+    this->iconFilepath = this->makeCustomFilepath(icon_filename, *this, config);
     this->changelogFilepath = this->makeCustomFilepath(std::string("changelog_") + gamename + ".html", *this, config);
     this->gameDetailsJsonFilepath = this->makeCustomFilepath(std::string("game-details.json"), *this, config);
-    this->productJsonFilepath = this->makeCustomFilepath(std::string("product.json"), *this, config);
+    this->productJsonFilepath = this->makeCustomFilepath(product_json_filename, *this, config);
 
     for (auto &installer : this->installers)
     {
@@ -122,33 +126,39 @@ void gameDetails::makeFilepaths(const DirectoryConfig& config)
         languagepack.setFilepath(filepath);
     }
 
-    for (unsigned int i = 0; i < this->dlcs.size(); ++i)
+    for (auto &dlc : this->dlcs)
     {
-        this->dlcs[i].serialsFilepath = this->makeCustomFilepath(std::string("serials.txt"), this->dlcs[i], config);
-        this->dlcs[i].logoFilepath = this->makeCustomFilepath(std::string("logo") + logo_ext, this->dlcs[i], config);
-        this->dlcs[i].iconFilepath = this->makeCustomFilepath(std::string("icon") + icon_ext, this->dlcs[i], config);
-        this->dlcs[i].changelogFilepath = this->makeCustomFilepath(std::string("changelog_") + this->dlcs[i].gamename + ".html", this->dlcs[i], config);
-        this->dlcs[i].productJsonFilepath = this->makeCustomFilepath(std::string("product.json"), this->dlcs[i], config);
+        // Add gamename to filenames to make sure we don't overwrite basegame files with these
+        std::string dlc_serials_filename = "serials_" + dlc.gamename + ".txt";
+        std::string dlc_logo_filename = "logo_" + dlc.gamename + logo_ext;
+        std::string dlc_icon_filename = "icon_" + dlc.gamename + icon_ext;
+        std::string dlc_product_json_filename = "product_" + dlc.gamename + ".json";
 
-        for (auto &installer : this->dlcs[i].installers)
+        dlc.serialsFilepath = this->makeCustomFilepath(dlc_serials_filename, dlc, config);
+        dlc.logoFilepath = this->makeCustomFilepath(dlc_logo_filename, dlc, config);
+        dlc.iconFilepath = this->makeCustomFilepath(dlc_icon_filename, dlc, config);
+        dlc.changelogFilepath = this->makeCustomFilepath(std::string("changelog_") + dlc.gamename + ".html", dlc, config);
+        dlc.productJsonFilepath = this->makeCustomFilepath(dlc_product_json_filename, dlc, config);
+
+        for (auto &installer : dlc.installers)
         {
             filepath = this->makeFilepath(installer, config);
             installer.setFilepath(filepath);
         }
 
-        for (auto &extra : this->dlcs[i].extras)
+        for (auto &extra : dlc.extras)
         {
             filepath = this->makeFilepath(extra, config);
             extra.setFilepath(filepath);
         }
 
-        for (auto &patch : this->dlcs[i].patches)
+        for (auto &patch : dlc.patches)
         {
             filepath = this->makeFilepath(patch, config);
             patch.setFilepath(filepath);
         }
 
-        for (auto &languagepack : this->dlcs[i].languagepacks)
+        for (auto &languagepack : dlc.languagepacks)
         {
             filepath = this->makeFilepath(languagepack, config);
             languagepack.setFilepath(filepath);
@@ -161,8 +171,10 @@ Json::Value gameDetails::getDetailsAsJson()
     Json::Value json;
 
     json["gamename"] = this->gamename;
+    json["gamename_basegame"] = this->gamename_basegame;
     json["product_id"] = this->product_id;
     json["title"] = this->title;
+    json["title_basegame"] = this->title_basegame;
     json["icon"] = this->icon;
     json["serials"] = this->serials;
     json["changelog"] = this->changelog;
@@ -350,10 +362,13 @@ std::string gameDetails::makeFilepath(const gameFile& gf, const DirectoryConfig&
     }
 
     // Don't save certain files in "no_platform" folder
+    std::string logo_filename = "/logo_" + gf.gamename + ".jpg";
+    std::string icon_filename = "/icon_" + gf.gamename + ".png";
+    std::string product_json_filename = "/product_" + gf.gamename + ".json";
     if (
-           filepath.rfind("/icon.png") != std::string::npos
-        || filepath.rfind("/logo.jpg") != std::string::npos
-        || filepath.rfind("/product.json") != std::string::npos
+           filepath.rfind(logo_filename) != std::string::npos
+        || filepath.rfind(icon_filename) != std::string::npos
+        || filepath.rfind(product_json_filename) != std::string::npos
     )
         platform = "";
 

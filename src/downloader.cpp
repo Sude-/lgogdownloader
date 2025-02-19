@@ -2111,6 +2111,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
         Json::Value gameDetailsNode = (root.isArray() ? root[i] : root); // This json node can be array or non-array so take that into account
         gameDetails game;
         game.gamename = gameDetailsNode["gamename"].asString();
+        game.gamename_basegame = gameDetailsNode["gamename_basegame"].asString();
 
         // DLCs are handled as part of the game so make sure that filtering is done with base game name
         if (recursion_level == 0) // recursion level is 0 when handling base game
@@ -2121,6 +2122,7 @@ std::vector<gameDetails> Downloader::getGameDetailsFromJsonNode(Json::Value root
                 continue;
         }
         game.title = gameDetailsNode["title"].asString();
+        game.title_basegame = gameDetailsNode["title_basegame"].asString();
         game.icon = gameDetailsNode["icon"].asString();
         game.serials = gameDetailsNode["serials"].asString();
         game.changelog = gameDetailsNode["changelog"].asString();
