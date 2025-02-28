@@ -4862,8 +4862,16 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, const std::
         else
         {
             std::cout << "Using these installers" << std::endl;
-            for (unsigned int i = 0; i < vInstallers.size(); ++i)
-                std::cout << "\t" << vInstallers[i].gamename << "/" << vInstallers[i].id << std::endl;
+            for (auto installer : vInstallers)
+            {
+                std::string str = installer.gamename + "/" + installer.id;
+                if (installer.version.empty())
+                    str += " (no version info available)";
+                else
+                    str += " (Version: " + installer.version + ")";
+
+                std::cout << "\t" << str << std::endl;
+            }
         }
 
         return;
