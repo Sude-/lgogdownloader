@@ -324,12 +324,13 @@ std::string gameDetails::makeFilepath(const gameFile& gf, const DirectoryConfig&
         {
             subdir = dirConf.sDLCSubdir + "/" + subdir;
         }
-
-        if (!dirConf.sGameSubdir.empty())
-        {
-            subdir = dirConf.sGameSubdir + "/" + subdir;
-        }
     }
+
+    if (!dirConf.sGameSubdir.empty())
+    {
+        subdir = dirConf.sGameSubdir + "/" + subdir;
+    }
+
     std::string gamename = gf.gamename;
     std::string title = gf.title;
     std::string dlc_gamename;
