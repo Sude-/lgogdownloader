@@ -288,6 +288,7 @@ class Config
         std::string sGameHasDLCListFilePath;
         std::string sReportFilePath;
         std::string sTransformConfigFilePath;
+        std::string sGameListFilePath;
 
         std::string sXMLFile;
 
