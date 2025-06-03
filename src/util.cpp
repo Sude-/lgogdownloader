@@ -727,7 +727,15 @@ void Util::CurlHandleSetDefaultOptions(CURL* curlhandle, const CurlConfig& conf)
 std::string Util::CurlHandleGetInfoString(CURL* curlhandle, CURLINFO info)
 {
     char* str;
-    return (curl_easy_getinfo(curlhandle, info, &str) == CURLE_OK) ? str : "";
+    std::string info_string;
+
+    if (curl_easy_getinfo(curlhandle, info, &str) == CURLE_OK)
+    {
+        if (str)
+            info_string = std::string(str);
+    }
+
+    return info_string;
 }
 
 CURLcode Util::CurlGetResponse(const std::string& url, std::string& response, int max_retries)

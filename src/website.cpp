@@ -418,21 +418,56 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
 
     // Handle two step authorization
     std::string redirect_url = Util::CurlHandleGetInfoString(curlhandle, CURLINFO_REDIRECT_URL);
+    bool bIsTwoStep = false;
+    bool bIsTOTP = false;
     if (redirect_url.find("two_step") != std::string::npos)
+        bIsTwoStep = true;
+    else if (redirect_url.find("totp") != std::string::npos)
+        bIsTOTP = true;
+
+    if (bIsTwoStep || bIsTOTP)
     {
-        std::string security_code;
-        std::string tagname_two_step_send = "second_step_authentication[send]";
-        std::string tagname_two_step_auth_letter_1 = "second_step_authentication[token][letter_1]";
-        std::string tagname_two_step_auth_letter_2 = "second_step_authentication[token][letter_2]";
-        std::string tagname_two_step_auth_letter_3 = "second_step_authentication[token][letter_3]";
-        std::string tagname_two_step_auth_letter_4 = "second_step_authentication[token][letter_4]";
-        std::string tagname_two_step_token = "second_step_authentication[_token]";
-        std::string token_two_step;
-        std::string two_step_html = this->getResponse(redirect_url);
+        std::string html = this->getResponse(redirect_url);
+        std::string url;
+        if (bIsTwoStep)
+            url = "https://login.gog.com/login/two_step";
+        else if (bIsTOTP)
+            url = "https://login.gog.com/login/two_factor/totp";
         redirect_url = "";
 
-        std::string two_step_xhtml = Util::htmlToXhtml(two_step_html);
-        doc.Parse(two_step_xhtml.c_str());
+        std::string security_code;
+        std::string token_value;
+        std::string tagname_send;
+        std::string tagname_letter_1;
+        std::string tagname_letter_2;
+        std::string tagname_letter_3;
+        std::string tagname_letter_4;
+        std::string tagname_letter_5;
+        std::string tagname_letter_6;
+        std::string tagname_token;
+        if (bIsTwoStep)
+        {
+            tagname_send = "second_step_authentication[send]";
+            tagname_letter_1 = "second_step_authentication[token][letter_1]";
+            tagname_letter_2 = "second_step_authentication[token][letter_2]";
+            tagname_letter_3 = "second_step_authentication[token][letter_3]";
+            tagname_letter_4 = "second_step_authentication[token][letter_4]";
+            tagname_token = "second_step_authentication[_token]";
+        }
+        else if (bIsTOTP)
+        {
+            tagname_send = "two_factor_totp_authentication[send]";
+            tagname_letter_1 = "two_factor_totp_authentication[token][letter_1]";
+            tagname_letter_2 = "two_factor_totp_authentication[token][letter_2]";
+            tagname_letter_3 = "two_factor_totp_authentication[token][letter_3]";
+            tagname_letter_4 = "two_factor_totp_authentication[token][letter_4]";
+            tagname_letter_5 = "two_factor_totp_authentication[token][letter_5]";
+            tagname_letter_6 = "two_factor_totp_authentication[token][letter_6]";
+            tagname_token = "two_factor_totp_authentication[_token]";
+        }
+
+        std::string xhtml = Util::htmlToXhtml(html);
+        doc.Parse(xhtml.c_str());
         node = doc.FirstChildElement("html");
         while(node)
         {
@@ -440,9 +475,9 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
             if (element->Name() && !std::string(element->Name()).compare("input"))
             {
                 std::string name = element->Attribute("name");
-                if (name == tagname_two_step_token)
+                if (name == tagname_token)
                 {
-                    token_two_step = element->Attribute("value");
+                    token_value = element->Attribute("value");
                     break;
                 }
             }
@@ -450,22 +485,47 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
             node = Util::nextXMLNode(node);
         }
 
-        std::cerr << "Security code: ";
-        std::getline(std::cin,security_code);
-        if (security_code.size() != 4)
+        size_t security_code_length;
+        if (bIsTwoStep)
         {
-            std::cerr << "Security code must be 4 characters long" << std::endl;
+            security_code_length = 4;
+            std::cerr << "Security code: ";
+        }
+        else if (bIsTOTP)
+        {
+            security_code_length = 6;
+            std::cerr << "Authenticator security code: ";
+        }
+
+        std::getline(std::cin,security_code);
+        if (security_code.size() != security_code_length)
+        {
+            std::cerr << "Security code must be " << security_code_length << " characters long" << std::endl;
             exit(1);
         }
 
-        postdata = (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_1.c_str(), tagname_two_step_auth_letter_1.size()) + "=" + security_code[0]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_2.c_str(), tagname_two_step_auth_letter_2.size()) + "=" + security_code[1]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_3.c_str(), tagname_two_step_auth_letter_3.size()) + "=" + security_code[2]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_auth_letter_4.c_str(), tagname_two_step_auth_letter_4.size()) + "=" + security_code[3]
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_send.c_str(), tagname_two_step_send.size()) + "="
-                + "&" + (std::string)curl_easy_escape(curlhandle, tagname_two_step_token.c_str(), tagname_two_step_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_two_step.c_str(), token_two_step.size());
+        // Create and escape POST data
+        std::string postdata_send = (std::string)curl_easy_escape(curlhandle, tagname_send.c_str(), tagname_send.size()) + "=";
+        std::string postdata_token = (std::string)curl_easy_escape(curlhandle, tagname_token.c_str(), tagname_token.size()) + "=" + (std::string)curl_easy_escape(curlhandle, token_value.c_str(), token_value.size());
 
-        curl_easy_setopt(curlhandle, CURLOPT_URL, "https://login.gog.com/login/two_step");
+        std::string postdata_letter_1 = (std::string)curl_easy_escape(curlhandle, tagname_letter_1.c_str(), tagname_letter_1.size()) + "=" + security_code[0];
+        std::string postdata_letter_2 = (std::string)curl_easy_escape(curlhandle, tagname_letter_2.c_str(), tagname_letter_2.size()) + "=" + security_code[1];
+        std::string postdata_letter_3 = (std::string)curl_easy_escape(curlhandle, tagname_letter_3.c_str(), tagname_letter_3.size()) + "=" + security_code[2];
+        std::string postdata_letter_4 = (std::string)curl_easy_escape(curlhandle, tagname_letter_4.c_str(), tagname_letter_4.size()) + "=" + security_code[3];
+
+        postdata = postdata_letter_1 + "&" + postdata_letter_2 + "&" + postdata_letter_3 + "&" + postdata_letter_4 + "&";
+
+        if (bIsTOTP)
+        {
+            std::string postdata_letter_5 = (std::string)curl_easy_escape(curlhandle, tagname_letter_5.c_str(), tagname_letter_5.size()) + "=" + security_code[4];
+            std::string postdata_letter_6 = (std::string)curl_easy_escape(curlhandle, tagname_letter_6.c_str(), tagname_letter_6.size()) + "=" + security_code[5];
+
+            postdata += postdata_letter_5 + "&" + postdata_letter_6 + "&";
+        }
+
+        postdata += postdata_send + "&" + postdata_token;
+
+        curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curlhandle, CURLOPT_POST, 1);
         curl_easy_setopt(curlhandle, CURLOPT_POSTFIELDS, postdata.c_str());
         curl_easy_setopt(curlhandle, CURLOPT_WRITEFUNCTION, Util::CurlWriteMemoryCallback);
