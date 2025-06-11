@@ -144,6 +144,31 @@ std::vector<gameItem> Website::getGames()
     } while (!bAllPagesParsed);
     std::cerr << std::endl;
 
+    // Populate game filter list
+    std::vector<boost::regex> gameFilters;
+    if (!Globals::globalConfig.sGameRegex.empty())
+    {
+        gameFilters.emplace_back(Globals::globalConfig.sGameRegex);
+    }
+    else if (!Globals::globalConfig.sGameListFilePath.empty())
+    {
+        std::ifstream ifs(Globals::globalConfig.sGameListFilePath.c_str());
+        if (!ifs)
+        {
+            std::cerr << "Could not open game filter list file: " << Globals::globalConfig.sGameListFilePath << std::endl;
+        }
+        else
+        {
+            std::string line;
+            while (!ifs.eof())
+            {
+                std::getline(ifs, line);
+                if (!line.empty())
+                    gameFilters.emplace_back(line);
+            }
+        }
+    }
+
     unsigned int iProduct = 0;
     unsigned int iProductTotal = jsonProductInfo.size();
     for (auto product : jsonProductInfo)
@@ -197,12 +222,23 @@ std::vector<gameItem> Website::getGames()
             continue;
 
         // Filter the game list
-        if (!Globals::globalConfig.sGameRegex.empty())
+        if (!gameFilters.empty())
         {
-            boost::regex expression(Globals::globalConfig.sGameRegex);
-            boost::match_results<std::string::const_iterator> what;
-            if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+            bool found = false;
+            for (const auto& expression : gameFilters)
+            {
+                boost::match_results<std::string::const_iterator> what;
+                if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                    continue;
+
+                found = true;
+                break;
+            }
+
+            if (!found)
+            {
                 continue;
+            }
         }
 
         if (Globals::globalConfig.dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
@@ -233,12 +269,18 @@ std::vector<gameItem> Website::getGames()
             if (bDownloadDLCInfo && !Globals::globalConfig.sGameRegex.empty())
             {
                 // don't download unnecessary info if user is only interested in a subset of his account
-                boost::regex expression(Globals::globalConfig.sGameRegex);
-                boost::match_results<std::string::const_iterator> what;
-                if (!boost::regex_search(game.name, what, expression))
+                bool found = false;
+                for (const auto& expression : gameFilters)
                 {
-                    bDownloadDLCInfo = false;
+                    boost::match_results<std::string::const_iterator> what;
+                    if (!boost::regex_search(game.name, what, expression)) // Check if name matches the specified regex
+                        continue;
+
+                    found = true;
+                    break;
                 }
+
+                bDownloadDLCInfo = found;
             }
 
             if (bDownloadDLCInfo)
