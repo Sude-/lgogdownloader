@@ -144,6 +144,12 @@ int main(int argc, char *argv[])
         "- %dlc_title%\n"
         "- %dlc_title_stripped%";
 
+    // Help text for subdir options
+    std::string galaxy_sort_help_text = "\nOptions:\n"
+        "\"none\" - no sorting\n"
+        "\"date\" - sort by date\n"
+        "\"score\" - sort by date and deprioritize branches, deprioritizes compatibility branches even more\n";
+
     // Help text for include and exclude options
     std::string include_options_text;
     for (unsigned int i = 0; i < GlobalConstants::INCLUDE_OPTIONS.size(); ++i)
@@ -303,6 +309,7 @@ int main(int argc, char *argv[])
         options_cli_no_cfg_hidden.add_options()
             ("login-email", bpo::value<std::string>(&Globals::globalConfig.sEmail)->default_value(""), "login email")
             ("login-password", bpo::value<std::string>(&Globals::globalConfig.sPassword)->default_value(""), "login password")
+            ("galaxy-builds-sort", bpo::value<std::string>(&Globals::globalConfig.sGalaxyBuildSortingOrder)->default_value("score"), ("Sorting order for Galaxy builds" + galaxy_sort_help_text).c_str())
         ;
 
         options_cli_experimental.add_options()

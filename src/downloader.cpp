@@ -4077,6 +4077,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, const std:
         sPlatform = "windows";
 
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+    json = this->sortGalaxyProductBuilds(json, Globals::globalConfig.sGalaxyBuildSortingOrder);
 
     // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
     if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
@@ -4399,6 +4400,7 @@ void Downloader::galaxyListCDNsById(const std::string& product_id, const std::st
         sPlatform = "windows";
 
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+    json = this->sortGalaxyProductBuilds(json, Globals::globalConfig.sGalaxyBuildSortingOrder);
 
     // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
     if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
@@ -4876,6 +4878,7 @@ void Downloader::galaxyShowBuildsById(const std::string& product_id, const std::
         sPlatform = "windows";
 
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+    json = this->sortGalaxyProductBuilds(json, Globals::globalConfig.sGalaxyBuildSortingOrder);
 
     // JSON is empty and platform is Linux. Most likely cause is that Galaxy API doesn't have Linux support
     if (json.empty() && iPlatform == GlobalConstants::PLATFORM_LINUX)
@@ -5071,6 +5074,7 @@ std::map<std::string, std::string> Downloader::cloudSaveLocations(const std::str
         sPlatform = "windows";
 
     Json::Value json = gogGalaxy->getProductBuilds(product_id, sPlatform);
+    json = this->sortGalaxyProductBuilds(json, Globals::globalConfig.sGalaxyBuildSortingOrder);
 
     int build_index = this->galaxyGetBuildIndexWithBuildId(json, build_id);
     build_index = std::max(0, build_index);
@@ -6844,4 +6848,79 @@ void Downloader::printGameFileDetailsAsText(gameFile& gf)
         std::cout << "\tversion: " << gf.version << std::endl;
 
     std::cout << std::endl;
+}
+
+Json::Value Downloader::sortGalaxyProductBuilds(Json::Value json, const std::string& sorting_order)
+{
+    if (sorting_order.empty() || sorting_order == "none")
+        return json;
+
+    std::vector<Json::Value> vItems;
+    for (auto item : json["items"])
+        vItems.push_back(item);
+
+    if(sorting_order == "date")
+    {
+        // Sort by date
+        std::sort(vItems.begin(), vItems.end(), [](const Json::Value& a, const Json::Value& b)
+            {
+                return a["date_published"].asString() > b["date_published"].asString();
+            }
+        );
+
+        Json::Value sorted_json;
+        for (auto item : vItems)
+            sorted_json["items"].append(item);
+
+        json["items"] = sorted_json["items"];
+    }
+    else if (sorting_order == "score")
+    {
+        // Sort by date
+        std::sort(vItems.begin(), vItems.end(), [](const Json::Value& a, const Json::Value& b)
+            {
+                return a["date_published"].asString() > b["date_published"].asString();
+            }
+        );
+
+        // Apply score to items
+        typedef struct { Json::Value json; int score; } scoredItem;
+        std::vector<scoredItem> vScoredItems;
+        for (unsigned int i = 0; i < vItems.size(); i++)
+        {
+            scoredItem item;
+            item.json = vItems[i];
+            int score = i; // Set score to item index
+
+            // Check if item belongs to any branch
+            std::string branch = item.json["branch"].asString();
+            if (!branch.empty())
+            {
+                // Deprioritize item if it belongs to any branch
+                score += vItems.size();
+
+                // Deprioritize even more if it belongs to "compatibility" branch
+                if (branch == "compatibility")
+                    score += vItems.size();
+            }
+
+            item.score = score;
+            vScoredItems.push_back(item);
+        }
+
+        // Sort by score
+        std::sort(vScoredItems.begin(), vScoredItems.end(), [](const scoredItem& a, const scoredItem& b)
+            {
+                return a.score < b.score;
+            }
+        );
+
+        Json::Value sorted_json;
+        for (auto item : vScoredItems)
+            sorted_json["items"].append(item.json);
+
+        json["items"] = sorted_json["items"];
+    }
+
+    return json;
 }

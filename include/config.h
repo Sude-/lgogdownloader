@@ -305,6 +305,7 @@ class Config
         std::string sVersionNumber;
         std::string sEmail;
         std::string sPassword;
+        std::string sGalaxyBuildSortingOrder;
 
         // Lists
         Blacklist blacklist;

@@ -178,6 +178,7 @@ class Downloader
         bool galaxySelectProductIdHelper(const std::string& product_id, std::string& selected_product);
         std::vector<galaxyDepotItem> galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch = GlobalConstants::ARCH_X64);
         int galaxyGetBuildIndexWithBuildId(Json::Value json, const std::string& build_id = std::string());
+        Json::Value sortGalaxyProductBuilds(Json::Value json, const std::string& sorting_order = "none");
 
         Website *gogWebsite;
         galaxyAPI *gogGalaxy;
