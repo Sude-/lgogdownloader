@@ -485,7 +485,7 @@ std::string Website::LoginGetAuthCodeCurl(const std::string& login_form_html, co
             node = Util::nextXMLNode(node);
         }
 
-        size_t security_code_length;
+        size_t security_code_length = 4;
         if (bIsTwoStep)
         {
             security_code_length = 4;
