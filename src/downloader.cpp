@@ -3935,7 +3935,7 @@ bool Downloader::galaxySelectProductIdHelper(const std::string& product_id, std:
 
 std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const Json::Value& json, const unsigned int& iGalaxyArch)
 {
-    std::string product_id = json["baseProductId"].asString();
+    std::string base_product_id = json["baseProductId"].asString();
 
     std::string sLanguageRegex = "en|eng|english|en[_-]US";
     unsigned int iLanguage = Globals::globalConfig.dlConf.iGalaxyLanguage;
@@ -3972,7 +3972,7 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
         std::vector<galaxyDepotItem> items_no_dlc;
         for (auto it : items)
         {
-            if (it.product_id == product_id)
+            if (it.product_id == base_product_id)
                 items_no_dlc.push_back(it);
         }
         items = items_no_dlc;
@@ -4013,13 +4013,44 @@ std::vector<galaxyDepotItem> Downloader::galaxyGetDepotItemVectorFromJson(const 
     {
         if (it->product_id.empty())
         {
-            it->product_id = product_id;
+            it->product_id = base_product_id;
         }
         if (it->isSmallFilesContainer)
         {
             it->path += "_" + it->product_id;
         }
     }
+
+    // Remove duplicate files and replace duplicate base game files with files from dlc
+    std::map<std::string, galaxyDepotItem> item_map;
+    std::vector<galaxyDepotItem> items_no_duplicates;
+    for (const auto& item : items)
+    {
+        if (item_map.count(item.path) > 0)
+        {
+            // Check md5 to make sure duplicate file is identical
+            if (item_map[item.path].md5 == item.md5)
+            {
+                continue;
+            }
+            else
+            {
+                // Duplicate file is different. Check if it's from dlc.
+                if (item.product_id != base_product_id)
+                {
+                    // File is from dlc, replace the original with this file
+                    item_map[item.path] = item;
+                }
+            }
+        }
+        else
+            item_map[item.path] = item;
+    }
+
+    for (const auto& item : item_map)
+        items_no_duplicates.push_back(item.second);
+
+    items = items_no_duplicates;
 
     return items;
 }
