@@ -4735,6 +4735,22 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
                     iRetryCount++;
                     retry_reason = std::string(curl_easy_strerror(result));
                 }
+                else
+                {
+                    std::string chunk_hash = Util::getChunkHash((unsigned char*)chunk.memory, chunk.size, RHASH_MD5);
+                    if (chunk_hash != item.chunks[j].md5_compressed)
+                    {
+                        bShouldRetry = true;
+                        iRetryCount++;
+                        retry_reason = "Chunk failed hash check";
+                        if (iRetryCount <= conf.iRetries)
+                        {
+                            free(chunk.memory);
+                            chunk.memory = (char *) malloc(1);
+                            chunk.size = 0;
+                        }
+                    }
+                }
 
             } while (bShouldRetry && (iRetryCount <= conf.iRetries));
 
