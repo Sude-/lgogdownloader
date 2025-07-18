@@ -4791,6 +4791,13 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
             curl_easy_setopt(dlhandle, CURLOPT_NOPROGRESS, 0);
             curl_easy_setopt(dlhandle, CURLOPT_FILETIME, 0L);
 
+            if (bShouldRetry)
+            {
+                bChunkFailure = true;
+                free(chunk.memory);
+                break;
+            }
+
             if (result != CURLE_OK)
             {
                 msgQueue.push(Message(std::string(curl_easy_strerror(result)), MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
@@ -4829,7 +4836,7 @@ void Downloader::processGalaxyDownloadQueue(const std::string& install_path, Con
 
         if (bChunkFailure)
         {
-            msgQueue.push(Message(path.string() + ": Chunk failure, skipping file", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_VERBOSE));
+            msgQueue.push(Message(path.string() + ": Chunk failure, skipping file", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_DEFAULT));
             continue;
         }
 
