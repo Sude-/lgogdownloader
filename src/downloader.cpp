@@ -6859,7 +6859,7 @@ void Downloader::printGameFileDetailsAsText(gameFile& gf)
 
 Json::Value Downloader::sortGalaxyProductBuilds(Json::Value json, const std::string& sorting_order)
 {
-    if (sorting_order.empty() || sorting_order == "none")
+    if (sorting_order.empty() || sorting_order == "none" || json.empty())
         return json;
 
     std::vector<Json::Value> vItems;
