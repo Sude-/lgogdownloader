@@ -13,12 +13,13 @@ endif(USE_QT_GUI)
 find_package(Boost
   CONFIG
   REQUIRED
-  system
   filesystem
   regex
   program_options
   date_time
   iostreams
+  OPTIONAL_COMPONENTS
+  system
   )
 find_package(CURL 7.55.0 REQUIRED)
 find_package(Jsoncpp REQUIRED)
