@@ -459,7 +459,14 @@ std::vector<std::string> Util::getDLCNamesFromJSON(const Json::Value &root)
 
 std::string Util::getHomeDir()
 {
-    return (std::string)getenv("HOME");
+    const char* home = getenv("HOME");
+
+    if (!home) {
+        std::cerr << "$HOME is missing, unable to continue.\n";
+        exit(1);
+    } else {
+        return std::string(home);
+    }
 }
 
 std::string Util::getConfigHome()
