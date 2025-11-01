@@ -784,7 +784,7 @@ void Downloader::download()
     if (!dlQueue.empty())
     {
         unsigned long long totalSizeBytes = iTotalRemainingBytes.load();
-        std::cout << "Total size: " << Util::makeSizeString(totalSizeBytes) << std::endl;
+        std::cout << "Total size: " << Util::makeSizeString(totalSizeBytes, Globals::globalConfig.iUnitFormat) << std::endl;
 
         if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
         {
@@ -801,7 +801,7 @@ void Downloader::download()
                 if (space.available < totalSizeBytes)
                 {
                     std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
-                    << Util::makeSizeString(space.available) << ")"<< std::endl;
+                    << Util::makeSizeString(space.available, Globals::globalConfig.iUnitFormat) << ")"<< std::endl;
                     exit(1);
                 }
             }
@@ -1561,18 +1561,23 @@ int Downloader::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t d
         std::cout << Util::formattedString("\033[0K\r%3.0f%% ", fraction * 100);
 
         // Download rate unit conversion
-        std::string rate_unit;
-        if (rate > 1048576) // 1 MB
+        std::string unit;
+        int divisor_M;
+
+        if (Globals::globalConfig.iUnitFormat == GlobalConstants::UNIT_FORMAT_IEC)
         {
-            rate /= 1048576;
-            rate_unit = "MB/s";
+            divisor_M = GlobalConstants::UNIT_DIVISOR_M_IEC;
+            unit = GlobalConstants::UNIT_STRING_M_IEC;
         }
         else
         {
-            rate /= 1024;
-            rate_unit = "kB/s";
+            divisor_M = GlobalConstants::UNIT_DIVISOR_M_SI;
+            unit = GlobalConstants::UNIT_STRING_M_SI;
         }
-        std::string status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s\r", static_cast<double>(dlnow)/1024/1024, static_cast<double>(dltotal)/1024/1024, rate, rate_unit.c_str(), etastring.c_str());
+
+        std::string rate_string = Util::makeRateString(rate, Globals::globalConfig.iUnitFormat);
+
+        std::string status_text = Util::formattedString(" %0.2f/%0.2f%s @ %s ETA: %s\r", static_cast<double>(dlnow)/divisor_M, static_cast<double>(dltotal)/divisor_M, unit.c_str(), rate_string.c_str(), etastring.c_str());
         int status_text_length = status_text.length() + 6;
 
         if ((status_text_length + bar_length) > iTermWidth)
@@ -2898,22 +2903,10 @@ void Downloader::processCloudSaveDownloadQueue(Config conf, const unsigned int& 
             }
 
             // Average download speed
-            std::ostringstream dlrate_avg;
-            std::string rate_unit;
             progressInfo progress_info = vDownloadInfo[tid].getProgressInfo();
-            if (progress_info.rate_avg > 1048576) // 1 MB
-            {
-                progress_info.rate_avg /= 1048576;
-                rate_unit = "MB/s";
-            }
-            else
-            {
-                progress_info.rate_avg /= 1024;
-                rate_unit = "kB/s";
-            }
-            dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
+            std::string rate_string = Util::makeRateString(progress_info.rate_avg, Globals::globalConfig.iUnitFormat);
 
-            msgQueue.push(Message("Download complete: " + csf.path + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
+            msgQueue.push(Message("Download complete: " + csf.path + " (@ " + rate_string + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
         }
         else
         {
@@ -3408,22 +3401,10 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             }
 
             // Average download speed
-            std::ostringstream dlrate_avg;
-            std::string rate_unit;
             progressInfo progress_info = vDownloadInfo[tid].getProgressInfo();
-            if (progress_info.rate_avg > 1048576) // 1 MB
-            {
-                progress_info.rate_avg /= 1048576;
-                rate_unit = "MB/s";
-            }
-            else
-            {
-                progress_info.rate_avg /= 1024;
-                rate_unit = "kB/s";
-            }
-            dlrate_avg << std::setprecision(2) << std::fixed << progress_info.rate_avg << rate_unit;
+            std::string rate_string = Util::makeRateString(progress_info.rate_avg, Globals::globalConfig.iUnitFormat);
 
-            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + dlrate_avg.str() + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
+            msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + rate_string + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
         }
         else
         {
@@ -3527,6 +3508,14 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
 
 template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& download_queue)
 {
+    int divisor_M = GlobalConstants::UNIT_DIVISOR_M_IEC;
+    std::string unit_M = GlobalConstants::UNIT_STRING_M_IEC;
+    if (Globals::globalConfig.iUnitFormat == GlobalConstants::UNIT_FORMAT_SI)
+    {
+        divisor_M = GlobalConstants::UNIT_DIVISOR_M_SI;
+        unit_M = GlobalConstants::UNIT_STRING_M_SI;
+    }
+
     // Print progress information until all threads have finished their tasks
     ProgressBar bar(Globals::globalConfig.bUnicode, Globals::globalConfig.bColor);
     unsigned int dl_status = DLSTATUS_NOTSTARTED;
@@ -3586,19 +3575,10 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
             eta_total_seconds += eta;
             std::string etastring = Util::makeEtaString(eta);
 
-            std::string rate_unit;
-            if (progress_info.rate > 1048576) // 1 MB
-            {
-                progress_info.rate /= 1048576;
-                rate_unit = "MB/s";
-            }
-            else
-            {
-                progress_info.rate /= 1024;
-                rate_unit = "kB/s";
-            }
+            std::string unit = unit_M;
+            std::string rate_string = Util::makeRateString(progress_info.rate_avg, Globals::globalConfig.iUnitFormat);
 
-            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2fMB @ %0.2f%s ETA: %s", static_cast<double>(progress_info.dlnow)/1024/1024, static_cast<double>(progress_info.dltotal)/1024/1024, progress_info.rate, rate_unit.c_str(), etastring.c_str());
+            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2f%s @ %s ETA: %s", static_cast<double>(progress_info.dlnow)/divisor_M, static_cast<double>(progress_info.dltotal)/divisor_M, unit.c_str(), rate_string.c_str(), etastring.c_str());
             int status_text_length = progress_status_text.length() + 1;
 
             if ((status_text_length + progress_percentage_text_length + bar_length) > iTermWidth)
@@ -3627,41 +3607,16 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
                 bptime::time_duration eta(bptime::seconds((long)(total_remaining / total_rate)));
                 eta += eta_total_seconds;
                 std::string eta_str = Util::makeEtaString(eta);
+                std::string total_remaining_string = Util::makeSizeString(total_remaining, Globals::globalConfig.iUnitFormat);
 
-                double total_remaining_double = static_cast<double>(total_remaining)/1048576;
-                std::string total_remaining_unit = "MB";
-                std::vector<std::string> units = { "GB", "TB", "PB" };
-
-                if (total_remaining_double > 1024)
-                {
-                    for (const auto& unit : units)
-                    {
-                        total_remaining_double /= 1024;
-                        total_remaining_unit = unit;
-
-                        if (total_remaining_double < 1024)
-                            break;
-                    }
-                }
-
-                total_eta_str = Util::formattedString(" (%0.2f%s) ETA: %s", total_remaining_double, total_remaining_unit.c_str(), eta_str.c_str());
+                total_eta_str = Util::formattedString(" (%s) ETA: %s", total_remaining_string.c_str(), eta_str.c_str());
             }
 
             std::ostringstream ss;
             if (Globals::globalConfig.iThreads > 1)
             {
-                std::string rate_unit;
-                if (total_rate > 1048576) // 1 MB
-                {
-                    total_rate /= 1048576;
-                    rate_unit = "MB/s";
-                }
-                else
-                {
-                    total_rate /= 1024;
-                    rate_unit = "kB/s";
-                }
-                ss << "Total: " << std::setprecision(2) << std::fixed << total_rate << rate_unit << " | ";
+                std::string total_rate_string = Util::makeRateString(total_rate, Globals::globalConfig.iUnitFormat);
+                ss << "Total: " << total_rate_string << " | ";
             }
             ss << "Remaining: " << download_queue.size();
 
@@ -4256,7 +4211,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, const std:
 
     std::cout << game_title << std::endl;
     std::cout << "Files: " << items.size() << std::endl;
-    std::cout << "Total size installed: " << Util::makeSizeString(totalSize) << std::endl;
+    std::cout << "Total size installed: " << Util::makeSizeString(totalSize, Globals::globalConfig.iUnitFormat) << std::endl;
 
     if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
     {
@@ -4273,7 +4228,7 @@ void Downloader::galaxyInstallGameById(const std::string& product_id, const std:
             if (space.available < totalSize)
             {
                 std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
-                << Util::makeSizeString(space.available) << ")"<< std::endl;
+                << Util::makeSizeString(space.available, Globals::globalConfig.iUnitFormat) << ")"<< std::endl;
                 exit(1);
             }
         }
@@ -5815,7 +5770,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
 
         std::cout << game.title << std::endl;
         std::cout << "Files: " << dlQueueGalaxy_MojoSetupHack.size() << std::endl;
-        std::cout << "Total size installed: " << Util::makeSizeString(totalSize) << std::endl;
+        std::cout << "Total size installed: " << Util::makeSizeString(totalSize, Globals::globalConfig.iUnitFormat) << std::endl;
 
         if (Globals::globalConfig.dlConf.bFreeSpaceCheck)
         {
@@ -5832,7 +5787,7 @@ void Downloader::galaxyInstallGame_MojoSetupHack(const std::string& product_id)
                 if (space.available < totalSize)
                 {
                     std::cerr << "Not enough free space in " << boost::filesystem::canonical(path) << " ("
-                    << Util::makeSizeString(space.available) << ")"<< std::endl;
+                    << Util::makeSizeString(space.available, Globals::globalConfig.iUnitFormat) << ")"<< std::endl;
                     exit(1);
                 }
             }
@@ -6226,7 +6181,7 @@ void Downloader::processGalaxyDownloadQueue_MojoSetupHack(Config conf, const uns
             // Download file
             CURLcode result = CURLE_RECV_ERROR;
 
-            off_t max_size_memory = 5 << 20; // 5MB
+            off_t max_size_memory = 5 << 20; // 5MiB
             if (zfe.comp_size < max_size_memory) // Handle small files in memory
             {
                 std::ofstream ofs(path.string(), std::ofstream::out | std::ofstream::binary);
@@ -6549,8 +6504,8 @@ int Downloader::mojoSetupGetFileVector(const gameFile& gf, std::vector<zipFileEn
         return 1;
     }
 
-    off_t head_size = 100 << 10; // 100 kB
-    off_t tail_size = 200 << 10; // 200 kB
+    off_t head_size = 100 << 10; // 100 KiB
+    off_t tail_size = 200 << 10; // 200 KiB
     std::string head_range = "0-" + std::to_string(head_size);
     std::string tail_range = std::to_string(file_size - tail_size) + "-" + std::to_string(file_size);
 

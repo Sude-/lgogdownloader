@@ -91,7 +91,8 @@ namespace Util
     curl_off_t CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *userp);
-    std::string makeSizeString(const unsigned long long& iSizeInBytes);
+    std::string makeSizeString(const unsigned long long& iSizeInBytes, const unsigned int& unit_format = GlobalConstants::UNIT_FORMAT_IEC);
+    std::string makeRateString(double rate, const unsigned int& unit_format = GlobalConstants::UNIT_FORMAT_IEC);
 
     template<typename ... Args> std::string formattedString(const std::string& format, Args ... args)
     {

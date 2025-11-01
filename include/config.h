@@ -325,6 +325,7 @@ class Config
         int iProgressInterval;
         int iMsgLevel;
         unsigned int iListFormat;
+        unsigned int iUnitFormat;
 
         Json::Value transformationsJSON;
 };

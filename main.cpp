@@ -211,6 +211,7 @@ int main(int argc, char *argv[])
         std::string sGalaxyArch;
         std::string sGalaxyCDN;
         std::string sListFormat;
+        std::string sUnitFormat;
         Globals::globalConfig.bReport = false;
         // Commandline options (no config file)
         options_cli_no_cfg.add_options()
@@ -304,6 +305,7 @@ int main(int argc, char *argv[])
             ("no-fast-status-check", bpo::value<bool>(&bNoFastStatusCheck)->zero_tokens()->default_value(false), "Don't use fast status check.\nMakes --status much slower but able to catch corrupted files by calculating local file hash for all files.")
             ("trust-api-for-extras", bpo::value<bool>(&Globals::globalConfig.bTrustAPIForExtras)->zero_tokens()->default_value(false), "Trust API responses for extras to be correct.")
             ("interface", bpo::value<std::string>(&Globals::globalConfig.curlConf.sInterface)->default_value(""), "Perform operations using a specified network interface")
+            ("unit-format", bpo::value<std::string>(&sUnitFormat)->default_value("IEC"), "Select unit format to use: IEC or SI")
         ;
 
         options_cli_no_cfg_hidden.add_options()
@@ -586,6 +588,15 @@ int main(int argc, char *argv[])
         Globals::globalConfig.dlConf.iInclude = include_value & ~exclude_value;
 
         Globals::globalConfig.iListFormat = Util::getOptionValue(sListFormat, GlobalConstants::LIST_FORMAT, false);
+
+        if (sUnitFormat == "SI" || sUnitFormat == "si")
+        {
+            Globals::globalConfig.iUnitFormat = GlobalConstants::UNIT_FORMAT_SI;
+        }
+        else
+        {
+            Globals::globalConfig.iUnitFormat = GlobalConstants::UNIT_FORMAT_IEC;
+        }
     }
     catch (std::exception& e)
     {

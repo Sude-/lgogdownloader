@@ -50,7 +50,7 @@ std::string Util::getFileHashRange(const std::string& filepath, unsigned hash_id
         range_end = tmp;
     }
 
-    off_t chunk_size = 10 << 20; // 10MB
+    off_t chunk_size = 10 << 20; // 10MiB
     off_t rangesize = range_end - range_start;
     off_t remaining = rangesize % chunk_size;
     int chunks = (remaining == 0) ? rangesize/chunk_size : (rangesize/chunk_size)+1;
@@ -153,7 +153,7 @@ int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_
     chunks = (remaining == 0) ? filesize/chunk_size : (filesize/chunk_size)+1;
     std::cout   << "Filesize: " << filesize << " bytes" << std::endl
                 << "Chunks: " << chunks << std::endl
-                << "Chunk size: " << (chunk_size >> 20) << " MB" << std::endl;
+                << "Chunk size: " << (chunk_size >> 20) << " MiB" << std::endl;
 
     tinyxml2::XMLDocument xml;
     tinyxml2::XMLElement *fileElem = xml.NewElement("file");
@@ -850,20 +850,60 @@ curl_off_t Util::CurlReadChunkMemoryCallback(void *contents, curl_off_t size, cu
     return realsize;
 }
 
-std::string Util::makeSizeString(const unsigned long long& iSizeInBytes)
+std::string Util::makeSizeString(const unsigned long long& iSizeInBytes, const unsigned int& unit_format)
 {
-    auto units = { "B", "kB", "MB", "GB", "TB", "PB" };
+    auto units_iec = { "B", "KiB", "MiB", "GiB", "TiB", "PiB" };
+    auto units_si = { "B", "kB", "MB", "GB", "TB", "PB" };
+    auto units = units_iec;
+    int divisor = GlobalConstants::UNIT_DIVISOR_K_IEC;
+
+    if (unit_format == GlobalConstants::UNIT_FORMAT_SI)
+    {
+        units = units_si;
+        divisor = GlobalConstants::UNIT_DIVISOR_K_SI;
+    }
+
     std::string size_unit = "B";
     double iSize = static_cast<double>(iSizeInBytes);
     for (auto unit : units)
     {
         size_unit = unit;
-        if (iSize < 1024)
+        if (iSize < divisor)
             break;
 
-        iSize /= 1024;
+        iSize /= divisor;
     }
     return formattedString("%0.2f %s", iSize, size_unit.c_str());
+}
+
+std::string Util::makeRateString(double rate, const unsigned int& unit_format)
+{
+    std::string rate_unit;
+    int divisor_K = GlobalConstants::UNIT_DIVISOR_K_IEC;
+    int divisor_M = GlobalConstants::UNIT_DIVISOR_M_IEC;
+    std::string unit_K = GlobalConstants::UNIT_STRING_K_IEC;
+    std::string unit_M = GlobalConstants::UNIT_STRING_M_IEC;
+
+    if (unit_format == GlobalConstants::UNIT_FORMAT_SI)
+    {
+        divisor_K = GlobalConstants::UNIT_DIVISOR_K_SI;
+        divisor_M = GlobalConstants::UNIT_DIVISOR_M_SI;
+        unit_K = GlobalConstants::UNIT_STRING_K_SI;
+        unit_M = GlobalConstants::UNIT_STRING_M_SI;
+    }
+
+    if (rate > divisor_M)
+    {
+        rate /= divisor_M;
+        rate_unit = unit_M + "/s";
+    }
+    else
+    {
+        rate /= divisor_K;
+        rate_unit = unit_K + "/s";
+    }
+
+    return formattedString("%0.2f%s", rate, rate_unit.c_str());
 }
 
 Json::Value Util::readJsonFile(const std::string& path)

@@ -15,6 +15,18 @@ namespace GlobalConstants
     const int GAMEDETAILS_CACHE_VERSION = 7;
     const int ZLIB_WINDOW_SIZE = 15;
 
+    // Unit formatting
+    const unsigned int UNIT_FORMAT_IEC = 1;
+    const unsigned int UNIT_FORMAT_SI = 2;
+    const int UNIT_DIVISOR_K_IEC = 1024;
+    const int UNIT_DIVISOR_M_IEC = 1048576;
+    const int UNIT_DIVISOR_K_SI = 1000;
+    const int UNIT_DIVISOR_M_SI = 1000000;
+    const std::string UNIT_STRING_K_IEC = "KiB";
+    const std::string UNIT_STRING_M_IEC = "MiB";
+    const std::string UNIT_STRING_K_SI = "kB";
+    const std::string UNIT_STRING_M_SI = "MB";
+
     struct optionsStruct {const unsigned int id; const std::string code; const std::string str; const std::string regexp;};
     const std::string PROTOCOL_PREFIX = "gogdownloader://";
 
