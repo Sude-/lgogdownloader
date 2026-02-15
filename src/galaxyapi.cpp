@@ -353,9 +353,18 @@ std::vector<galaxyDepotItem> galaxyAPI::getDepotItemsVector(const std::string& h
 
 Json::Value galaxyAPI::getProductInfo(const std::string& product_id)
 {
-    std::string url = "https://api.gog.com/products/" + product_id + "?expand=downloads,expanded_dlcs,description,screenshots,videos,related_products,changelog&locale=en-US";
+    const std::string main_url = "https://api.gog.com/products/" + product_id + "?expand=downloads,description,screenshots,videos,related_products,changelog&locale=en-US";
 
-    return this->getResponseJson(url);
+    Json::Value product_info = this->getResponseJson(main_url);
+
+    if (product_info["dlcs"].isObject())
+    {
+        const std::string dlc_url = product_info["dlcs"]["expanded_all_products_url"].asString();
+
+        product_info["expanded_dlcs"] = this->getResponseJson(dlc_url);
+    }
+
+    return product_info;
 }
 
 gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, const DownloadConfig& dlConf)
