@@ -29,7 +29,7 @@ find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Tidy REQUIRED)
 
-file(GLOB SRC_FILES
+set(SRC_FILES
   main.cpp
   src/website.cpp
   src/downloader.cpp
@@ -50,7 +50,7 @@ if(USE_QT_GUI)
     find_package(Qt5 REQUIRED COMPONENTS Widgets WebEngineWidgets CONFIG)
   endif()
 
-  file(GLOB QT_GUI_SRC_FILES
+  set(QT_GUI_SRC_FILES
     src/gui_login.cpp
   )
   list(APPEND SRC_FILES ${QT_GUI_SRC_FILES})
