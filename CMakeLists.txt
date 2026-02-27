@@ -103,29 +103,29 @@ add_compile_definitions(_FILE_OFFSET_BITS=64 VERSION_NUMBER="${VERSION_NUMBER}" 
 add_executable (${PROJECT_NAME} ${SRC_FILES})
 
 
-target_include_directories(${PROJECT_NAME}
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE ${Boost_INCLUDE_DIRS}
-  PRIVATE ${CURL_INCLUDE_DIRS}
-  PRIVATE ${OAuth_INCLUDE_DIRS}
-  PRIVATE ${Jsoncpp_INCLUDE_DIRS}
-  PRIVATE ${Tinyxml2_INCLUDE_DIRS}
-  PRIVATE ${Rhash_INCLUDE_DIRS}
-  PRIVATE ${ZLIB_INCLUDE_DIRS}
-  PRIVATE ${Tidy_INCLUDE_DIRS}
-  )
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${Jsoncpp_INCLUDE_DIRS}
+  ${Tinyxml2_INCLUDE_DIRS}
+  ${Rhash_INCLUDE_DIRS}
+  ${Tidy_INCLUDE_DIRS}
+)
 
-target_link_libraries(${PROJECT_NAME}
-  PRIVATE ${Boost_LIBRARIES}
-  PRIVATE ${CURL_LIBRARIES}
-  PRIVATE ${OAuth_LIBRARIES}
-  PRIVATE ${Jsoncpp_LIBRARIES}
-  PRIVATE ${Tinyxml2_LIBRARIES}
-  PRIVATE ${Rhash_LIBRARIES}
-  PRIVATE ${CMAKE_THREAD_LIBS_INIT}
-  PRIVATE ${ZLIB_LIBRARIES}
-  PRIVATE ${Tidy_LIBRARIES}
-  )
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  Boost::boost
+  Boost::date_time
+  Boost::filesystem
+  Boost::iostreams
+  Boost::program_options
+  Boost::regex
+  CURL::libcurl
+  Threads::Threads
+  ZLIB::ZLIB
+  ${Jsoncpp_LIBRARIES}
+  ${Tinyxml2_LIBRARIES}
+  ${Rhash_LIBRARIES}
+  ${Tidy_LIBRARIES}
+)
 
 # Check if libatomic is needed in order to use std::atomic, and add
 # it to the list of JavaScriptCore libraries.
