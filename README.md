@@ -43,6 +43,17 @@ cmake ..
 make
 ```
 
+## Arch
+```
+sudo pacman -S --needed base-devel cmake boost tinyxml2 rhash tidy \
+tinyxml jsoncpp curl openssl zlib
+```
+### Build and Install
+```
+cmake .
+make
+```
+
 ## Usage examples
 
 - **Login**
