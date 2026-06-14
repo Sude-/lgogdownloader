@@ -86,4 +86,10 @@ make
 - [LGOGDownloader @ Debian](https://tracker.debian.org/lgogdownloader)
 - [LGOGDownloader @ Ubuntu](https://launchpad.net/ubuntu/+source/lgogdownloader)
 
+## Terminal UI
+
+An optional Rust/Ratatui frontend is available in [`tui/`](tui/README.md). It
+wraps common list, download, repair, status, login, and cache-update operations,
+and provides optional configurable ZIP and GameVault post-processing.
+
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=PT95NXVLQU6WG&source=url)

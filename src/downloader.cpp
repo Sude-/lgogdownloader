@@ -275,9 +275,25 @@ int Downloader::login()
             struct termios termios_old, termios_new;
             tcgetattr(STDIN_FILENO, &termios_old); // Get current terminal attributes
             termios_new = termios_old;
-            termios_new.c_lflag &= ~ECHO; // Set ECHO off
+            termios_new.c_lflag &= ~(ECHO | ICANON); // Read characters without exposing the password
             tcsetattr(STDIN_FILENO, TCSANOW, &termios_new); // Set terminal attributes
-            std::getline(std::cin, password);
+            char character;
+            while (read(STDIN_FILENO, &character, 1) == 1)
+            {
+                if (character == '\n' || character == '\r' || character == '\004')
+                    break;
+                if (character == '\177' || character == '\b')
+                {
+                    if (!password.empty())
+                    {
+                        password.pop_back();
+                        std::cerr << "\b \b";
+                    }
+                    continue;
+                }
+                password.push_back(character);
+                std::cerr << '*';
+            }
             tcsetattr(STDIN_FILENO, TCSANOW, &termios_old); // Restore old terminal attributes
             std::cerr << std::endl;
         }

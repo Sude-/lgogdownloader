@@ -9,6 +9,8 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 build/
+build-wsl/
+target/
 *.cbp
 .DS_Store
 CMakeUserPresets.json
