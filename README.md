@@ -50,8 +50,8 @@ tinyxml jsoncpp curl openssl zlib
 ```
 ### Build and Install
 ```
-cmake .
-make
+cmake -S . -B build
+cmake --build build
 ```
 
 ## Usage examples
