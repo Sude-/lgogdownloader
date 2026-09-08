@@ -5,6 +5,7 @@
  * http://www.wtfpl.net/ for more details. */
 
 #include "galaxyapi.h"
+#include "catalogmetadata.h"
 #include "message.h"
 #include "ziputil.h"
 
@@ -411,10 +412,27 @@ Json::Value galaxyAPI::getProductInfo(const std::string& product_id)
 gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, const DownloadConfig& dlConf)
 {
     gameDetails gamedetails;
+    if (!json.isObject())
+    {
+        gamedetails.metadataFailures++;
+        return gamedetails;
+    }
 
-    gamedetails.gamename = json["slug"].asString();
-    gamedetails.product_id = json["id"].asString();
-    gamedetails.title = json["title"].asString();
+    gamedetails.gamename = CatalogMetadata::scalarString(json["slug"]);
+    gamedetails.product_id = CatalogMetadata::scalarString(json["id"]);
+    gamedetails.title = CatalogMetadata::scalarString(json["title"]);
+
+    const unsigned int missing_download_sections = CatalogMetadata::countMissingDownloadSections(json, dlConf.iInclude);
+    gamedetails.metadataFailures += missing_download_sections;
+    if (!json.isMember("downloads") || !json["downloads"].isObject())
+        return gamedetails;
+
+    if ((dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
+        && !CatalogMetadata::hasCompleteDlcExpansion(json))
+    {
+        gamedetails.metadataFailures++;
+    }
+
     gamedetails.icon = "https:" + json["images"]["icon"].asString();
     gamedetails.logo = "https:" + json["images"]["logo"].asString();
 
@@ -425,39 +443,45 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_INSTALLER)
     {
-        gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GlobalConstants::GFTYPE_BASE_INSTALLER, dlConf);
+        gamedetails.installers = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["installers"], GlobalConstants::GFTYPE_BASE_INSTALLER, dlConf, gamedetails.metadataFailures);
         for (auto &item : gamedetails.installers)
             item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_EXTRA)
     {
-        gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GlobalConstants::GFTYPE_BASE_EXTRA, dlConf);
+        gamedetails.extras = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["bonus_content"], GlobalConstants::GFTYPE_BASE_EXTRA, dlConf, gamedetails.metadataFailures);
         for (auto &item : gamedetails.extras)
             item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_PATCH)
     {
-        gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GlobalConstants::GFTYPE_BASE_PATCH, dlConf);
+        gamedetails.patches = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["patches"], GlobalConstants::GFTYPE_BASE_PATCH, dlConf, gamedetails.metadataFailures);
         for (auto &item : gamedetails.patches)
             item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_LANGPACK)
     {
-        gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GlobalConstants::GFTYPE_BASE_LANGPACK, dlConf);
+        gamedetails.languagepacks = this->fileJsonNodeToGameFileVector(gamedetails.gamename, json["downloads"]["language_packs"], GlobalConstants::GFTYPE_BASE_LANGPACK, dlConf, gamedetails.metadataFailures);
         for (auto &item : gamedetails.languagepacks)
             item.title = gamedetails.title;
     }
 
     if (dlConf.iInclude & GlobalConstants::GFTYPE_DLC)
     {
-        if (json.isMember("expanded_dlcs"))
+        if (json["expanded_dlcs"].isArray())
         {
             for (unsigned int i = 0; i < json["expanded_dlcs"].size(); ++i)
             {
-                std::string dlc_id = json["expanded_dlcs"][i]["id"].asString();
+                const Json::Value& dlc_json = json["expanded_dlcs"][i];
+                if (!dlc_json.isObject())
+                {
+                    gamedetails.metadataFailures++;
+                    continue;
+                }
+                std::string dlc_id = CatalogMetadata::scalarString(dlc_json["id"]);
 
                 if (!Globals::vOwnedGamesIds.empty())
                 {
@@ -465,7 +489,8 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
                         continue;
                 }
 
-                gameDetails dlc_gamedetails = this->productInfoJsonToGameDetails(json["expanded_dlcs"][i], dlConf);
+                gameDetails dlc_gamedetails = this->productInfoJsonToGameDetails(dlc_json, dlConf);
+                gamedetails.metadataFailures += dlc_gamedetails.metadataFailures;
                 dlc_gamedetails.title_basegame = gamedetails.title;
                 dlc_gamedetails.gamename_basegame = gamedetails.gamename;
 
@@ -505,25 +530,48 @@ gameDetails galaxyAPI::productInfoJsonToGameDetails(const Json::Value& json, con
     return gamedetails;
 }
 
-std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const DownloadConfig& dlConf)
+std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const DownloadConfig& dlConf, unsigned int& metadataFailures)
 {
     std::vector<gameFile> gamefiles;
+    if (!json.isArray())
+    {
+        metadataFailures++;
+        return gamefiles;
+    }
+
     unsigned int iInfoNodes = json.size();
     for (unsigned int i = 0; i < iInfoNodes; ++i)
     {
         Json::Value infoNode = json[i];
-        unsigned int iFiles = infoNode["files"].size();
-        std::string name = infoNode["name"].asString();
+        const bool require_platform_language = !(type & GlobalConstants::GFTYPE_EXTRA);
+        if (!CatalogMetadata::hasCompleteDownloadGroup(infoNode, require_platform_language))
+        {
+            metadataFailures++;
+            continue;
+        }
+
+        // GOG uses an all-zero group as an empty placeholder.
+        // https://github.com/Sude-/lgogdownloader/issues/200
+        if (CatalogMetadata::isEmptyDownloadGroup(infoNode))
+            continue;
+
+        std::string name = infoNode["name"].isString() ? infoNode["name"].asString() : std::string();
         std::string version = "";
-        if (!infoNode["version"].empty())
+        if (infoNode["version"].isString())
             version = infoNode["version"].asString();
 
         unsigned int iPlatform = GlobalConstants::PLATFORM_WINDOWS;
         unsigned int iLanguage = GlobalConstants::LANGUAGE_EN;
-        if (!(type & GlobalConstants::GFTYPE_EXTRA))
+        if (require_platform_language)
         {
             iPlatform = Util::getOptionValue(infoNode["os"].asString(), GlobalConstants::PLATFORMS);
             iLanguage = Util::getOptionValue(infoNode["language"].asString(), GlobalConstants::LANGUAGES);
+
+            if (iPlatform == 0 || iLanguage == 0)
+            {
+                metadataFailures++;
+                continue;
+            }
 
             if (!(iPlatform & dlConf.iInstallerPlatform))
                 continue;
@@ -532,35 +580,43 @@ std::vector<gameFile> galaxyAPI::fileJsonNodeToGameFileVector(const std::string&
                 continue;
         }
 
-        // Skip file if count and total_size is zero
-        // https://github.com/Sude-/lgogdownloader/issues/200
-        unsigned int count = infoNode["count"].asUInt();
-        uintmax_t total_size = infoNode["total_size"].asLargestUInt();
-        if (count == 0 && total_size == 0)
-            continue;
-
+        unsigned int iFiles = infoNode["files"].size();
         for (unsigned int j = 0; j < iFiles; ++j)
         {
             Json::Value fileNode = infoNode["files"][j];
+            if (!CatalogMetadata::hasCompleteFileEntry(fileNode))
+            {
+                metadataFailures++;
+                continue;
+            }
             std::string downlink = fileNode["downlink"].asString();
 
+            // Util::CurlHandleGetResponse already retries what is worth retrying and
+            // deliberately does not retry 403/404, so resolve once and classify the
+            // result. Anything unresolved is recorded as a metadata failure, which is
+            // what stops an unresolved file from being read as "no longer offered".
             Json::Value downlinkJson = this->getResponseJson(downlink);
-            if (downlinkJson.empty())
-                continue;
+            std::string downlink_url;
+            std::string path;
+            if (downlinkJson.isObject() && downlinkJson.isMember("downlink")
+                && downlinkJson["downlink"].isString())
+            {
+                downlink_url = downlinkJson["downlink"].asString();
+                if (!downlink_url.empty())
+                    path = this->getPathFromDownlinkUrl(downlink_url, gamename);
+            }
 
-            std::string downlink_url = downlinkJson["downlink"].asString();
-            std::string path = this->getPathFromDownlinkUrl(downlink_url, gamename);
-
-            // Check to see if path ends in "/secure" or "/securex" which means that we got invalid path for some reason
-            boost::regex path_re("/securex?$", boost::regex::perl | boost::regex::icase);
-            boost::match_results<std::string::const_iterator> what;
-            if (boost::regex_search(path, what, path_re))
+            if (CatalogMetadata::validateFileResolution(downlinkJson, path)
+                != CatalogMetadata::ResolutionFailure::None)
+            {
+                metadataFailures++;
                 continue;
+            }
 
             gameFile gf;
             gf.gamename = gamename;
             gf.type = type;
-            gf.id = fileNode["id"].asString();
+            gf.id = CatalogMetadata::scalarString(fileNode["id"]);
             gf.name = name;
             gf.path = path;
             gf.size = Util::getJsonUIntValueAsString(fileNode["size"]);

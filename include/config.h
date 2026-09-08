@@ -57,6 +57,7 @@ struct DownloadConfig
     bool bDuplicateHandler;
     bool bGalaxyDependencies;
     bool bDeleteOrphans;
+    bool bDeleteObsolete;
     bool bGalaxyLowercasePath;
 };
 
@@ -295,6 +296,7 @@ class Config
         // Regex
         std::string sGameRegex;
         std::string sOrphanRegex;
+        std::string sObsoleteRegex;
         std::string sIgnoreDLCCountRegex;
 
         // Priorities

@@ -96,6 +96,47 @@ then the regex defaults to \&'.*\e.(zip|exe|bin|dmg|old|deb|tar\e.gz|pkg|sh|mp4)
 Delete orphaned files during
 \fB\-\-check\-orphans\fR and \fB\-\-galaxy\-install\fR
 .TP
+\fB\-\-check\-obsolete\fR arg
+Check for obsolete files: files found on the local filesystem that GOG's current
+catalog no longer offers. The protected set is always the complete catalog \(em
+every platform, every language and every file type \(em regardless of what
+\fB\-\-platform\fR, \fB\-\-language\fR, \fB\-\-include\fR or
+\fB\-\-exclude\fR selected for this run; those options still control what is
+downloaded and verified. Resolving all live platform, language and type metadata
+can take several minutes on a large library even when no payload files need
+downloading. Always uses the live catalog and never the \fB\-\-use\-cache\fR copy.
+Sets a Perl regular expression filter for files to check. If no argument is given,
+the default covers common GOG installer, patch, extra, and media formats.
+May be used on its own or together with \fB\-\-download\fR or \fB\-\-repair\fR.
+.TP
+\fB\-\-delete\-obsolete\fR
+Delete files reported by \fB\-\-check\-obsolete\fR. Before deleting from a game
+directory, all selected current files in that directory must exist and match the
+exact current download size and, for installers, patches and language packs, a
+freshly computed checksum; extras are verified by size alone. Deletion from a game
+directory is refused if size or checksum metadata cannot be retrieved, if the
+current catalog listed no file at all for that directory, if the run has no
+selected current file there to verify against, or if that game's catalog metadata
+came back incomplete. An incomplete response is never evidence that a local file is
+obsolete: the affected game is reported but never pruned, while the rest of the
+library is still checked.
+Verification is performed only for directories that actually have obsolete
+candidates. Blacklisted and ignorelisted files are not reported or deleted.
+This option requires \fB\-\-check\-obsolete\fR.
+.sp
+Two kinds of file cannot be described by the current catalog and are therefore
+reported as obsolete: files GOG lists for information only, and files of a DLC the
+account no longer owns. Neither has a resolvable download path, so a local copy
+cannot be matched against the catalog. Blacklist them if you keep such files.
+.sp
+A game is skipped when \fB%version%\fR appears in one of its directory templates,
+because the game root has no version of its own and would span every version
+directory while the catalog paths inside it are version specific.
+.sp
+\fB\-\-check\-obsolete\fR exits non-zero if any game was skipped or any game
+directory was refused, so a zero exit means the whole selection was checked. With
+\fB\-\-delete\-obsolete\fR it also exits non-zero if a deletion failed.
+.TP
 \fB\-\-status\fR
 Show status of files
 .sp 1

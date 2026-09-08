@@ -10,6 +10,7 @@
 #include "downloadinfo.h"
 #include "message.h"
 #include "ziputil.h"
+#include "obsolete.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -30,6 +31,9 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <set>
+#include <map>
+#include <iterator>
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -53,6 +57,7 @@ ThreadSafeQueue<Message> msgQueue;
 ThreadSafeQueue<gameFile> createXMLQueue;
 ThreadSafeQueue<gameItem> gameItemQueue;
 ThreadSafeQueue<gameDetails> gameDetailsQueue;
+ThreadSafeQueue<gameDetails> currentCatalogGameDetailsQueue;
 ThreadSafeQueue<galaxyDepotItem> dlQueueGalaxy;
 ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
@@ -501,6 +506,12 @@ int Downloader::getGameDetails()
             this->games.push_back(details);
         }
         std::sort(this->games.begin(), this->games.end(), [](const gameDetails& i, const gameDetails& j) -> bool { return i.gamename < j.gamename; });
+
+        while (currentCatalogGameDetailsQueue.try_pop(details))
+        {
+            this->currentCatalogGames.push_back(details);
+        }
+        std::sort(this->currentCatalogGames.begin(), this->currentCatalogGames.end(), [](const gameDetails& i, const gameDetails& j) -> bool { return i.gamename < j.gamename; });
     }
 
     return 0;
@@ -1828,6 +1839,462 @@ void Downloader::checkOrphans()
     return;
 }
 
+namespace
+{
+    struct ObsoleteGroup
+    {
+        boost::filesystem::path root;
+        std::set<std::string> selected;
+        std::set<std::string> current;
+        std::vector<gameFile> selected_files;
+        std::set<std::string> base_directories;
+        // Set when something about this root is not trustworthy enough to delete
+        // from it. Candidates are still reported, they are just never removed.
+        bool blocked = false;
+        std::string blocked_reason;
+    };
+
+    bool isProtectedPath(const boost::filesystem::path& path, const ObsoleteGroup& group, Config& config)
+    {
+        for (const auto& base_directory : group.base_directories)
+        {
+            const std::string relative_path = Obsolete::relativeKey(base_directory, path);
+
+            if (config.ignorelist.isBlacklisted(relative_path) || config.blacklist.isBlacklisted(relative_path))
+                return true;
+        }
+        return false;
+    }
+}
+
+int Downloader::checkObsolete()
+{
+    Config config = Globals::globalConfig;
+
+    if (this->games.empty())
+    {
+        if (this->getGameDetails() != 0)
+        {
+            std::cerr << "Failed to retrieve current game details; obsolete check aborted" << std::endl;
+            return 1;
+        }
+    }
+
+    if (!this->gameItems.empty() && this->games.size() != this->gameItems.size())
+    {
+        std::cerr << "Current metadata is incomplete (got " << this->games.size() << " of "
+                  << this->gameItems.size() << " games); obsolete check aborted" << std::endl;
+        return 1;
+    }
+
+    if (this->currentCatalogGames.size() != this->games.size())
+    {
+        std::cerr << "Current all-platform, all-language metadata is incomplete (got "
+                  << this->currentCatalogGames.size() << " of " << this->games.size()
+                  << " games); obsolete check aborted" << std::endl;
+        return 1;
+    }
+
+    // An incomplete catalog response is never evidence that a local file is
+    // obsolete. Quarantine the affected game instead of the whole library: its
+    // roots are still scanned and reported, but nothing is deleted from them.
+    std::set<std::string> incomplete_games;
+    size_t metadata_failures = 0;
+    for (const auto& game : this->currentCatalogGames)
+    {
+        if (game.metadataFailures == 0)
+            continue;
+        std::cerr << game.gamename << ": encountered " << game.metadataFailures
+                  << " current catalog metadata failure" << (game.metadataFailures == 1 ? "" : "s")
+                  << "; nothing will be deleted for this game" << std::endl;
+        incomplete_games.insert(game.gamename);
+        metadata_failures += game.metadataFailures;
+    }
+    if (metadata_failures > 0)
+    {
+        std::cerr << "Current catalog metadata is incomplete for " << incomplete_games.size()
+                  << " game" << (incomplete_games.size() == 1 ? "" : "s") << " (" << metadata_failures
+                  << " failure" << (metadata_failures == 1 ? "" : "s")
+                  << "); those games are reported but never pruned" << std::endl;
+    }
+
+    std::map<std::string, gameDetails*> current_catalog;
+    for (auto& game : this->currentCatalogGames)
+        current_catalog[game.gamename] = &game;
+
+    boost::regex expression;
+    try
+    {
+        expression.assign(config.sObsoleteRegex);
+    }
+    catch (const boost::regex_error& ex)
+    {
+        std::cerr << "Invalid --check-obsolete regular expression: " << ex.what() << std::endl;
+        return 1;
+    }
+
+    std::map<std::string, ObsoleteGroup> groups;
+    bool setup_failed = false;
+    bool skipped_games = !incomplete_games.empty();
+
+    for (auto& game : this->games)
+    {
+        if (game.gamename.empty())
+        {
+            std::cerr << "Received incomplete product metadata; obsolete check aborted" << std::endl;
+            setup_failed = true;
+            continue;
+        }
+
+        const auto current_game = current_catalog.find(game.gamename);
+        if (current_game == current_catalog.end())
+        {
+            std::cerr << game.gamename << ": current all-platform, all-language metadata is missing; obsolete check aborted" << std::endl;
+            setup_failed = true;
+            continue;
+        }
+
+        gameSpecificConfig conf;
+        conf.dlConf = config.dlConf;
+        conf.dirConf = config.dirConf;
+        Util::getGameSpecificConfig(game.gamename, &conf);
+
+        const boost::filesystem::path base_directory = boost::filesystem::absolute(conf.dirConf.sDirectory).lexically_normal();
+        const std::string base_key = Obsolete::pathKey(base_directory);
+
+        // The synthetic gameFile a game root is built from carries no version, so a
+        // %version% template makes the root version agnostic while the catalog paths
+        // under it are version specific. Everything left at a previous version's path
+        // would then look obsolete, including variants this run does not download and
+        // whose content GOG still offers unchanged. Refuse rather than guess.
+        const std::vector<std::string> directory_templates = {
+            conf.dirConf.sDirectory, conf.dirConf.sGameSubdir, conf.dirConf.sInstallersSubdir,
+            conf.dirConf.sExtrasSubdir, conf.dirConf.sPatchesSubdir,
+            conf.dirConf.sLanguagePackSubdir, conf.dirConf.sDLCSubdir
+        };
+        bool uses_version_template = false;
+        for (const auto& directory_template : directory_templates)
+        {
+            if (directory_template.find("%version%") != std::string::npos)
+                uses_version_template = true;
+        }
+        if (uses_version_template)
+        {
+            std::cerr << game.gamename << ": %version% in a directory template makes the game root"
+                      << " version agnostic; skipping this game" << std::endl;
+            skipped_games = true;
+            continue;
+        }
+
+        std::vector<boost::filesystem::path> roots;
+        std::vector<unsigned int> platform_ids = {0};
+        for (const auto& platform : GlobalConstants::PLATFORMS)
+            platform_ids.push_back(platform.id);
+
+        bool root_is_download_directory = false;
+        for (const auto platform : platform_ids)
+        {
+            boost::filesystem::path root(game.makeCustomFilepath("", game, conf.dirConf, platform));
+            root = boost::filesystem::path(Obsolete::pathKey(root));
+            if (Obsolete::pathKey(root) == base_key)
+            {
+                root_is_download_directory = true;
+                continue;
+            }
+
+            bool covered = false;
+            for (const auto& existing : roots)
+            {
+                if (Obsolete::isWithin(existing, root))
+                {
+                    covered = true;
+                    break;
+                }
+            }
+            if (!covered)
+            {
+                roots.erase(
+                    std::remove_if(roots.begin(), roots.end(), [&root](const boost::filesystem::path& existing) {
+                        return Obsolete::isWithin(root, existing);
+                    }),
+                    roots.end()
+                );
+                roots.push_back(root);
+            }
+        }
+
+        if (root_is_download_directory)
+        {
+            // Nothing separates this game's files from the rest of the library,
+            // so there is no directory that can be pruned on its behalf.
+            std::cerr << game.gamename << ": game root is the entire download directory "
+                      << base_directory.string() << "; skipping this game" << std::endl;
+            skipped_games = true;
+            continue;
+        }
+
+        if (roots.empty())
+            continue;
+
+        for (const auto& root : roots)
+        {
+            const std::string root_key = Obsolete::pathKey(root);
+            auto& group = groups[root_key];
+            group.root = root;
+            group.base_directories.insert(base_key);
+            if (incomplete_games.count(game.gamename) > 0)
+            {
+                group.blocked = true;
+                group.blocked_reason = "current catalog metadata for " + game.gamename + " is incomplete";
+            }
+        }
+
+        for (const auto& gf : game.getGameFileVector())
+        {
+            const boost::filesystem::path wanted_path = boost::filesystem::absolute(gf.getFilepath()).lexically_normal();
+            bool assigned = false;
+            for (const auto& root : roots)
+            {
+                if (!Obsolete::isWithin(root, wanted_path))
+                    continue;
+
+                auto& group = groups[Obsolete::pathKey(root)];
+                if (!isProtectedPath(wanted_path, group, config))
+                {
+                    group.selected.insert(Obsolete::pathKey(wanted_path));
+                    group.selected_files.push_back(gf);
+                }
+                assigned = true;
+                break;
+            }
+
+            if (!assigned)
+            {
+                std::cerr << game.gamename << ": selected file is outside its game root: "
+                          << wanted_path.string() << std::endl;
+                setup_failed = true;
+            }
+        }
+
+        for (const auto& gf : current_game->second->getGameFileVector())
+        {
+            const boost::filesystem::path current_path = boost::filesystem::absolute(gf.getFilepath()).lexically_normal();
+            bool assigned = false;
+            for (const auto& root : roots)
+            {
+                if (!Obsolete::isWithin(root, current_path))
+                    continue;
+
+                auto& group = groups[Obsolete::pathKey(root)];
+                if (!isProtectedPath(current_path, group, config))
+                    group.current.insert(Obsolete::pathKey(current_path));
+                assigned = true;
+                break;
+            }
+
+            if (!assigned)
+            {
+                std::cerr << game.gamename << ": current catalog file is outside its game root: "
+                          << current_path.string() << std::endl;
+                setup_failed = true;
+            }
+        }
+    }
+
+    // Overlapping roots owned by different groups make ownership ambiguous. Refuse instead of
+    // allowing a broad root to classify files from a nested game as obsolete.
+    for (auto first = groups.begin(); first != groups.end(); ++first)
+    {
+        for (auto second = std::next(first); second != groups.end(); ++second)
+        {
+            if (Obsolete::isWithin(first->second.root, second->second.root)
+                || Obsolete::isWithin(second->second.root, first->second.root))
+            {
+                std::cerr << "Overlapping game roots are not safe to prune: " << first->second.root.string()
+                          << " and " << second->second.root.string() << std::endl;
+                setup_failed = true;
+            }
+        }
+    }
+
+    if (setup_failed)
+    {
+        std::cerr << "Obsolete check aborted before scanning; no files were deleted" << std::endl;
+        return 1;
+    }
+
+    bool failed = false;
+    size_t obsolete_count = 0;
+    size_t deleted_count = 0;
+
+    for (auto& entry : groups)
+    {
+        auto& group = entry.second;
+        std::vector<boost::filesystem::path> candidates;
+        try
+        {
+            candidates = Obsolete::collectCandidates(group.root, expression);
+        }
+        catch (const boost::filesystem::filesystem_error& ex)
+        {
+            std::cerr << ex.what() << std::endl;
+            failed = true;
+            continue;
+        }
+
+        candidates.erase(
+            std::remove_if(candidates.begin(), candidates.end(), [&group, &config](const boost::filesystem::path& path) {
+                return isProtectedPath(path, group, config);
+            }),
+            candidates.end()
+        );
+
+        auto obsolete = Obsolete::findObsolete(candidates, group.selected, group.current);
+        obsolete_count += obsolete.size();
+
+        // Reporting only needs the live selected path set. The expensive local
+        // verification gate is required only when this group has files to delete.
+        bool verified = true;
+        if (!obsolete.empty())
+        {
+            // These say why the candidates below are not trustworthy evidence, so
+            // report them whether or not this run would delete anything.
+            const std::string consequence = config.dlConf.bDeleteObsolete
+                ? "; no obsolete files were deleted from it"
+                : "; the candidates below are not evidence of obsolescence";
+
+            if (group.blocked)
+            {
+                std::cerr << group.root.string() << ": " << group.blocked_reason
+                          << consequence << std::endl;
+                verified = false;
+            }
+            else if (group.current.empty())
+            {
+                // The live catalog described no file at all under this root. That is
+                // never evidence that everything on disk is superseded.
+                std::cerr << group.root.string() << ": the current catalog lists no files for this game root"
+                          << consequence << std::endl;
+                verified = false;
+                failed = true;
+            }
+            else if (config.dlConf.bDeleteObsolete && group.selected_files.empty())
+            {
+                // Without a selected current file there is nothing local to verify
+                // against, so the documented pre-delete gate cannot be applied.
+                std::cerr << group.root.string() << ": no selected current file to verify against"
+                          << consequence << std::endl;
+                verified = false;
+                failed = true;
+            }
+        }
+        if (verified && config.dlConf.bDeleteObsolete && !obsolete.empty())
+        {
+            for (const auto& gf : group.selected_files)
+            {
+                const boost::filesystem::path filepath = boost::filesystem::absolute(gf.getFilepath()).lexically_normal();
+                uintmax_t expected_size = 0;
+                std::string remote_hash;
+                if (!boost::filesystem::exists(filepath) || !boost::filesystem::is_regular_file(filepath))
+                {
+                    std::cerr << gf.gamename << ": selected current file is missing: " << filepath.string() << std::endl;
+                    verified = false;
+                    continue;
+                }
+                // Nothing can be deleted from this root any more, so skip the
+                // remaining requests and full-file checksums.
+                if (!verified)
+                    continue;
+                if (!this->getRemoteFileVerification(gf, expected_size, remote_hash))
+                {
+                    std::cerr << gf.gamename << ": current file has no trustworthy remote verification data: "
+                              << filepath.string() << std::endl;
+                    verified = false;
+                    continue;
+                }
+                const uintmax_t actual_size = boost::filesystem::file_size(filepath);
+                if (actual_size != expected_size)
+                {
+                    std::cerr << gf.gamename << ": selected current file has wrong size: " << filepath.string()
+                              << " (local " << actual_size << ", remote " << expected_size << ")" << std::endl;
+                    verified = false;
+                    continue;
+                }
+
+                const bool checksum_required = gf.type & (GlobalConstants::GFTYPE_INSTALLER
+                    | GlobalConstants::GFTYPE_PATCH | GlobalConstants::GFTYPE_LANGPACK);
+                if (checksum_required && remote_hash.empty())
+                {
+                    std::cerr << gf.gamename << ": checksum metadata is unavailable for selected current file: "
+                              << filepath.string() << std::endl;
+                    verified = false;
+                }
+                else if (checksum_required)
+                {
+                    const std::string local_hash = Util::getLocalFileHash(
+                        config.sXMLDirectory,
+                        filepath.string(),
+                        gf.gamename,
+                        false
+                    );
+                    if (local_hash.empty() || local_hash != remote_hash)
+                    {
+                        std::cerr << gf.gamename << ": selected current file failed checksum verification: "
+                                  << filepath.string() << std::endl;
+                        verified = false;
+                    }
+                }
+            }
+        }
+
+        for (const auto& path : obsolete)
+        {
+            if (config.dlConf.bDeleteObsolete && verified)
+            {
+                boost::system::error_code ec;
+                const bool removed = boost::filesystem::remove(path, ec);
+                if (!removed || ec)
+                {
+                    std::cerr << "Failed to delete obsolete file " << path.string();
+                    if (ec)
+                        std::cerr << ": " << ec.message();
+                    std::cerr << std::endl;
+                    failed = true;
+                }
+                else
+                {
+                    std::cout << "Deleted obsolete file " << path.string() << std::endl;
+                    deleted_count++;
+                }
+            }
+            else if (config.dlConf.bDeleteObsolete)
+            {
+                std::cout << "Not deleting unverified obsolete candidate " << path.string() << std::endl;
+            }
+            else
+            {
+                std::cout << path.string() << std::endl;
+            }
+        }
+
+        if (!verified && !group.blocked && !group.current.empty() && !group.selected_files.empty())
+        {
+            std::cerr << "Selected current files under " << group.root.string()
+                      << " are incomplete; no obsolete files were deleted from this game root" << std::endl;
+            failed = true;
+        }
+    }
+
+    if (obsolete_count == 0)
+        std::cout << "No obsolete files" << std::endl;
+    else if (config.dlConf.bDeleteObsolete)
+        std::cout << "Deleted " << deleted_count << " of " << obsolete_count << " obsolete files" << std::endl;
+
+    // A skipped game means the run did not cover the whole selection, so do not
+    // report success even though everything it did check was fine.
+    return (failed || skipped_games) ? 1 : 0;
+}
+
 // Check status of files
 void Downloader::checkStatus()
 {
@@ -1967,7 +2434,19 @@ std::string Downloader::getLocalFileHash(const std::string& filepath, const std:
 
 std::string Downloader::getRemoteFileHash(const gameFile& gf)
 {
+    uintmax_t remoteSize = 0;
     std::string remoteHash;
+    // Callers that only want the hash must not pay for the Content-Length probe.
+    this->getRemoteFileVerification(gf, remoteSize, remoteHash, false);
+    return remoteHash;
+}
+
+bool Downloader::getRemoteFileVerification(const gameFile& gf, uintmax_t& remoteSize, std::string& remoteHash, const bool& bNeedSize)
+{
+    // Catalog sizes are rounded for some files. Use checksum XML or the current
+    // download's Content-Length so deletion is gated by the exact byte count.
+    remoteSize = 0;
+    remoteHash.clear();
 
     // Refresh Galaxy login if token is expired
     if (gogGalaxy->isTokenExpired())
@@ -1975,7 +2454,7 @@ std::string Downloader::getRemoteFileHash(const gameFile& gf)
         if (!gogGalaxy->refreshLogin())
         {
             std::cerr << "Galaxy API failed to refresh login" << std::endl;
-            return remoteHash;
+            return false;
         }
     }
 
@@ -1985,7 +2464,7 @@ std::string Downloader::getRemoteFileHash(const gameFile& gf)
     if (downlinkJson.empty())
     {
         std::cerr << "Empty JSON response" << std::endl;
-        return remoteHash;
+        return false;
     }
 
     std::string xml_url;
@@ -2005,11 +2484,44 @@ std::string Downloader::getRemoteFileHash(const gameFile& gf)
         tinyxml2::XMLElement *fileElemRemote = remote_xml.FirstChildElement("file");
         if (fileElemRemote)
         {
-            remoteHash = fileElemRemote->Attribute("md5");
+            const char* hash = fileElemRemote->Attribute("md5");
+            if (hash)
+                remoteHash = hash;
+            const char* total_size = fileElemRemote->Attribute("total_size");
+            if (total_size)
+            {
+                try
+                {
+                    remoteSize = std::stoull(total_size);
+                }
+                catch (const std::exception&)
+                {
+                    remoteSize = 0;
+                }
+            }
         }
     }
 
-    return remoteHash;
+    if (bNeedSize && remoteSize == 0 && downlinkJson.isMember("downlink") && !downlinkJson["downlink"].empty())
+    {
+        CURL* curlheader = curl_easy_init();
+        if (curlheader)
+        {
+            Util::CurlHandleSetDefaultOptions(curlheader, Globals::globalConfig.curlConf);
+            curl_easy_setopt(curlheader, CURLOPT_NOPROGRESS, 1L);
+            curl_easy_setopt(curlheader, CURLOPT_NOBODY, 1L);
+            curl_easy_setopt(curlheader, CURLOPT_URL, downlinkJson["downlink"].asCString());
+            const CURLcode result = curl_easy_perform(curlheader);
+            curl_off_t content_length = 0;
+            if (result == CURLE_OK)
+                curl_easy_getinfo(curlheader, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &content_length);
+            curl_easy_cleanup(curlheader);
+            if (content_length > 0)
+                remoteSize = static_cast<uintmax_t>(content_length);
+        }
+    }
+
+    return remoteSize > 0;
 }
 
 /* Load game details from cache file
@@ -3743,7 +4255,41 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         }
 
         Json::Value product_info = galaxy->getProductInfo(game_item.id);
-        game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
+        gameDetails current_catalog_game;
+        if (!config.sObsoleteRegex.empty())
+        {
+            // The set that protects local files must be the whole catalog, not the
+            // download selection. Anything narrower would classify a file GOG still
+            // offers as obsolete just because this run wasn't asked to download it.
+            // Same widening that checkOrphans applies before it deletes anything.
+            DownloadConfig current_catalog_conf = conf.dlConf;
+            current_catalog_conf.iInclude = Util::getOptionValue("all", GlobalConstants::INCLUDE_OPTIONS);
+            current_catalog_conf.iInstallerPlatform = Util::getOptionValue("all", GlobalConstants::PLATFORMS);
+            current_catalog_conf.iInstallerLanguage = Util::getOptionValue("all", GlobalConstants::LANGUAGES);
+            current_catalog_conf.vPlatformPriority.clear();
+            current_catalog_conf.vLanguagePriority.clear();
+            // Keep every variant distinct until after applying the download selection.
+            // Otherwise an earlier non-selected language with the same path can donate
+            // its downlink to the selected variant.
+            current_catalog_conf.bDuplicateHandler = false;
+
+            current_catalog_game = galaxy->productInfoJsonToGameDetails(product_info, current_catalog_conf);
+            game = current_catalog_game;
+            game.filterWithPlatformLanguage(conf.dlConf);
+            if (conf.dlConf.bDuplicateHandler)
+                game.filterDuplicates();
+        }
+        else
+        {
+            game = galaxy->productInfoJsonToGameDetails(product_info, conf.dlConf);
+        }
+        if (!config.sObsoleteRegex.empty())
+        {
+            // This branch derived game from the whole catalog, so drop the DLCs that
+            // productInfoJsonToGameDetails would never have added for this selection.
+            // Done before the remaining filters so both paths see the same input.
+            game.filterDlcsWithInclude(conf.dlConf.iInclude);
+        }
         game.filterWithPriorities(conf);
         game.filterWithType(conf.dlConf.iInclude);
 
@@ -3783,6 +4329,11 @@ void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
         }
 
         game.makeFilepaths(conf.dirConf);
+        if (!config.sObsoleteRegex.empty())
+        {
+            current_catalog_game.makeFilepaths(conf.dirConf);
+            currentCatalogGameDetailsQueue.push(current_catalog_game);
+        }
         gameDetailsQueue.push(game);
     }
 

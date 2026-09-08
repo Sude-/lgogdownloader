@@ -38,6 +38,8 @@ set(SRC_FILES
   src/gamedetails.cpp
   src/galaxyapi.cpp
   src/ziputil.cpp
+  src/obsolete.cpp
+  src/catalogmetadata.cpp
 )
 
 if(USE_QT_GUI)
@@ -184,3 +186,79 @@ set(INSTALL_SHARE_DIR share CACHE PATH "Installation directory for resource file
 
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}" DESTINATION ${INSTALL_BIN_DIR})
 add_subdirectory(man)
+
+option(BUILD_TESTS "Build unit tests" OFF)
+if(BUILD_TESTS)
+  enable_testing()
+
+  # The tests compile project sources directly, so they need the same dependency
+  # include directories and libraries the main target gets.
+  add_library(lgogdownloader_test_deps INTERFACE)
+  target_include_directories(lgogdownloader_test_deps INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(lgogdownloader_test_deps INTERFACE
+    Boost::boost
+    Boost::date_time
+    Boost::filesystem
+    Boost::iostreams
+    Boost::program_options
+    Boost::regex
+    CURL::libcurl
+    Threads::Threads
+    ZLIB::ZLIB
+  )
+
+  if(TARGET JsonCpp::JsonCpp)
+    target_link_libraries(lgogdownloader_test_deps INTERFACE JsonCpp::JsonCpp)
+  else()
+    target_include_directories(lgogdownloader_test_deps INTERFACE ${Jsoncpp_INCLUDE_DIRS})
+    target_link_libraries(lgogdownloader_test_deps INTERFACE ${Jsoncpp_LIBRARIES})
+  endif()
+
+  if(TARGET tinyxml2::tinyxml2)
+    target_link_libraries(lgogdownloader_test_deps INTERFACE tinyxml2::tinyxml2)
+  else()
+    target_include_directories(lgogdownloader_test_deps INTERFACE ${Tinyxml2_INCLUDE_DIRS})
+    target_link_libraries(lgogdownloader_test_deps INTERFACE ${Tinyxml2_LIBRARIES})
+  endif()
+
+  if(TARGET LibRHash::LibRHash)
+    target_link_libraries(lgogdownloader_test_deps INTERFACE LibRHash::LibRHash)
+  else()
+    target_include_directories(lgogdownloader_test_deps INTERFACE ${Rhash_INCLUDE_DIRS})
+    target_link_libraries(lgogdownloader_test_deps INTERFACE ${Rhash_LIBRARIES})
+  endif()
+
+  if(TARGET tidy-html5::tidy-html5)
+    target_link_libraries(lgogdownloader_test_deps INTERFACE tidy-html5::tidy-html5)
+  else()
+    target_include_directories(lgogdownloader_test_deps INTERFACE ${Tidy_INCLUDE_DIRS})
+    target_link_libraries(lgogdownloader_test_deps INTERFACE ${Tidy_LIBRARIES})
+  endif()
+
+  add_executable(obsolete_tests
+    tests/obsolete_tests.cpp
+    src/obsolete.cpp
+  )
+
+  add_executable(gamedetails_filter_tests
+    tests/gamedetails_filter_tests.cpp
+    src/gamedetails.cpp
+    src/gamefile.cpp
+    src/util.cpp
+    src/blacklist.cpp
+  )
+
+  add_executable(catalog_metadata_tests
+    tests/catalog_metadata_tests.cpp
+    src/catalogmetadata.cpp
+  )
+
+  foreach(test_target obsolete_tests gamedetails_filter_tests catalog_metadata_tests)
+    set_property(TARGET ${test_target} PROPERTY CXX_STANDARD 17)
+    # These targets contain no Q_OBJECT and link no Qt, but they would otherwise
+    # inherit the directory scoped AUTOMOC/AUTOUIC set for the Qt GUI build.
+    set_target_properties(${test_target} PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+    target_link_libraries(${test_target} PRIVATE lgogdownloader_test_deps)
+    add_test(NAME ${test_target} COMMAND ${test_target})
+  endforeach()
+endif()

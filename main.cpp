@@ -14,6 +14,7 @@
 #include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/regex.hpp>
 #include <csignal>
 
 namespace bpo = boost::program_options;
@@ -148,6 +149,10 @@ int main(int argc, char *argv[])
     std::string orphans_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh|mp4)$"; // Limit to files with these extensions (".old" is for renamed older version files)
     std::string check_orphans_text = "Check for orphaned files (files found on local filesystem that are not found on GOG servers). Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + orphans_regex_default + "'";
 
+    // Create help text for --check-obsolete
+    std::string obsolete_regex_default = ".*\\.(zip|exe|bin|dmg|old|deb|tar\\.gz|pkg|sh|mp4|iso)$";
+    std::string check_obsolete_text = "Check for obsolete files (local files that GOG's current catalog no longer offers). The protected set is always the complete catalog: every platform, language and file type, regardless of what --platform, --language, --include or --exclude selected for this run. Always uses the live catalog and never the --use-cache copy. Sets regular expression filter (Perl syntax) for files to check. If no argument is given then the regex defaults to '" + obsolete_regex_default + "'";
+
     // Help text for subdir options
     std::string subdir_help_text = "\nTemplates:\n"
         "- %platform%\n"
@@ -254,6 +259,8 @@ int main(int argc, char *argv[])
             ("clear-update-flags", bpo::value<bool>(&bClearUpdateNotifications)->zero_tokens()->default_value(false), "Clear update notification flags")
             ("check-orphans", bpo::value<std::string>(&Globals::globalConfig.sOrphanRegex)->implicit_value(""), check_orphans_text.c_str())
             ("delete-orphans", bpo::value<bool>(&Globals::globalConfig.dlConf.bDeleteOrphans)->zero_tokens()->default_value(false), "Delete orphaned files during --check-orphans and --galaxy-install")
+            ("check-obsolete", bpo::value<std::string>(&Globals::globalConfig.sObsoleteRegex)->implicit_value(""), check_obsolete_text.c_str())
+            ("delete-obsolete", bpo::value<bool>(&Globals::globalConfig.dlConf.bDeleteObsolete)->zero_tokens()->default_value(false), "Delete obsolete files during --check-obsolete after verifying the selected current files in each game directory")
             ("status", bpo::value<bool>(&Globals::globalConfig.bCheckStatus)->zero_tokens()->default_value(false), "Show status of files\n\nOutput format:\nstatuscode gamename filename filesize filehash\n\nStatus codes:\nOK - File is OK\nND - File is not downloaded\nMD5 - MD5 mismatch, different version\nFS - File size mismatch, incomplete download\n\nSee also --no-fast-status-check option")
             ("save-config", bpo::value<bool>(&Globals::globalConfig.bSaveConfig)->zero_tokens()->default_value(false), "Create config file with current settings")
             ("reset-config", bpo::value<bool>(&Globals::globalConfig.bResetConfig)->zero_tokens()->default_value(false), "Reset config settings to default")
@@ -358,6 +365,12 @@ int main(int argc, char *argv[])
         options_cli_all_include_hidden.add(options_cli_all).add(options_cli_no_cfg_hidden);
 
         bpo::parsed_options parsed = bpo::parse_command_line(argc, argv, options_cli_all_include_hidden);
+        bool bUseCacheFromCommandLine = false;
+        for (const auto& option : parsed.options)
+        {
+            if (option.string_key == "use-cache")
+                bUseCacheFromCommandLine = true;
+        }
         bpo::store(parsed, vm);
         unrecognized_options_cli = bpo::collect_unrecognized(parsed.options, bpo::include_positional);
         bpo::notify(vm);
@@ -523,6 +536,51 @@ int main(int argc, char *argv[])
         if (vm.count("check-orphans"))
             if (Globals::globalConfig.sOrphanRegex.empty())
                 Globals::globalConfig.sOrphanRegex = orphans_regex_default;
+
+        if (vm.count("check-obsolete"))
+        {
+            if (Globals::globalConfig.sObsoleteRegex.empty())
+                Globals::globalConfig.sObsoleteRegex = obsolete_regex_default;
+
+            // Reject a bad expression now. Resolving the catalog the check needs takes
+            // minutes on a large library, and it would all be thrown away.
+            try
+            {
+                boost::regex expression(Globals::globalConfig.sObsoleteRegex);
+            }
+            catch (const boost::regex_error& ex)
+            {
+                std::cerr << "Invalid --check-obsolete regular expression: " << ex.what() << std::endl;
+                return 1;
+            }
+        }
+
+        if (vm.count("check-orphans") && vm.count("check-obsolete"))
+        {
+            std::cerr << "--check-orphans and --check-obsolete cannot be used together" << std::endl;
+            return 1;
+        }
+
+        if (Globals::globalConfig.dlConf.bDeleteObsolete && !vm.count("check-obsolete"))
+        {
+            std::cerr << "--delete-obsolete requires --check-obsolete" << std::endl;
+            return 1;
+        }
+
+        if (vm.count("check-obsolete") && Globals::globalConfig.bUseCache)
+        {
+            // Only refuse when the user asked for the cache on the command line.
+            // use-cache is also a config file setting, and there is no way to negate
+            // it from the command line, so honouring it here would make
+            // --check-obsolete permanently unreachable for that user.
+            if (bUseCacheFromCommandLine)
+            {
+                std::cerr << "--check-obsolete requires live catalog metadata and cannot be used with --use-cache" << std::endl;
+                return 1;
+            }
+            std::cerr << "--check-obsolete requires live catalog metadata; ignoring use-cache for this run" << std::endl;
+            Globals::globalConfig.bUseCache = false;
+        }
 
         if (vm.count("report"))
             Globals::globalConfig.bReport = true;
@@ -819,6 +877,24 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // Every branch below is exclusive, so an obsolete check requested alongside an
+    // action that outranks it would silently do nothing while still paying for the
+    // widened catalog resolution. Say so instead of reporting an empty result.
+    if (!Globals::globalConfig.sObsoleteRegex.empty()
+        && !Globals::globalConfig.bDownload && !Globals::globalConfig.bRepair
+        && (Globals::globalConfig.bUpdateCache || Globals::globalConfig.bNotifications
+            || bClearUpdateNotifications || !vFileIdStrings.empty() || bList
+            || Globals::globalConfig.bCheckStatus
+            || !galaxy_product_id_show_builds.empty() || !galaxy_product_id_install.empty()
+            || !galaxy_product_id_list_cdns.empty() || !galaxy_product_id_show_cloud_paths.empty()
+            || !galaxy_product_id_show_local_cloud_paths.empty()
+            || !galaxy_product_cloud_saves_delete.empty()
+            || !galaxy_upload_product_cloud_saves.empty()))
+    {
+        std::cerr << "--check-obsolete must be used on its own or together with --download or --repair" << std::endl;
+        return 1;
+    }
+
     int res = 0;
 
     if (Globals::globalConfig.bUpdateCache)
@@ -842,6 +918,8 @@ int main(int argc, char *argv[])
         res = downloader.listGames();
     else if (!Globals::globalConfig.sOrphanRegex.empty()) // Check for orphaned files if regex for orphans is set
         downloader.checkOrphans();
+    else if (!Globals::globalConfig.sObsoleteRegex.empty()) // Check against the current catalog
+        res = downloader.checkObsolete();
     else if (Globals::globalConfig.bCheckStatus)
         downloader.checkStatus();
     else if (!galaxy_product_id_show_builds.empty())
@@ -943,6 +1021,12 @@ int main(int argc, char *argv[])
     // Orphan check was called at the same time as download. Perform it after download has finished
     if (!Globals::globalConfig.sOrphanRegex.empty() && Globals::globalConfig.bDownload)
         downloader.checkOrphans();
+
+    // Obsolete check was requested alongside another action. Perform it once that
+    // action has finished, so the check sees the files it just wrote.
+    if (!Globals::globalConfig.sObsoleteRegex.empty()
+        && (Globals::globalConfig.bDownload || Globals::globalConfig.bRepair))
+        res |= downloader.checkObsolete();
 
     return res;
 }

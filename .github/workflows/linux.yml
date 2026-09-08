@@ -42,10 +42,13 @@ jobs:
           CXX: ${{matrix.cxx_compiler}}
         run: |
           cmake -Bbuild -DCMAKE_BUILD_TYPE=Release \
-                -DUSE_QT_GUI=${{matrix.qt_gui}} -GNinja
+                -DUSE_QT_GUI=${{matrix.qt_gui}} -DBUILD_TESTS=YES -GNinja
 
       - name: Build
         run: ninja -Cbuild
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
 
       - name: Run
         run: cd build && ./lgogdownloader --help
