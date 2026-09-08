@@ -18,8 +18,6 @@ find_package(Boost
   program_options
   date_time
   iostreams
-  OPTIONAL_COMPONENTS
-  system
 )
 find_package(CURL 7.55.0 REQUIRED)
 find_package(Jsoncpp REQUIRED)
