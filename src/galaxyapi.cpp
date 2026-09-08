@@ -359,9 +359,50 @@ Json::Value galaxyAPI::getProductInfo(const std::string& product_id)
 
     if (product_info["dlcs"].isObject())
     {
+        int max_ids = 45;
+        int dlc_count = product_info["dlcs"]["products"].size();
         const std::string dlc_url = product_info["dlcs"]["expanded_all_products_url"].asString();
 
-        product_info["expanded_dlcs"] = this->getResponseJson(dlc_url);
+        Json::Value expanded_dlcs;
+
+        if (dlc_count <= max_ids)
+        {
+            expanded_dlcs = this->getResponseJson(dlc_url);
+        }
+        else
+        {
+            Json::Value dlcs = product_info["dlcs"]["products"];
+            std::string url_begin = "https://api.gog.com/products?ids=";
+            std::string url_end = "&expand=downloads,description,screenshots,videos,related_products,changelog";
+            std::string url_ids;
+            int product_count = 0;
+            int i = 0;
+            for (Json::Value::iterator it = dlcs.begin(); it != dlcs.end(); ++it)
+            {
+                product_count++;
+                Json::Value dlc = *it;
+                std::string id = dlc["id"].asString();
+                if (url_ids.empty())
+                    url_ids = id;
+                else
+                    url_ids += "," + id;
+
+                if (product_count == max_ids || it == std::prev(dlcs.end()))
+                {
+                    std::string url = url_begin+url_ids+url_end;
+                    Json::Value expanded_info = this->getResponseJson(url);
+                    for (auto info : expanded_info)
+                    {
+                        expanded_dlcs[i] = info;
+                        i++;
+                    }
+                    url_ids = "";
+                    product_count = 0;
+                }
+            }
+        }
+
+        product_info["expanded_dlcs"] = expanded_dlcs;
     }
 
     return product_info;
