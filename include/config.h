@@ -252,10 +252,6 @@ class Config
         bool bReport;
         bool bRespectUmask;
         bool bPlatformDetection;
-#ifdef USE_QT_GUI_LOGIN
-        bool bEnableLoginGUI;
-        bool bForceGUILogin;
-#endif
         bool bUseFastCheck;
         bool bTrustAPIForExtras;
         bool bGalaxyListCDNs;

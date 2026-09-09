@@ -11,10 +11,6 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <tinyxml2.h>
 
-#ifdef USE_QT_GUI_LOGIN
-    #include "gui_login.h"
-#endif
-
 Website::Website()
 {
     this->retries = 0;
@@ -356,10 +352,6 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
 {
     std::string auth_code;
     bool bRecaptcha = false;
-    bool bForceGUI = false;
-    #ifdef USE_QT_GUI_LOGIN
-        bForceGUI = Globals::globalConfig.bForceGUILogin;
-    #endif
 
     std::string auth_url = "https://auth.gog.com/auth?client_id=" + Globals::galaxyConf.getClientId() + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size()) + "&response_type=code&layout=default&brand=gog";
 
@@ -375,22 +367,11 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
         bRecaptcha = true;
     }
 
-    // Try normal login if GUI or browser is not forced
-    if (!(bForceGUI || Globals::globalConfig.bForceBrowserLogin))
+    // Try normal login if browser is not forced
+    if (!Globals::globalConfig.bForceBrowserLogin)
     {
         auth_code = this->LoginGetAuthCodeCurl(login_form_html, email, password);
     }
-
-    #ifdef USE_QT_GUI_LOGIN
-    if ((Globals::globalConfig.bEnableLoginGUI && auth_code.empty()) || bForceGUI)
-    {
-        auth_code = this->LoginGetAuthCodeGUI(email, password);
-
-        // If GUI is forced then stop here and don't offer browser login
-        if (bForceGUI)
-            return auth_code;
-    }
-    #endif
 
     if ((auth_code.empty() && bRecaptcha) || Globals::globalConfig.bForceBrowserLogin)
         auth_code = this->LoginGetAuthCodeBrowser(auth_url);
@@ -661,23 +642,6 @@ std::string Website::LoginGetAuthCodeBrowser(const std::string& auth_url)
 
     return auth_code;
 }
-
-#ifdef USE_QT_GUI_LOGIN
-std::string Website::LoginGetAuthCodeGUI(const std::string& email, const std::string& password)
-{
-    std::string auth_code;
-    GuiLogin gl;
-    gl.Login(email, password);
-
-    auto cookies = gl.getCookies();
-    for (auto cookie : cookies)
-    {
-        curl_easy_setopt(curlhandle, CURLOPT_COOKIELIST, cookie.c_str());
-    }
-    auth_code = gl.getCode();
-    return auth_code;
-}
-#endif
 
 bool Website::IsLoggedIn()
 {

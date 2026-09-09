@@ -3,13 +3,6 @@ project (lgogdownloader LANGUAGES C CXX VERSION 3.18)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
-option(USE_QT_GUI "Build with Qt GUI login support" OFF)
-if(USE_QT_GUI)
-  add_compile_definitions(USE_QT_GUI_LOGIN=1)
-  set(CMAKE_AUTOMOC ON)
-  set(CMAKE_AUTOUIC ON)
-endif(USE_QT_GUI)
-
 find_package(Boost
   CONFIG
   REQUIRED
@@ -39,20 +32,6 @@ set(SRC_FILES
   src/galaxyapi.cpp
   src/ziputil.cpp
 )
-
-if(USE_QT_GUI)
-  set(QT Qt6)
-  find_package(Qt6 COMPONENTS Widgets WebEngineWidgets CONFIG)
-  if(NOT Qt6_FOUND)
-    set(QT Qt5)
-    find_package(Qt5 REQUIRED COMPONENTS Widgets WebEngineWidgets CONFIG)
-  endif()
-
-  set(QT_GUI_SRC_FILES
-    src/gui_login.cpp
-  )
-  list(APPEND SRC_FILES ${QT_GUI_SRC_FILES})
-endif(USE_QT_GUI)
 
 
 set(GIT_CHECKOUT FALSE)
@@ -159,13 +138,6 @@ if (NOT ATOMIC_BUILD_SUCCEEDED)
   )
 endif ()
 file(REMOVE ${testAtomicPath})
-
-if(USE_QT_GUI)
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${QT}::Widgets
-    ${QT}::WebEngineWidgets
-  )
-endif(USE_QT_GUI)
 
 if(MSVC)
   # Force to always compile with W4

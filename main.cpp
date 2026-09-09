@@ -237,9 +237,6 @@ int main(int argc, char *argv[])
             ("help,h", "Print help message")
             ("version", "Print version information")
             ("login", bpo::value<bool>(&Globals::globalConfig.bLogin)->zero_tokens()->default_value(false), "Login")
-#ifdef USE_QT_GUI_LOGIN
-            ("gui-login", bpo::value<bool>(&Globals::globalConfig.bForceGUILogin)->zero_tokens()->default_value(false), "Login (force GUI login)\nImplies --enable-login-gui")
-#endif
             ("browser-login", bpo::value<bool>(&Globals::globalConfig.bForceBrowserLogin)->zero_tokens()->default_value(false), "Login (force browser login)")
             ("check-login-status", bpo::value<bool>(&bCheckLoginStatus)->zero_tokens()->default_value(false), "Check login status")
             ("list", bpo::value<std::string>(&sListFormat)->implicit_value("games"), list_format_text.c_str())
@@ -270,9 +267,6 @@ int main(int argc, char *argv[])
             ("cloud-whitelist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudWhiteList)->multitoken(), "Include this list of cloud saves, by default all cloud saves are included\n Example: --cloud-whitelist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
             ("cloud-blacklist", bpo::value<std::vector<std::string>>(&Globals::globalConfig.cloudBlackList)->multitoken(), "Exclude this list of cloud saves\n Example: --cloud-blacklist saves/AutoSave-0 saves/AutoSave-1/screenshot.png")
             ("cloud-force", bpo::value<bool>(&Globals::globalConfig.bCloudForce)->zero_tokens()->default_value(false), "Download or Upload cloud saves even if they're up-to-date\nDelete remote cloud saves even if no saves are whitelisted")
-#ifdef USE_QT_GUI_LOGIN
-            ("enable-login-gui", bpo::value<bool>(&Globals::globalConfig.bEnableLoginGUI)->zero_tokens()->default_value(false), "Enable login GUI when encountering reCAPTCHA on login form")
-#endif
             ("tag", bpo::value<std::string>(&tags)->default_value(""), "Filter using tags. Separate with \",\" to use multiple values")
             ("blacklist", bpo::value<std::string>(&Globals::globalConfig.sBlacklistFilePath)->default_value(sDefaultBlacklistFilePath), "Filepath to blacklist")
             ("ignorelist", bpo::value<std::string>(&Globals::globalConfig.sIgnorelistFilePath)->default_value(sDefaultIgnorelistFilePath), "Filepath to ignorelist")
@@ -474,14 +468,6 @@ int main(int argc, char *argv[])
         {
             Globals::globalConfig.transformationsJSON = Util::readJsonFile(Globals::globalConfig.sTransformConfigFilePath);
         }
-
-        #ifdef USE_QT_GUI_LOGIN
-        if (Globals::globalConfig.bForceGUILogin)
-        {
-            Globals::globalConfig.bLogin = true;
-            Globals::globalConfig.bEnableLoginGUI = true;
-        }
-        #endif
 
         if (Globals::globalConfig.bForceBrowserLogin)
         {

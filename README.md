@@ -12,7 +12,6 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
 * [tinyxml2](https://github.com/leethomason/tinyxml2)
 * [boost](http://www.boost.org/) (regex, date-time, system, filesystem, program-options, iostreams)
 * [zlib](https://www.zlib.net/)
-* [qtwebengine](https://www.qt.io/) if built with -DUSE_QT_GUI=ON
 
 ## Make dependencies
 * [cmake](https://cmake.org/) >= 3.18.0
@@ -24,11 +23,11 @@ It uses the same API as GOG Galaxy which doesn't have Linux support at the momen
     libjsoncpp-dev librhash-dev libtinyxml2-dev libtidy-dev \
     libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
     libboost-date-time-dev libboost-iostreams-dev cmake \
-    pkg-config zlib1g-dev qtwebengine5-dev ninja-build
+    pkg-config zlib1g-dev ninja-build
 
 ### Build and install
 
-    $ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DUSE_QT_GUI=ON -GNinja
+    $ cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -GNinja
     $ ninja -Cbuild install
 
 ## Fedora

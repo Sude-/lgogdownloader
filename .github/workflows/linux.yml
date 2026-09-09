@@ -13,13 +13,12 @@ on:
 
 jobs:
   build:
-    name: ${{matrix.cxx_compiler}} USE_QT_GUI=${{matrix.qt_gui}}
+    name: ${{matrix.cxx_compiler}}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         cxx_compiler: [g++, clang++]
-        qt_gui: [YES, NO]
 
     steps:
       - name: "Checkout Code"
@@ -35,14 +34,14 @@ jobs:
             libjsoncpp-dev librhash-dev libtinyxml2-dev libtidy-dev \
             libboost-system-dev libboost-filesystem-dev libboost-program-options-dev \
             libboost-date-time-dev libboost-iostreams-dev cmake \
-            pkg-config zlib1g-dev qtwebengine5-dev
+            pkg-config zlib1g-dev
 
       - name: Configure
         env:
           CXX: ${{matrix.cxx_compiler}}
         run: |
           cmake -Bbuild -DCMAKE_BUILD_TYPE=Release \
-                -DUSE_QT_GUI=${{matrix.qt_gui}} -GNinja
+                -GNinja
 
       - name: Build
         run: ninja -Cbuild
