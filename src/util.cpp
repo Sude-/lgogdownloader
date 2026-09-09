@@ -109,6 +109,31 @@ std::string Util::getChunkHash(unsigned char *chunk, uintmax_t chunk_size, unsig
     return result;
 }
 
+std::string Util::getFileHashFromLocalXML(const std::string& xml_dir, const std::string& filepath, const std::string& gamename)
+{
+    std::string hash;
+    boost::filesystem::path path = filepath;
+    boost::filesystem::path local_xml_file;
+    if (!gamename.empty())
+        local_xml_file = xml_dir + "/" + gamename + "/" + path.filename().string() + ".xml";
+    else
+        local_xml_file = xml_dir + "/" + path.filename().string() + ".xml";
+
+    if (boost::filesystem::exists(local_xml_file))
+    {
+        tinyxml2::XMLDocument local_xml;
+        local_xml.LoadFile(local_xml_file.string().c_str());
+        tinyxml2::XMLElement *fileElem = local_xml.FirstChildElement("file");
+
+        if (fileElem)
+        {
+            hash = fileElem->Attribute("md5");
+        }
+    }
+
+    return hash;
+}
+
 // Create GOG XML
 int Util::createXML(std::string filepath, uintmax_t chunk_size, std::string xml_dir)
 {
@@ -590,14 +615,7 @@ std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string
 
     if (boost::filesystem::exists(local_xml_file) && useFastCheck)
     {
-        tinyxml2::XMLDocument local_xml;
-        local_xml.LoadFile(local_xml_file.string().c_str());
-        tinyxml2::XMLElement *fileElem = local_xml.FirstChildElement("file");
-
-        if (fileElem)
-        {
-            localHash = fileElem->Attribute("md5");
-        }
+        localHash = Util::getFileHashFromLocalXML(xml_dir, filepath, gamename);
     }
     else if (boost::filesystem::exists(path) && boost::filesystem::is_regular_file(path))
     {
