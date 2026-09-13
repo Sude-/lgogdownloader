@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18.0 FATAL_ERROR)
-project (lgogdownloader LANGUAGES C CXX VERSION 3.18)
+project (lgogdownloader LANGUAGES C CXX VERSION 3.19)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
