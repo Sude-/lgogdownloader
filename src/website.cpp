@@ -352,8 +352,6 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
 {
     std::string auth_code;
     bool bCaptcha = false;
-    bool bRecaptcha = false;
-    bool bTurnstile = false;
 
     std::string auth_url = "https://auth.gog.com/auth?client_id=" + Globals::galaxyConf.getClientId() + "&redirect_uri=" + (std::string)curl_easy_escape(curlhandle, Globals::galaxyConf.getRedirectUri().c_str(), Globals::galaxyConf.getRedirectUri().size()) + "&response_type=code&layout=default&brand=gog";
 
@@ -366,15 +364,13 @@ std::string Website::LoginGetAuthCode(const std::string& email, const std::strin
 
     if (login_form_html.find("class=\"g-recaptcha form__recaptcha\"") != std::string::npos)
     {
-        bRecaptcha = true;
+        bCaptcha = true;
     }
 
     if (login_form_html.find("class=\"cf-turnstile form__turnstile\"") != std::string::npos)
     {
-        bTurnstile = true;
+        bCaptcha = true;
     }
-
-    bCaptcha |= (bRecaptcha | bTurnstile);
 
     // Try normal login if browser is not forced
     if (!Globals::globalConfig.bForceBrowserLogin)
