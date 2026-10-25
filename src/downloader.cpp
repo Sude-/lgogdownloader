@@ -30,6 +30,7 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <set>
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -381,6 +382,161 @@ void Downloader::clearUpdateNotifications()
 void Downloader::getGameList()
 {
     gameItems = gogWebsite->getGames();
+}
+
+int Downloader::renameFiles()
+{
+    if (this->games.empty())
+        this->getGameDetails();
+
+    struct RenameEntry
+    {
+        boost::filesystem::path oldPath;
+        boost::filesystem::path newPath;
+    };
+
+    std::vector<RenameEntry> entries;
+    std::set<boost::filesystem::path> destinations;
+    std::set<boost::filesystem::path> sources;
+    bool failedPreflight = false;
+
+    const char spinner[] = {'|', '/', '-', '\\'};
+    for (size_t gameIndex = 0; gameIndex < this->games.size(); ++gameIndex)
+    {
+        gameDetails& game = this->games[gameIndex];
+        std::cerr << "\033[0K\rScanning games for files to rename "
+                  << gameIndex + 1 << " / " << this->games.size()
+                  << " " << spinner[gameIndex % (sizeof(spinner) / sizeof(spinner[0]))]
+                  << std::flush;
+
+        gameSpecificConfig conf;
+        conf.dirConf = Globals::globalConfig.dirConf;
+        conf.dlConf = Globals::globalConfig.dlConf;
+        Util::getGameSpecificConfig(game.gamename, &conf);
+
+        DirectoryConfig oldDirConf = conf.dirConf;
+        if (conf.dirConf.bOldGameSubdir)
+            oldDirConf.sGameSubdir = conf.dirConf.sOldGameSubdir;
+        if (conf.dirConf.bOldInstallersSubdir)
+            oldDirConf.sInstallersSubdir = conf.dirConf.sOldInstallersSubdir;
+        if (conf.dirConf.bOldExtrasSubdir)
+            oldDirConf.sExtrasSubdir = conf.dirConf.sOldExtrasSubdir;
+        if (conf.dirConf.bOldPatchesSubdir)
+            oldDirConf.sPatchesSubdir = conf.dirConf.sOldPatchesSubdir;
+        if (conf.dirConf.bOldLanguagePackSubdir)
+            oldDirConf.sLanguagePackSubdir = conf.dirConf.sOldLanguagePackSubdir;
+        if (conf.dirConf.bOldDLCSubdir)
+            oldDirConf.sDLCSubdir = conf.dirConf.sOldDLCSubdir;
+        if (conf.dirConf.bOldGalaxyInstallSubdir)
+            oldDirConf.sGalaxyInstallSubdir = conf.dirConf.sOldGalaxyInstallSubdir;
+
+        for (const auto& paths : game.getFileRenamePaths(oldDirConf, conf.dirConf, conf.dlConf.iInclude))
+        {
+            boost::filesystem::path oldPath = boost::filesystem::absolute(paths.first);
+            boost::filesystem::path newPath = boost::filesystem::absolute(paths.second);
+
+            if (oldPath == newPath)
+                continue;
+
+            if (!boost::filesystem::exists(oldPath))
+                continue;
+
+            if (!boost::filesystem::is_regular_file(oldPath))
+            {
+                std::cerr << "Rename source is not a regular file: " << oldPath << std::endl;
+                failedPreflight = true;
+                continue;
+            }
+
+            entries.push_back({oldPath, newPath});
+            sources.insert(oldPath);
+
+            if (Globals::globalConfig.bDryRun)
+            {
+                std::cerr << "\033[0K\r\033[2K" << std::flush;
+                std::cout << "Would rename: " << oldPath << " -> " << newPath << std::endl;
+            }
+
+            if (!destinations.insert(newPath).second)
+            {
+                std::cerr << "Duplicate rename destination: " << newPath << std::endl;
+                failedPreflight = true;
+            }
+        }
+    }
+
+    std::cerr << "\033[2K\rScanned games for files to rename "
+              << this->games.size() << " / " << this->games.size()
+              << "\n" << std::flush;
+
+    for (const RenameEntry& entry : entries)
+    {
+        if (boost::filesystem::exists(entry.newPath))
+        {
+            std::cerr << "Rename destination already exists: " << entry.newPath << std::endl;
+            failedPreflight = true;
+        }
+
+        boost::filesystem::path parent = entry.newPath.parent_path();
+        if (boost::filesystem::exists(parent) && !boost::filesystem::is_directory(parent))
+        {
+            std::cerr << "Rename destination parent is not a directory: " << parent << std::endl;
+            failedPreflight = true;
+        }
+
+        if (sources.count(entry.newPath) > 0)
+        {
+            std::cerr << "Rename cycle detected: " << entry.oldPath << " -> " << entry.newPath << std::endl;
+            failedPreflight = true;
+        }
+    }
+
+    if (failedPreflight)
+    {
+        std::cerr << "File rename stopped due to preflight failures." << std::endl;
+        return 1;
+    }
+
+    if (entries.empty())
+    {
+        std::cout << "No files need renaming." << std::endl;
+        return 0;
+    }
+
+    if (Globals::globalConfig.bDryRun)
+    {
+        std::cout << "Dry run complete: " << entries.size() << " file(s) would be renamed." << std::endl;
+        return 0;
+    }
+
+    std::vector<RenameEntry> completed;
+    for (const RenameEntry& entry : entries)
+    {
+        boost::system::error_code ec;
+        boost::filesystem::path parent = entry.newPath.parent_path();
+        if (!boost::filesystem::exists(parent) && !boost::filesystem::create_directories(parent, ec))
+        {
+            std::cerr << "Failed to create rename destination directory: " << parent;
+            if (ec) std::cerr << " (" << ec.message() << ")";
+            std::cerr << std::endl;
+            return 1;
+        }
+
+        boost::filesystem::rename(entry.oldPath, entry.newPath, ec);
+        if (ec)
+        {
+            std::cerr << "Failed to rename " << entry.oldPath << " to " << entry.newPath
+                      << " (" << ec.message() << ")" << std::endl;
+            std::cerr << "File renaming stopped." << std::endl;
+            return 1;
+        }
+
+        completed.push_back(entry);
+        std::cout << "Renamed: " << entry.oldPath << " -> " << entry.newPath << std::endl;
+    }
+
+    std::cout << "Renamed " << completed.size() << " file(s)." << std::endl;
+    return 0;
 }
 
 /* Get detailed info about the games

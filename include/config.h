@@ -27,6 +27,20 @@ struct DirectoryConfig
     std::string sLanguagePackSubdir;
     std::string sDLCSubdir;
     std::string sGalaxyInstallSubdir;
+    std::string sOldGameSubdir;
+    std::string sOldInstallersSubdir;
+    std::string sOldExtrasSubdir;
+    std::string sOldPatchesSubdir;
+    std::string sOldLanguagePackSubdir;
+    std::string sOldDLCSubdir;
+    std::string sOldGalaxyInstallSubdir;
+    bool bOldGameSubdir = false;
+    bool bOldInstallersSubdir = false;
+    bool bOldExtrasSubdir = false;
+    bool bOldPatchesSubdir = false;
+    bool bOldLanguagePackSubdir = false;
+    bool bOldDLCSubdir = false;
+    bool bOldGalaxyInstallSubdir = false;
 };
 
 struct DownloadConfig
@@ -255,6 +269,8 @@ class Config
         bool bUseFastCheck;
         bool bTrustAPIForExtras;
         bool bGalaxyListCDNs;
+        bool bRenameFiles;
+        bool bDryRun;
 
         // Cache
         bool bUseCache;

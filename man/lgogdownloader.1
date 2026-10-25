@@ -50,6 +50,12 @@ Wishlist = w|wishlist
 \fB\-\-download\fR
 Download
 .TP
+\fB\-\-rename\-files\fR
+Rename downloaded files from old subdirectory templates to current templates
+.TP
+\fB\-\-dry\-run\fR
+Preview file renames without changing files
+.TP
 \fB\-\-repair\fR
 Repair downloaded files
 Use \fB\-\-repair\fR \fB\-\-download\fR to redownload files when filesizes don't match
@@ -331,6 +337,36 @@ Set subdirectory for game
 .br
 See \fB\-\-subdir\-installers\fR for template values
 .TP
+\fB\-\-old\-subdir\-installers\fR arg
+Set previous subdirectory for installers
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
+\fB\-\-old\-subdir\-extras\fR arg (=extras)
+Set previous subdirectory for extras
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
+\fB\-\-old\-subdir\-patches\fR arg (=patches)
+Set previous subdirectory for patches
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
+\fB\-\-old\-subdir\-language\-packs\fR arg (=languagepacks)
+Set previous subdirectory for language packs
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
+\fB\-\-old\-subdir\-dlc\fR arg (=dlc/%dlcname%)
+Set previous subdirectory for dlc
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
+\fB\-\-old\-subdir\-game\fR arg (=\\%gamename\\%)
+Set previous subdirectory for game
+.br
+See \fB\-\-subdir\-installers\fR for template values
+.TP
 \fB\-\-use\-cache\fR
 Use game details cache
 .TP
@@ -563,6 +599,12 @@ Templates:
 .br
 \- %title_stripped% = %title% with some characters stripped
 .sp 1
+.TP
+\fB\-\-old\-subdir\-galaxy\-install\fR arg (=%install_dir%)
+Set previous subdirectory for galaxy install
+.br
+See \fB\-\-subdir\-galaxy\-install\fR for template values
+.sp 1
 "stripped" means that every character that doesn't match the following list
 is removed:
 .br
@@ -747,7 +789,9 @@ JSON formatted file. Sets game specific settings for \fBgamename\fP.
 Allowed settings are \fBlanguage\fP, \fBplatform\fP, \fBinclude\fP,
 \fBignore-dlc-count\fP, \fBsubdirectories\fP, \fBdirectory\fP,
 \fBsubdir-game\fP, \fBsubdir-installers\fP, \fBsubdir-extras\fP,
-\fBsubdir-patches\fP, \fBsubdir-language-packs\fP and \fBsubdir-dlc\fP.
+\fBsubdir-patches\fP, \fBsubdir-language-packs\fP, \fBsubdir-dlc\fP,
+\fBold-subdir-game\fP, \fBold-subdir-installers\fP, \fBold-subdir-extras\fP,
+\fBold-subdir-patches\fP, \fBold-subdir-language-packs\fP and \fBold-subdir-dlc\fP.
 .br
 Must be in the following format:
 .br
@@ -763,7 +807,14 @@ Must be in the following format:
     "subdir-extras" : <string>,
     "subdir-patches" : <string>,
     "subdir-language-packs" : <string>,
-    "subdir-dlc" : <string>
+    "subdir-dlc" : <string>,
+    "old-subdir-game" : <string>,
+    "old-subdir-installers" : <string>,
+    "old-subdir-extras" : <string>,
+    "old-subdir-patches" : <string>,
+    "old-subdir-language-packs" : <string>,
+    "old-subdir-dlc" : <string>,
+    "old-subdir-galaxy-install" : <string>
 .br
 }
 
