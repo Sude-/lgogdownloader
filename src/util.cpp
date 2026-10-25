@@ -373,6 +373,48 @@ int Util::getGameSpecificConfig(std::string gamename, gameSpecificConfig* conf, 
         conf->dirConf.sDLCSubdir = root["subdir-dlc"].asString();
         res++;
     }
+    if (root.isMember("old-subdir-game"))
+    {
+        conf->dirConf.sOldGameSubdir = root["old-subdir-game"].asString();
+        conf->dirConf.bOldGameSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-installers"))
+    {
+        conf->dirConf.sOldInstallersSubdir = root["old-subdir-installers"].asString();
+        conf->dirConf.bOldInstallersSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-extras"))
+    {
+        conf->dirConf.sOldExtrasSubdir = root["old-subdir-extras"].asString();
+        conf->dirConf.bOldExtrasSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-patches"))
+    {
+        conf->dirConf.sOldPatchesSubdir = root["old-subdir-patches"].asString();
+        conf->dirConf.bOldPatchesSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-language-packs"))
+    {
+        conf->dirConf.sOldLanguagePackSubdir = root["old-subdir-language-packs"].asString();
+        conf->dirConf.bOldLanguagePackSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-dlc"))
+    {
+        conf->dirConf.sOldDLCSubdir = root["old-subdir-dlc"].asString();
+        conf->dirConf.bOldDLCSubdir = true;
+        res++;
+    }
+    if (root.isMember("old-subdir-galaxy-install"))
+    {
+        conf->dirConf.sOldGalaxyInstallSubdir = root["old-subdir-galaxy-install"].asString();
+        conf->dirConf.bOldGalaxyInstallSubdir = true;
+        res++;
+    }
     return res;
 }
 

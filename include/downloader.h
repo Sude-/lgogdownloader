@@ -103,6 +103,7 @@ class Downloader
         void clearUpdateNotifications();
         void repair();
         void download();
+        int renameFiles();
 
         void downloadCloudSaves(const std::string& product_id, const std::string& build_id = std::string());
         void downloadCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());

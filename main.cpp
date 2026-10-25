@@ -241,6 +241,8 @@ int main(int argc, char *argv[])
             ("check-login-status", bpo::value<bool>(&bCheckLoginStatus)->zero_tokens()->default_value(false), "Check login status")
             ("list", bpo::value<std::string>(&sListFormat)->implicit_value("games"), list_format_text.c_str())
             ("download", bpo::value<bool>(&Globals::globalConfig.bDownload)->zero_tokens()->default_value(false), "Download")
+            ("rename-files", bpo::value<bool>(&Globals::globalConfig.bRenameFiles)->zero_tokens()->default_value(false), "Rename downloaded files from old subdirectory templates to current templates")
+            ("dry-run", bpo::value<bool>(&Globals::globalConfig.bDryRun)->zero_tokens()->default_value(false), "Preview file renames without changing files")
             ("repair", bpo::value<bool>(&Globals::globalConfig.bRepair)->zero_tokens()->default_value(false), "Repair downloaded files\nUse --repair --download to redownload files when filesizes don't match (possibly different version). Redownload will rename the old file (appends .old to filename)")
             ("game", bpo::value<std::string>(&Globals::globalConfig.sGameRegex)->default_value(""), "Set regular expression filter\nfor download/list/repair (Perl syntax). Takes precedence over --game-list if both are specified.")
             ("game-list", bpo::value<std::string>(&Globals::globalConfig.sGameListFilePath)->default_value(""), "Set file with a list of regular expressions to filter\nfor download/list/repair (Perl syntax)")
@@ -296,6 +298,12 @@ int main(int argc, char *argv[])
             ("subdir-language-packs", bpo::value<std::string>(&Globals::globalConfig.dirConf.sLanguagePackSubdir)->default_value("languagepacks"), ("Set subdirectory for language packs" + subdir_help_text).c_str())
             ("subdir-dlc", bpo::value<std::string>(&Globals::globalConfig.dirConf.sDLCSubdir)->default_value("dlc/%dlcname%"), ("Set subdirectory for dlc" + subdir_help_text).c_str())
             ("subdir-game", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGameSubdir)->default_value("%gamename%"), ("Set subdirectory for game" + subdir_help_text).c_str())
+            ("old-subdir-installers", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldInstallersSubdir), ("Set previous subdirectory for installers" + subdir_help_text).c_str())
+            ("old-subdir-extras", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldExtrasSubdir), ("Set previous subdirectory for extras" + subdir_help_text).c_str())
+            ("old-subdir-patches", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldPatchesSubdir), ("Set previous subdirectory for patches" + subdir_help_text).c_str())
+            ("old-subdir-language-packs", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldLanguagePackSubdir), ("Set previous subdirectory for language packs" + subdir_help_text).c_str())
+            ("old-subdir-dlc", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldDLCSubdir), ("Set previous subdirectory for dlc" + subdir_help_text).c_str())
+            ("old-subdir-game", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldGameSubdir), ("Set previous subdirectory for game" + subdir_help_text).c_str())
             ("use-cache", bpo::value<bool>(&Globals::globalConfig.bUseCache)->zero_tokens()->default_value(false), ("Use game details cache"))
             ("cache-valid", bpo::value<int>(&Globals::globalConfig.iCacheValid)->default_value(2880), ("Set how long cached game details are valid (in minutes)\nDefault: 2880 minutes (48 hours)"))
             ("save-serials", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveSerials)->zero_tokens()->default_value(false), "Save serial numbers when downloading")
@@ -342,6 +350,7 @@ int main(int argc, char *argv[])
             ("galaxy-arch", bpo::value<std::string>(&sGalaxyArch)->default_value("x64"), galaxy_arch_text.c_str())
             ("galaxy-no-dependencies", bpo::value<bool>(&bNoGalaxyDependencies)->zero_tokens()->default_value(false), "Don't download dependencies during --galaxy-install")
             ("subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sGalaxyInstallSubdir)->default_value("%install_dir%"), galaxy_install_subdir_text.c_str())
+            ("old-subdir-galaxy-install", bpo::value<std::string>(&Globals::globalConfig.dirConf.sOldGalaxyInstallSubdir), "Set previous subdirectory for Galaxy installs")
             ("galaxy-cdn-priority", bpo::value<std::string>(&sGalaxyCDN)->default_value("edgecast,akamai_edgecast_proxy,fastly"), galaxy_cdn_priority_text.c_str())
             ("galaxy-list-cdns", bpo::value<std::string>(&galaxy_product_id_list_cdns)->default_value(""), "List available CDNs for game using product id [product_id/build_index] or gamename regex [gamename/build_id]\nBuild index is used to select a build and defaults to 0 if not specified.\n\nExample: 12345/2 selects build 2 for product 12345")
             ("galaxy-lowercase-path", bpo::value<bool>(&Globals::globalConfig.dlConf.bGalaxyLowercasePath)->zero_tokens()->default_value(false), "Make filepath lowercase for Windows game files")
@@ -540,6 +549,13 @@ int main(int argc, char *argv[])
         Globals::globalConfig.dlConf.bDuplicateHandler = !bNoDuplicateHandler;
         Globals::globalConfig.dlConf.bRemoteXML = !bNoRemoteXML;
         Globals::globalConfig.dirConf.bSubDirectories = !bNoSubDirectories;
+        Globals::globalConfig.dirConf.bOldGameSubdir = vm.count("old-subdir-game") > 0;
+        Globals::globalConfig.dirConf.bOldInstallersSubdir = vm.count("old-subdir-installers") > 0;
+        Globals::globalConfig.dirConf.bOldExtrasSubdir = vm.count("old-subdir-extras") > 0;
+        Globals::globalConfig.dirConf.bOldPatchesSubdir = vm.count("old-subdir-patches") > 0;
+        Globals::globalConfig.dirConf.bOldLanguagePackSubdir = vm.count("old-subdir-language-packs") > 0;
+        Globals::globalConfig.dirConf.bOldDLCSubdir = vm.count("old-subdir-dlc") > 0;
+        Globals::globalConfig.dirConf.bOldGalaxyInstallSubdir = vm.count("old-subdir-galaxy-install") > 0;
         Globals::globalConfig.bPlatformDetection = !bNoPlatformDetection;
         Globals::globalConfig.dlConf.bGalaxyDependencies = !bNoGalaxyDependencies;
         Globals::globalConfig.bUseFastCheck = !bNoFastStatusCheck;
@@ -819,6 +835,10 @@ int main(int argc, char *argv[])
         {
             res |= downloader.downloadFileWithId(*it, Globals::globalConfig.sOutputFilename) ? 1 : 0;
         }
+    }
+    else if (Globals::globalConfig.bRenameFiles)
+    {
+        res = downloader.renameFiles();
     }
     else if (Globals::globalConfig.bRepair) // Repair file
         downloader.repair();

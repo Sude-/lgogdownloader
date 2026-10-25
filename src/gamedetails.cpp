@@ -252,6 +252,16 @@ std::vector<gameFile> gameDetails::getGameFileVector()
 }
 
 // Return vector containing all game files matching download filters
+std::vector<std::pair<std::string, std::string>> gameDetails::getFileRenamePaths(const DirectoryConfig& oldDirConf, const DirectoryConfig& newDirConf, unsigned int includeType)
+{
+    std::vector<std::pair<std::string, std::string>> paths;
+    for (const gameFile& file : this->getGameFileVectorFiltered(includeType))
+    {
+        paths.emplace_back(this->makeFilepath(file, oldDirConf), this->makeFilepath(file, newDirConf));
+    }
+    return paths;
+}
+
 std::vector<gameFile> gameDetails::getGameFileVectorFiltered(const unsigned int& iType)
 {
     std::vector<gameFile> vGameFiles;

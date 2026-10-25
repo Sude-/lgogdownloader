@@ -47,6 +47,7 @@ class gameDetails
         std::string getProductJsonFilepath();
         Json::Value getDetailsAsJson();
         std::vector<gameFile> getGameFileVector();
+        std::vector<std::pair<std::string, std::string>> getFileRenamePaths(const DirectoryConfig& oldDirConf, const DirectoryConfig& newDirConf, unsigned int includeType);
         std::vector<gameFile> getGameFileVectorFiltered(const unsigned int& iType);
         void filterWithType(const unsigned int& iType);
         std::string makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf);
