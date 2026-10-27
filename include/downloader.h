@@ -28,6 +28,7 @@
 #include "galaxyapi.h"
 #include "globals.h"
 #include "util.h"
+#include "downloadstats.h"
 
 #include <curl/curl.h>
 #include <json/json.h>
@@ -159,7 +160,11 @@ class Downloader
         static void processCloudSaveDownloadQueue(Config conf, const unsigned int& tid);
         static void processCloudSaveUploadQueue(Config conf, const unsigned int& tid);
         static int progressCallbackForThread(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow);
-        template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue, size_t total_size_bytes);
+        template <typename T> void printProgress(const ThreadSafeQueue<T>& download_queue, size_t total_size_bytes, DownloadStats* stats = nullptr);
+        void drainMessageQueue();
+        static double getCompletedFraction(const DownloadStats& stats, const unsigned long long& in_flight_bytes);
+        static void getProgressFooter(const DownloadStats& stats, const unsigned long long& in_flight_bytes, const double& total_rate, const int& iTermWidth, ProgressBar& bar, std::vector<std::string>& vFooterText);
+        void printDownloadSummary(const DownloadStats& stats, const boost::posix_time::time_duration& elapsed);
         static void getGameDetailsThread(Config config, const unsigned int& tid);
         void printGameDetailsAsText(gameDetails& game);
         void printGameFileDetailsAsText(gameFile& gf);

@@ -12,6 +12,7 @@
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <json/json.h>
+#include <stdexcept>
 #include <fstream>
 #include <sys/ioctl.h>
 #include <tidy.h>
@@ -422,18 +423,46 @@ void Util::setFilePermissions(const boost::filesystem::path& path, const boost::
     }
 }
 
+unsigned long long Util::getFileSizeFromString(const std::string& str)
+{
+    unsigned long long filesize = 0;
+    try
+    {
+        long long size = std::stoll(str);
+        if (size > 0)
+            filesize = static_cast<unsigned long long>(size);
+    }
+    catch (const std::exception& e)
+    {
+        filesize = 0;
+    }
+    return filesize;
+}
+
 int Util::getTerminalWidth()
 {
-    int width;
+    int width = 10000;//Something sufficiently big
     if(isatty(STDOUT_FILENO))
     {
         struct winsize w;
-        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-        width = static_cast<int>(w.ws_col);
+        // A terminal without a known size reports zero, treat it as unlimited
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_col > 0)
+            width = static_cast<int>(w.ws_col);
     }
-    else
-        width = 10000;//Something sufficiently big
     return width;
+}
+
+int Util::getTerminalHeight()
+{
+    int height = 10000;//Something sufficiently big
+    if(isatty(STDOUT_FILENO))
+    {
+        struct winsize w;
+        // A terminal without a known size reports zero, treat it as unlimited
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0 && w.ws_row > 0)
+            height = static_cast<int>(w.ws_row);
+    }
+    return height;
 }
 
 
@@ -625,14 +654,18 @@ std::string Util::getLocalFileHash(const std::string& xml_dir, const std::string
     return localHash;
 }
 
-void Util::shortenStringToTerminalWidth(std::string& str)
+void Util::shortenStringToWidth(std::string& str, const size_t& width)
 {
-    const size_t iTermWidth = Util::getTerminalWidth();
-    if (str.size() <= iTermWidth || iTermWidth < 4)
+    if (str.size() <= width || width < 4)
         return;
 
-    const size_t iCharsToKeep = (iTermWidth - 3) / 2;
+    const size_t iCharsToKeep = (width - 3) / 2;
     str = str.substr(0, iCharsToKeep) + "..." + str.substr(str.size() - iCharsToKeep);
+}
+
+void Util::shortenStringToTerminalWidth(std::string& str)
+{
+    Util::shortenStringToWidth(str, static_cast<size_t>(Util::getTerminalWidth()));
 }
 
 std::string Util::getJsonUIntValueAsString(const Json::Value& json_value)

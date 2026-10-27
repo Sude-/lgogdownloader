@@ -26,6 +26,7 @@ set(SRC_FILES
   src/downloader.cpp
   src/progressbar.cpp
   src/util.cpp
+  src/downloadstats.cpp
   src/blacklist.cpp
   src/gamefile.cpp
   src/gamedetails.cpp

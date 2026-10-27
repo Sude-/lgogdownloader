@@ -70,6 +70,7 @@ namespace Util
     int replaceAllString(std::string& str, const std::string& to_replace, const std::string& replace_with);
     void setFilePermissions(const boost::filesystem::path& path, const boost::filesystem::perms& permissions);
     int getTerminalWidth();
+    int getTerminalHeight();
     void getManualUrlsFromJSON(const Json::Value &root, std::vector<std::string> &urls);
     std::vector<std::string> getDLCNamesFromJSON(const Json::Value &root);
     std::string getHomeDir();
@@ -80,6 +81,7 @@ namespace Util
     std::string getOptionNameString(const unsigned int& value, const std::vector<GlobalConstants::optionsStruct>& options);
     void parseOptionString(const std::string &option_string, std::vector<unsigned int> &priority, unsigned int &type, const std::vector<GlobalConstants::optionsStruct>& options);
     std::string getLocalFileHash(const std::string& xml_dir, const std::string& filepath, const std::string& gamename = std::string(), const bool& useFastCheck = true);
+    void shortenStringToWidth(std::string& str, const size_t& width);
     void shortenStringToTerminalWidth(std::string& str);
     std::string getJsonUIntValueAsString(const Json::Value& json);
     std::string getStrippedString(std::string str);
@@ -92,6 +94,7 @@ namespace Util
     curl_off_t CurlWriteMemoryCallback(char *ptr, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlWriteChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, void *userp);
     curl_off_t CurlReadChunkMemoryCallback(void *contents, curl_off_t size, curl_off_t nmemb, ChunkMemoryStruct *userp);
+    unsigned long long getFileSizeFromString(const std::string& str);
     std::string makeSizeString(const unsigned long long& iSizeInBytes, const unsigned int& unit_format = GlobalConstants::UNIT_FORMAT_IEC);
     std::string makeRateString(double rate, const unsigned int& unit_format = GlobalConstants::UNIT_FORMAT_IEC);
 

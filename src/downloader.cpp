@@ -57,6 +57,40 @@ ThreadSafeQueue<galaxyDepotItem> dlQueueGalaxy;
 ThreadSafeQueue<zipFileEntry> dlQueueGalaxy_MojoSetupHack;
 std::mutex mtx_create_directories; // Mutex for creating directories in Downloader::processDownloadQueue
 std::atomic<unsigned long long> iTotalRemainingBytes(0);
+DownloadStats downloadStats; // Counters for the download progress display and the final summary
+
+namespace
+{
+    // Records the outcome of a file taken from the download queue exactly once, no
+    // matter which of the many paths leaves the loop body in processDownloadQueue.
+    // Defaults to a failure so that no exit path can go unaccounted for.
+    class FileOutcomeGuard
+    {
+        public:
+            FileOutcomeGuard(const gameFile& gf, const unsigned int& tid) : m_gf(gf), m_tid(tid) {}
+            ~FileOutcomeGuard()
+            {
+                // Clear the slot before recording the outcome. A progress frame drawn
+                // between the two would otherwise count this file's bytes twice: once
+                // as completed and once as still in flight.
+                vDownloadInfo[m_tid].clearProgressInfo();
+                downloadStats.recordOutcome(m_gf, m_outcome, m_filesize, m_filename);
+            }
+            FileOutcomeGuard(const FileOutcomeGuard&) = delete;
+            FileOutcomeGuard& operator=(const FileOutcomeGuard&) = delete;
+
+            void setOutcome(const FileOutcome& outcome) { m_outcome = outcome; }
+            void setFilesize(const unsigned long long& filesize) { m_filesize = filesize; }
+            void setFilename(const std::string& filename) { m_filename = filename; }
+
+        private:
+            const gameFile& m_gf;
+            unsigned int m_tid;
+            FileOutcome m_outcome = FileOutcome::Failed;
+            unsigned long long m_filesize = 0;
+            std::string m_filename;
+    };
+}
 
 std::string username() {
     auto user = std::getenv("USER");
@@ -763,16 +797,9 @@ void Downloader::download()
         for (auto gf : vFiles)
         {
             dlQueue.push(gf);
-            unsigned long long filesize = 0;
-            try
-            {
-                filesize = std::stoll(gf.size);
-            }
-            catch (std::invalid_argument& e)
-            {
-                filesize = 0;
-            }
+            unsigned long long filesize = Util::getFileSizeFromString(gf.size);
             iTotalRemainingBytes.fetch_add(filesize);
+            downloadStats.addFile(gf, filesize);
         }
 
     }
@@ -816,7 +843,9 @@ void Downloader::download()
             vThreads.push_back(std::thread(Downloader::processDownloadQueue, Globals::globalConfig, i));
         }
 
-        this->printProgress(dlQueue, totalSizeBytes);
+        bptime::ptime start_time = bptime::second_clock::local_time();
+
+        this->printProgress(dlQueue, totalSizeBytes, &downloadStats);
 
         // Join threads
         for (unsigned int i = 0; i < vThreads.size(); ++i)
@@ -824,6 +853,12 @@ void Downloader::download()
 
         vThreads.clear();
         vDownloadInfo.clear();
+
+        // Threads push their last messages after reporting DLSTATUS_FINISHED so
+        // printProgress can return before those arrive. Drain what's left.
+        this->drainMessageQueue();
+
+        this->printDownloadSummary(downloadStats, bptime::second_clock::local_time() - start_time);
     }
 
     // Create xml data for all files in the queue
@@ -2990,27 +3025,26 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         int iRetryCount = 0;
         off_t iResumePosition = 0;
 
+        FileOutcomeGuard outcome_guard(gf, tid);
+
+        vDownloadInfo[tid].reset();
         vDownloadInfo[tid].setStatus(DLSTATUS_STARTING);
 
-        unsigned long long filesize = 0;
-        try
-        {
-            filesize = std::stoll(gf.size);
-        }
-        catch (std::invalid_argument& e)
-        {
-            filesize = 0;
-        }
+        unsigned long long filesize = Util::getFileSizeFromString(gf.size);
         iTotalRemainingBytes.fetch_sub(filesize);
+        outcome_guard.setFilesize(filesize);
 
         // Get directory from filepath
         boost::filesystem::path filepath = gf.getFilepath();
         filepath = boost::filesystem::absolute(filepath, boost::filesystem::current_path());
         boost::filesystem::path directory = filepath.parent_path();
 
+        outcome_guard.setFilename(gf.gamename + "/" + filepath.filename().string());
+
         // Skip blacklisted files
         if (conf.blacklist.isBlacklisted(filepath.string()))
         {
+            outcome_guard.setOutcome(FileOutcome::Skipped);
             msgQueue.push(Message("Blacklisted file: " + filepath.string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
             continue;
         }
@@ -3301,7 +3335,10 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         // File was complete and we have saved xml data so we can skip it
         if (bIsComplete)
+        {
+            outcome_guard.setOutcome(FileOutcome::UpToDate);
             continue;
+        }
 
         std::string url = downlinkJson["downlink"].asString();
         curl_easy_setopt(dlhandle, CURLOPT_URL, url.c_str());
@@ -3415,11 +3452,13 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
             progressInfo progress_info = vDownloadInfo[tid].getProgressInfo();
             std::string rate_string = Util::makeRateString(progress_info.rate_avg, Globals::globalConfig.iUnitFormat);
 
+            outcome_guard.setOutcome(FileOutcome::Ok);
             msgQueue.push(Message("Download complete: " + filepath.filename().string() + " (@ " + rate_string + ")", MSGTYPE_SUCCESS, msg_prefix, MSGLEVEL_DEFAULT));
         }
         else
         {
-            std::string msg = "Download complete (" + static_cast<std::string>(curl_easy_strerror(result));
+            outcome_guard.setOutcome(FileOutcome::Failed);
+            std::string msg = "Download failed (" + static_cast<std::string>(curl_easy_strerror(result));
             if (response_code > 0)
                 msg += " (" + std::to_string(response_code) + ")";
             msg += "): " + filepath.filename().string();
@@ -3517,7 +3556,22 @@ int Downloader::progressCallbackForThread(void *clientp, curl_off_t dltotal, cur
     return 0;
 }
 
-template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& download_queue, size_t total_size_bytes)
+void Downloader::drainMessageQueue()
+{
+    Message msg;
+    while (msgQueue.try_pop(msg))
+    {
+        if (msg.getLevel() <= Globals::globalConfig.iMsgLevel)
+            std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+
+        if (Globals::globalConfig.bReport)
+        {
+            this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
+        }
+    }
+}
+
+template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& download_queue, size_t total_size_bytes, DownloadStats* stats)
 {
     int divisor_M = GlobalConstants::UNIT_DIVISOR_M_IEC;
     std::string unit_M = GlobalConstants::UNIT_STRING_M_IEC;
@@ -3526,6 +3580,10 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         divisor_M = GlobalConstants::UNIT_DIVISOR_M_SI;
         unit_M = GlobalConstants::UNIT_STRING_M_SI;
     }
+
+    // The compact one line per thread layout is only used where we also have the
+    // overall statistics to show below it
+    const bool bCompact = (stats != nullptr);
 
     // Print progress information until all threads have finished their tasks
     ProgressBar bar(Globals::globalConfig.bUnicode, Globals::globalConfig.bColor);
@@ -3539,28 +3597,21 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         std::cout << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
 
         // Print messages from message queue first
-        Message msg;
-        while (msgQueue.try_pop(msg))
-        {
-            if (msg.getLevel() <= Globals::globalConfig.iMsgLevel)
-                std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
-
-            if (Globals::globalConfig.bReport)
-            {
-                this->report_ofs << msg.getTimestampString() << ": " << msg.getMessage() << std::endl;
-            }
-        }
+        this->drainMessageQueue();
 
         int iTermWidth = Util::getTerminalWidth();
         double total_rate = 0;
         bptime::time_duration eta_total_seconds;
+        unsigned long long in_flight_bytes = 0;
 
-        // Create progress info text for all download threads
-        std::vector<std::string> vProgressText;
+        // Create progress info text for all download threads. One block per thread,
+        // so that the height limiting below can drop whole threads instead of
+        // cutting a thread's display in half.
+        std::vector<std::vector<std::string>> vThreadBlocks;
+        std::vector<bool> vThreadIsIdle;
         for (unsigned int i = 0; i < vDownloadInfo.size(); ++i)
         {
-            std::string progress_text;
-            int bar_length     = 26;
+            int bar_length     = bCompact ? 10 : 26;
             int min_bar_length = 5;
 
             unsigned int status = vDownloadInfo[i].getStatus();
@@ -3568,13 +3619,17 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
 
             if (status == DLSTATUS_FINISHED)
             {
-                vProgressText.push_back("#" + std::to_string(i) + ": Finished");
+                vThreadBlocks.push_back({"#" + std::to_string(i) + ": Finished"});
+                vThreadIsIdle.push_back(true);
                 continue;
             }
 
             std::string filename = vDownloadInfo[i].getFilename();
             progressInfo progress_info = vDownloadInfo[i].getProgressInfo();
-            total_rate += progress_info.rate;
+            if (!std::isnan(progress_info.rate))
+                total_rate += progress_info.rate;
+            if (progress_info.dlnow > 0)
+                in_flight_bytes += static_cast<unsigned long long>(progress_info.dlnow);
 
             bool starting = ((0 == progress_info.dlnow) && (0 == progress_info.dltotal));
             double fraction = starting ? 0.0 : static_cast<double>(progress_info.dlnow) / static_cast<double>(progress_info.dltotal);
@@ -3582,59 +3637,144 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
             std::string progress_percentage_text = Util::formattedString("%3.0f%% ", fraction * 100);
             int progress_percentage_text_length = progress_percentage_text.length() + 1;
 
-            bptime::time_duration eta(bptime::seconds((long)((progress_info.dltotal - progress_info.dlnow) / progress_info.rate)));
-            eta_total_seconds += eta;
-            std::string etastring = Util::makeEtaString(eta);
+            std::string etastring = "--";
+            if (progress_info.rate > 0 && progress_info.dltotal > progress_info.dlnow)
+            {
+                bptime::time_duration eta(bptime::seconds((long)((progress_info.dltotal - progress_info.dlnow) / progress_info.rate)));
+                eta_total_seconds += eta;
+                etastring = Util::makeEtaString(eta);
+            }
 
             std::string unit = unit_M;
             std::string rate_string = Util::makeRateString(progress_info.rate_avg, Globals::globalConfig.iUnitFormat);
 
-            std::string progress_status_text = Util::formattedString(" %0.2f/%0.2f%s @ %s ETA: %s", static_cast<double>(progress_info.dlnow)/divisor_M, static_cast<double>(progress_info.dltotal)/divisor_M, unit.c_str(), rate_string.c_str(), etastring.c_str());
-            int status_text_length = progress_status_text.length() + 1;
+            if (bCompact)
+            {
+                // #0  71% [====      ] 0.71/1.00GiB  4.1MiB/s  1m12s  filename
+                std::string prefix = "#" + std::to_string(i) + " ";
+                std::string suffix = Util::formattedString(" %0.2f/%0.2f%s  %s  %s  ",
+                        static_cast<double>(progress_info.dlnow)/divisor_M,
+                        static_cast<double>(progress_info.dltotal)/divisor_M,
+                        unit.c_str(), rate_string.c_str(), etastring.c_str());
 
-            if ((status_text_length + progress_percentage_text_length + bar_length) > iTermWidth)
-                bar_length -= (status_text_length + progress_percentage_text_length + bar_length) - iTermWidth;
+                // Bar borders add two visible characters to the requested bar length
+                int fixed_length = prefix.length() + progress_percentage_text.length() + bar_length + 2 + suffix.length();
+                if (fixed_length > iTermWidth)
+                {
+                    bar_length -= (fixed_length - iTermWidth);
+                    fixed_length = iTermWidth;
+                }
 
-            // Don't draw progressbar if length is less than min_bar_length
-            std::string progress_bar_text;
-            if (bar_length >= min_bar_length)
-                progress_bar_text = bar.createBarString(bar_length, fraction);
+                std::string progress_bar_text;
+                if (bar_length >= min_bar_length)
+                    progress_bar_text = bar.createBarString(bar_length, fraction);
+                else
+                    fixed_length -= (bar_length + 2);
 
-            progress_text = progress_percentage_text + progress_bar_text + progress_status_text;
-            std::string filename_text = "#" + std::to_string(i) + " " + filename;
-            Util::shortenStringToTerminalWidth(filename_text);
+                if (filename.empty())
+                    filename = "...";
+                int filename_width = iTermWidth - fixed_length;
+                if (filename_width < 4)
+                    filename.clear();
+                else
+                    Util::shortenStringToWidth(filename, static_cast<size_t>(filename_width));
 
-            vProgressText.push_back(filename_text);
-            vProgressText.push_back(progress_text);
+                vThreadBlocks.push_back({prefix + progress_percentage_text + progress_bar_text + suffix + filename});
+            }
+            else
+            {
+                std::string progress_status_text = Util::formattedString(" %0.2f/%0.2f%s @ %s ETA: %s", static_cast<double>(progress_info.dlnow)/divisor_M, static_cast<double>(progress_info.dltotal)/divisor_M, unit.c_str(), rate_string.c_str(), etastring.c_str());
+                int status_text_length = progress_status_text.length() + 1;
+
+                if ((status_text_length + progress_percentage_text_length + bar_length) > iTermWidth)
+                    bar_length -= (status_text_length + progress_percentage_text_length + bar_length) - iTermWidth;
+
+                // Don't draw progressbar if length is less than min_bar_length
+                std::string progress_bar_text;
+                if (bar_length >= min_bar_length)
+                    progress_bar_text = bar.createBarString(bar_length, fraction);
+
+                std::string filename_text = "#" + std::to_string(i) + " " + filename;
+                Util::shortenStringToTerminalWidth(filename_text);
+
+                vThreadBlocks.push_back({filename_text, progress_percentage_text + progress_bar_text + progress_status_text});
+            }
+
+            vThreadIsIdle.push_back(status == DLSTATUS_NOTSTARTED);
         }
 
-        // Total download speed and number of remaining tasks in download queue
+        std::vector<std::string> vFooterText;
         if (dl_status != DLSTATUS_FINISHED)
         {
-            unsigned long long total_remaining = iTotalRemainingBytes.load();
-            std::string total_eta_str;
-            if (total_remaining > 0)
+            if (bCompact)
+                this->getProgressFooter(*stats, in_flight_bytes, total_rate, iTermWidth, bar, vFooterText);
+            else
             {
-                bptime::time_duration eta(bptime::seconds((long)(total_remaining / total_rate)));
-                eta += eta_total_seconds;
-                std::string eta_str = Util::makeEtaString(eta);
-                std::string total_remaining_string = Util::makeSizeString(total_remaining, Globals::globalConfig.iUnitFormat);
+                // Total download speed and number of remaining tasks in download queue
+                unsigned long long total_remaining = iTotalRemainingBytes.load();
+                std::string total_eta_str;
+                if (total_remaining > 0 && total_rate > 0)
+                {
+                    bptime::time_duration eta(bptime::seconds((long)(total_remaining / total_rate)));
+                    eta += eta_total_seconds;
+                    std::string eta_str = Util::makeEtaString(eta);
+                    std::string total_remaining_string = Util::makeSizeString(total_remaining, Globals::globalConfig.iUnitFormat);
 
-                total_eta_str = Util::formattedString(" (%s) ETA: %s", total_remaining_string.c_str(), eta_str.c_str());
+                    total_eta_str = Util::formattedString(" (%s) ETA: %s", total_remaining_string.c_str(), eta_str.c_str());
+                }
+
+                std::ostringstream ss;
+                if (Globals::globalConfig.iThreads > 1)
+                {
+                    std::string total_rate_string = Util::makeRateString(total_rate, Globals::globalConfig.iUnitFormat);
+                    ss << "Total: " << total_rate_string << " | ";
+                }
+                ss << "Remaining: " << download_queue.size();
+
+                if (!total_eta_str.empty())
+                    ss << total_eta_str;
+
+                vFooterText.push_back(ss.str());
+            }
+        }
+
+        // Keep the whole frame inside the terminal. If it doesn't fit the cursor
+        // can't be moved back up over it and every frame would be appended instead
+        // of redrawn, so drop thread blocks (idle ones first) until it does.
+        std::vector<std::string> vProgressText;
+        {
+            size_t max_lines = static_cast<size_t>(std::max(Util::getTerminalHeight() - 1, 1));
+            size_t line_count = vFooterText.size();
+            for (const auto& block : vThreadBlocks)
+                line_count += block.size();
+
+            std::vector<bool> vDropped(vThreadBlocks.size(), false);
+            size_t dropped_count = 0;
+            for (int pass = 0; pass < 2 && line_count > max_lines; ++pass)
+            {
+                for (size_t i = vThreadBlocks.size(); i-- > 0 && line_count > max_lines; )
+                {
+                    if (vDropped[i] || (pass == 0 && !vThreadIsIdle[i]))
+                        continue;
+                    vDropped[i] = true;
+                    dropped_count++;
+                    line_count -= vThreadBlocks[i].size();
+                    if (dropped_count == 1)
+                        line_count++; // the "... N more" line replaces them
+                }
             }
 
-            std::ostringstream ss;
-            if (Globals::globalConfig.iThreads > 1)
+            for (size_t i = 0; i < vThreadBlocks.size(); ++i)
             {
-                std::string total_rate_string = Util::makeRateString(total_rate, Globals::globalConfig.iUnitFormat);
-                ss << "Total: " << total_rate_string << " | ";
+                if (vDropped[i])
+                    continue;
+                for (const auto& line : vThreadBlocks[i])
+                    vProgressText.push_back(line);
             }
-            ss << "Remaining: " << download_queue.size();
+            if (dropped_count > 0)
+                vProgressText.push_back("... " + std::to_string(dropped_count) + " more");
 
-            if (!total_eta_str.empty())
-                ss << total_eta_str;
-
-            vProgressText.push_back(ss.str());
+            vProgressText.insert(vProgressText.end(), vFooterText.begin(), vFooterText.end());
         }
 
         // Print progress info
@@ -3645,9 +3785,17 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
 
         // Update window progress bar
         if (Globals::bWindowProgress.load() && (total_size_bytes > 0)) {
-            double total_bytes = static_cast<double>(total_size_bytes);
-            double remaining_bytes = static_cast<double>(iTotalRemainingBytes.load());
-            uint32_t total_progress_pct = static_cast<uint32_t>(std::round(100.0 - remaining_bytes / total_bytes * 100.0));
+            uint32_t total_progress_pct;
+            if (stats)
+            {
+                total_progress_pct = static_cast<uint32_t>(std::round(getCompletedFraction(*stats, in_flight_bytes) * 100.0));
+            }
+            else
+            {
+                double total_bytes = static_cast<double>(total_size_bytes);
+                double remaining_bytes = static_cast<double>(iTotalRemainingBytes.load());
+                total_progress_pct = static_cast<uint32_t>(std::round(100.0 - remaining_bytes / total_bytes * 100.0));
+            }
             std::cout << "\x1b]9;4;1;" << total_progress_pct << "\a";
         }
 
@@ -3662,6 +3810,151 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         // Clear window progress bar
         std::cout << "\x1b]9;4;0\a";
     }
+}
+
+double Downloader::getCompletedFraction(const DownloadStats& stats, const unsigned long long& in_flight_bytes)
+{
+    DownloadStats::Snapshot snapshot = stats.get();
+    if (snapshot.bytes_total == 0)
+        return 0.0;
+
+    // API file sizes are not always accurate so the actual amount of data can
+    // exceed the expected total
+    double fraction = static_cast<double>(snapshot.bytes_done + in_flight_bytes) / static_cast<double>(snapshot.bytes_total);
+    if (fraction < 0.0)
+        fraction = 0.0;
+    else if (fraction > 1.0)
+        fraction = 1.0;
+
+    return fraction;
+}
+
+void Downloader::getProgressFooter(const DownloadStats& stats, const unsigned long long& in_flight_bytes, const double& total_rate, const int& iTermWidth, ProgressBar& bar, std::vector<std::string>& vFooterText)
+{
+    DownloadStats::Snapshot snapshot = stats.get();
+    const bool bUnicode = Globals::globalConfig.bUnicode;
+    const std::string dot = bUnicode ? u8"·" : "-";
+
+    unsigned long long bytes_done = snapshot.bytes_done + in_flight_bytes;
+    if (bytes_done > snapshot.bytes_total)
+        bytes_done = snapshot.bytes_total;
+    unsigned long long files_done = snapshot.files_ok + snapshot.files_uptodate + snapshot.files_skipped;
+
+    auto percentage = [](const unsigned long long& done, const unsigned long long& total) -> std::string
+    {
+        if (total == 0)
+            return "0%";
+        return Util::formattedString("%.0f%%", static_cast<double>(done) / static_cast<double>(total) * 100.0);
+    };
+
+    // Separator
+    int separator_width = std::min(iTermWidth - 1, 100);
+    if (separator_width > 0)
+    {
+        std::string separator;
+        for (int i = 0; i < separator_width; ++i)
+            separator += (bUnicode ? u8"─" : "-");
+        vFooterText.push_back(separator);
+    }
+
+    // Games and files counts
+    std::string games_text = "Games " + std::to_string(snapshot.games_ok) + "/" + std::to_string(snapshot.games_total)
+                           + " (" + percentage(snapshot.games_ok, snapshot.games_total) + ")";
+    if (snapshot.games_failed > 0)
+        games_text += " " + dot + " " + std::to_string(snapshot.games_failed) + " failed";
+    games_text += " " + dot + " " + std::to_string(snapshot.games_remaining) + " left";
+
+    std::string files_text = "Files " + std::to_string(files_done) + "/" + std::to_string(snapshot.files_total)
+                           + " (" + percentage(files_done, snapshot.files_total) + ")";
+    if (snapshot.files_failed > 0)
+        files_text += " " + dot + " " + std::to_string(snapshot.files_failed) + " failed";
+    files_text += " " + dot + " " + std::to_string(snapshot.files_remaining) + " left";
+
+    // Both on one line if they fit, otherwise one line each
+    if (static_cast<int>(games_text.length() + files_text.length() + 4) <= iTermWidth)
+        vFooterText.push_back(games_text + "    " + files_text);
+    else
+    {
+        vFooterText.push_back(games_text);
+        vFooterText.push_back(files_text);
+    }
+
+    // Data volume, rate and ETA for the whole download
+    std::string data_text = "Data  " + Util::makeSizeString(bytes_done, Globals::globalConfig.iUnitFormat)
+                          + "/" + Util::makeSizeString(snapshot.bytes_total, Globals::globalConfig.iUnitFormat)
+                          + " @ " + Util::makeRateString(total_rate, Globals::globalConfig.iUnitFormat);
+
+    unsigned long long bytes_remaining = (snapshot.bytes_total > bytes_done) ? (snapshot.bytes_total - bytes_done) : 0;
+    if (total_rate > 0 && bytes_remaining > 0)
+        data_text += "  ETA: " + Util::makeEtaString(bptime::seconds((long)(bytes_remaining / total_rate)));
+    else
+        data_text += "  ETA: --";
+    vFooterText.push_back(data_text);
+
+    // Overall progress bar
+    double fraction = (snapshot.bytes_total > 0)
+                    ? static_cast<double>(bytes_done) / static_cast<double>(snapshot.bytes_total) : 0.0;
+    std::string percentage_text = Util::formattedString("%3.0f%% ", fraction * 100);
+    int bar_length = iTermWidth - static_cast<int>(percentage_text.length()) - 3;
+    if (bar_length > 60)
+        bar_length = 60;
+    if (bar_length >= 5)
+        vFooterText.push_back(percentage_text + bar.createBarString(bar_length, fraction));
+    else
+        vFooterText.push_back(percentage_text);
+}
+
+void Downloader::printDownloadSummary(const DownloadStats& stats, const bptime::time_duration& elapsed)
+{
+    DownloadStats::Snapshot snapshot = stats.get();
+    if (snapshot.files_total == 0)
+        return;
+
+    std::vector<std::string> vFailedFiles = stats.getFailedFiles();
+
+    unsigned long long files_accounted = snapshot.files_ok + snapshot.files_uptodate
+                                       + snapshot.files_skipped + snapshot.files_failed;
+    unsigned long long files_not_attempted = (snapshot.files_total > files_accounted)
+                                           ? (snapshot.files_total - files_accounted) : 0;
+
+    auto makeSummary = [&](const bool& bColor) -> std::string
+    {
+        const std::string color_ok = bColor ? "\033[32m" : "";
+        const std::string color_fail = bColor ? "\033[31m" : "";
+        const std::string color_reset = bColor ? "\033[0m" : "";
+        const std::string color_failed_count = (bColor && snapshot.files_failed > 0) ? color_fail : "";
+        const std::string color_failed_games = (bColor && snapshot.games_failed > 0) ? color_fail : "";
+
+        std::ostringstream ss;
+        ss << "Download summary" << std::endl;
+        ss << "  Games:   " << color_ok << snapshot.games_ok << color_reset << " ok, "
+           << color_failed_games << snapshot.games_failed << color_reset
+           << " failed of " << snapshot.games_total << std::endl;
+        ss << "  Files:   " << color_ok << snapshot.files_ok << color_reset << " downloaded, "
+           << snapshot.files_uptodate << " up to date, "
+           << snapshot.files_skipped << " skipped, "
+           << color_failed_count << snapshot.files_failed << color_reset
+           << " failed of " << snapshot.files_total << std::endl;
+        if (files_not_attempted > 0)
+            ss << "  " << color_fail << files_not_attempted << " file(s) were not attempted" << color_reset << std::endl;
+        ss << "  Data:    " << Util::makeSizeString(snapshot.bytes_done, Globals::globalConfig.iUnitFormat)
+           << " of " << Util::makeSizeString(snapshot.bytes_total, Globals::globalConfig.iUnitFormat) << std::endl;
+        ss << "  Elapsed: " << Util::makeEtaString(elapsed) << std::endl;
+
+        if (!vFailedFiles.empty())
+        {
+            ss << "  Failed files:" << std::endl;
+            for (const auto& failed_file : vFailedFiles)
+                ss << "    " << color_fail << failed_file << color_reset << std::endl;
+        }
+
+        return ss.str();
+    };
+
+    std::cout << std::endl << makeSummary(Globals::globalConfig.bColor) << std::flush;
+
+    if (Globals::globalConfig.bReport)
+        this->report_ofs << makeSummary(false);
 }
 
 void Downloader::getGameDetailsThread(Config config, const unsigned int& tid)
