@@ -112,6 +112,7 @@ class Downloader
         void deleteCloudSavesById(const std::string& product_id, const std::string& build_id = std::string());
 
         void checkOrphans();
+        int checkObsolete();
         void checkStatus();
         void updateCache();
         int downloadFileWithId(const std::string& fileid_string, const std::string& output_filepath);
@@ -146,6 +147,7 @@ class Downloader
         std::string getResponse(const std::string& url);
         std::string getLocalFileHash(const std::string& filepath, const std::string& gamename = std::string());
         std::string getRemoteFileHash(const gameFile& gf);
+        bool getRemoteFileVerification(const gameFile& gf, uintmax_t& remoteSize, std::string& remoteHash, const bool& bNeedSize = true);
         void addStatusLine(const std::string& statusCode, const std::string& gamename, const std::string& filepath, const uintmax_t& filesize, const std::string& localHash);
         int loadGameDetailsCache();
         int saveGameDetailsCache();
@@ -184,6 +186,7 @@ class Downloader
         galaxyAPI *gogGalaxy;
         std::vector<gameItem> gameItems;
         std::vector<gameDetails> games;
+        std::vector<gameDetails> currentCatalogGames;
 
         off_t resume_position;
         int retries;

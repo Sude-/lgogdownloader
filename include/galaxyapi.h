@@ -78,7 +78,7 @@ class galaxyAPI
         CurlConfig curlConf;
         static size_t writeMemoryCallback(char *ptr, size_t size, size_t nmemb, void *userp);
         CURL* curlhandle;
-        std::vector<gameFile> fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const DownloadConfig& dlConf);
+        std::vector<gameFile> fileJsonNodeToGameFileVector(const std::string& gamename, const Json::Value& json, const unsigned int& type, const DownloadConfig& dlConf, unsigned int& metadataFailures);
 };
 
 #endif // GALAXYAPI_H

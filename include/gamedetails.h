@@ -37,6 +37,10 @@ class gameDetails
         std::string logo;
         std::string gameDetailsJson;
         std::string productJson;
+        unsigned int metadataFailures = 0;
+        void filterWithPlatformLanguage(const DownloadConfig& config);
+        void filterDuplicates();
+        void filterDlcsWithInclude(const unsigned int& iInclude);
         void filterWithPriorities(const gameSpecificConfig& config);
         void makeFilepaths(const DirectoryConfig& config);
         std::string getSerialsFilepath();
@@ -49,9 +53,11 @@ class gameDetails
         std::vector<gameFile> getGameFileVector();
         std::vector<gameFile> getGameFileVectorFiltered(const unsigned int& iType);
         void filterWithType(const unsigned int& iType);
-        std::string makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf);
+        std::string makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf, const unsigned int& platform = GlobalConstants::PLATFORM_WINDOWS);
         virtual ~gameDetails();
     protected:
+        void filterListWithPlatformLanguage(std::vector<gameFile>& list, const DownloadConfig& config);
+        void filterDuplicateList(std::vector<gameFile>& list);
         void filterListWithPriorities(std::vector<gameFile>& list, const gameSpecificConfig& config);
         void filterListWithType(std::vector<gameFile>& list, const unsigned int& iType);
         std::string makeFilepath(const gameFile& gf, const DirectoryConfig& dirConf);
