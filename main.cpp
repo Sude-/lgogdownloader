@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
             ("ignore-dlc-count", bpo::value<std::string>(&Globals::globalConfig.sIgnoreDLCCountRegex)->implicit_value(".*"), "Set regular expression filter for games to ignore DLC count information\nIgnoring DLC count information helps in situations where the account page doesn't provide accurate information about DLCs")
             ("include", bpo::value<std::string>(&sIncludeOptions)->default_value("all"), ("Select what to download/list/repair\n" + include_options_text).c_str())
             ("exclude", bpo::value<std::string>(&sExcludeOptions)->default_value(""), ("Select what not to download/list/repair\n" + include_options_text).c_str())
-            ("patches-since", bpo::value<std::string>(&sPatchesSince)->default_value(""), "Only download patches published since given time\nRelative time: number followed by y (years), m (months) or d (days). For example \"1y\", \"6m\" or \"30d\"\nAbsolute date: YYYY-MM-DD\nEmpty value disables the filter\nPublish date is taken from the Last-Modified header of the file on the server. Patches with no date on the server are downloaded\nApplies to --download and --repair, but not --download-file\nSkipped patches are still shown by --list and --status, and are counted in the total size and free space check before downloading")
+            ("patches-since", bpo::value<std::string>(&sPatchesSince)->default_value(""), "Only download patches published since given time\nRelative time: number followed by y (years), m (months) or d (days). For example \"1y\", \"6m\" or \"30d\"\nAbsolute local time: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS\nEmpty value disables the filter\nPublish date is taken from the Last-Modified header of the file on the server. Patches with no date on the server are downloaded\nApplies to --download and --repair, but not --download-file\nSkipped patches are still shown by --list and --status, and are counted in the total size and free space check before downloading")
             ("automatic-xml-creation", bpo::value<bool>(&Globals::globalConfig.dlConf.bAutomaticXMLCreation)->zero_tokens()->default_value(false), "Automatically create XML data after download has completed")
             ("save-changelogs", bpo::value<bool>(&Globals::globalConfig.dlConf.bSaveChangelogs)->zero_tokens()->default_value(false), "Save changelogs when downloading")
             ("threads", bpo::value<unsigned int>(&Globals::globalConfig.iThreads)->default_value(4), "Number of download threads")
@@ -565,7 +565,7 @@ int main(int argc, char *argv[])
             if (Globals::globalConfig.tPatchesSince < 0)
             {
                 std::cerr << "Invalid value for --patches-since: " << sPatchesSince << std::endl;
-                std::cerr << "Use number followed by y, m or d (for example \"1y\", \"6m\" or \"30d\") or date in YYYY-MM-DD format" << std::endl;
+                std::cerr << "Use number followed by y, m or d (for example \"1y\", \"6m\" or \"30d\") or date in YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS format" << std::endl;
                 return 1;
             }
             if (Globals::globalConfig.tPatchesSince > std::time(nullptr))

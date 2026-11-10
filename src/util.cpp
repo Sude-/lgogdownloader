@@ -14,6 +14,7 @@
 #include <json/json.h>
 #include <fstream>
 #include <algorithm>
+#include <cctype>
 #include <sys/ioctl.h>
 #include <tidy.h>
 #include <tidybuffio.h>
@@ -1041,84 +1042,69 @@ tinyxml2::XMLNode* Util::nextXMLNode(tinyxml2::XMLNode* node)
 
 /* Parse time limit string to timestamp
    Accepts relative time (number followed by "y", "m" or "d" for years, months or days before now)
-   or absolute date in "YYYY-MM-DD" format (local time midnight)
-   Returns -1 on invalid input
-   Returns 0 (no limit) for dates before epoch */
+   or absolute local time in "YYYY-MM-DD" (midnight) or "YYYY-MM-DDTHH:MM:SS" format
+   Years and months use Boost's calendar arithmetic: 1 month before March 31 is February 28/29,
+   and from the last day of a month the result is the last day of the target month
+   Returns -1 on invalid input, including years before 1400 (not supported by Boost)
+   Returns 0 (no limit) for times before epoch */
 std::time_t Util::parseSinceString(const std::string& str)
 {
-    boost::regex relative_re("^(\\d+)([ymd])$", boost::regex::perl);
-    boost::regex date_re("^(\\d{4})-(\\d{2})-(\\d{2})$", boost::regex::perl);
-    boost::smatch what;
+    namespace pt = boost::posix_time;
+    namespace gr = boost::gregorian;
 
-    // Number of days in month (month 0-11, may be out of range)
-    auto daysInMonth = [](int year, int month) -> int {
-        std::tm tm_last = std::tm();
-        tm_last.tm_year = year;
-        tm_last.tm_mon = month + 1;
-        tm_last.tm_mday = 0; // Last day of previous month
-        tm_last.tm_hour = 12;
-        tm_last.tm_isdst = -1;
-        std::mktime(&tm_last);
-        return tm_last.tm_mday;
-    };
-
-    std::time_t now = std::time(nullptr);
-    std::tm tm_since = *std::localtime(&now);
-    tm_since.tm_isdst = -1;
-
-    if (boost::regex_match(str, what, relative_re))
+    try
     {
-        int value;
-        try
+        pt::ptime since;
+        char unit = str.empty() ? '\0' : str.back();
+        std::string number = str.empty() ? "" : str.substr(0, str.size() - 1);
+        if ((unit == 'y' || unit == 'm' || unit == 'd') && !number.empty()
+            && std::all_of(number.begin(), number.end(), [](unsigned char c) { return std::isdigit(c); }))
         {
-            value = std::stoi(what[1]);
-        }
-        catch (const std::out_of_range&)
-        {
-            return 0; // Too far in the past, no limit
-        }
+            // Values over these limits are well before epoch. Checking them first
+            // keeps calculations within int and Boost's supported years (1400-9999)
+            const int maxValue = (unit == 'y') ? 500 : (unit == 'm') ? 6000 : 180000;
+            size_t firstNonZero = number.find_first_not_of('0');
+            if (firstNonZero != std::string::npos && number.size() - firstNonZero > 6)
+                return 0;
+            int value = (firstNonZero == std::string::npos) ? 0 : std::stoi(number.substr(firstNonZero));
+            if (value > maxValue)
+                return 0;
 
-        char unit = what[2].str()[0];
-        if (unit == 'd')
-        {
-            tm_since.tm_mday -= value;
+            pt::ptime now = pt::second_clock::local_time();
+            if (unit == 'y')
+                since = now - gr::years(value);
+            else if (unit == 'm')
+                since = now - gr::months(value);
+            else
+                since = now - gr::days(value);
         }
         else
         {
-            // Subtract years/months without overflowing into the next month
-            // (e.g. 1 month before March 31 is February 28/29, not March 3)
-            long long months = (long long)tm_since.tm_year * 12 + tm_since.tm_mon - (unit == 'y' ? (long long)value * 12 : value);
-            if (months < 0)
-                return 0; // Before year 1900, no limit
-            tm_since.tm_year = months / 12;
-            tm_since.tm_mon = months % 12;
-            tm_since.tm_mday = std::min(tm_since.tm_mday, daysInMonth(tm_since.tm_year, tm_since.tm_mon));
+            // Add midnight to date without time, which pt::from_iso_extended_string
+            // only accepts since Boost 1.77
+            std::string datetime = (str.size() == 10) ? str + "T00:00:00" : str;
+
+            // Boost parser also accepts other formats and rolls over out of range
+            // time fields (T25:00:00 is 01:00:00 next day), so only accept input
+            // that converts back to the same string
+            since = pt::from_iso_extended_string(datetime);
+            if (pt::to_iso_extended_string(since) != datetime)
+                return -1;
         }
-    }
-    else if (boost::regex_match(str, what, date_re))
-    {
-        int year = std::stoi(what[1]);
-        int month = std::stoi(what[2]);
-        int day = std::stoi(what[3]);
-        if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year - 1900, month - 1))
-            return -1;
 
-        tm_since = std::tm();
-        tm_since.tm_year = year - 1900;
-        tm_since.tm_mon = month - 1;
-        tm_since.tm_mday = day;
+        // Interpret as local time
+        std::tm tm_since = pt::to_tm(since);
         tm_since.tm_isdst = -1;
+        std::time_t result = std::mktime(&tm_since);
+        if (result < 0) // Before epoch or mktime failure for very old dates
+            result = 0;
+
+        return result;
     }
-    else
+    catch (const std::exception&)
     {
-        return -1;
+        return -1; // Invalid date (including years before 1400) or unparseable input
     }
-
-    std::time_t since = std::mktime(&tm_since);
-    if (since < 0) // Before epoch or mktime failure for very old dates
-        since = 0;
-
-    return since;
 }
 
 /* Get Last-Modified time of remote file using HEAD request
