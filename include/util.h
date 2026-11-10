@@ -106,6 +106,8 @@ namespace Util
     std::string transformGamename(const std::string& gamename);
     std::string htmlToXhtml(const std::string& html);
     tinyxml2::XMLNode* nextXMLNode(tinyxml2::XMLNode* node);
+    std::time_t parseSinceString(const std::string& str);
+    long CurlHandleGetRemoteFileTime(CURL* curlhandle, const std::string& url);
 }
 
 #endif // UTIL_H

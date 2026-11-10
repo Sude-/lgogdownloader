@@ -608,6 +608,16 @@ void Downloader::repair()
         vGameFiles.insert(std::end(vGameFiles), std::begin(vec), std::end(vec));
     }
 
+    // Handle for HEAD requests to check publish date of patches for --patches-since
+    CURL* curlheader = nullptr;
+    if (Globals::globalConfig.tPatchesSince > 0)
+    {
+        curlheader = curl_easy_init();
+        Util::CurlHandleSetDefaultOptions(curlheader, Globals::globalConfig.curlConf);
+        curl_easy_setopt(curlheader, CURLOPT_NOPROGRESS, 1L);
+        curl_easy_setopt(curlheader, CURLOPT_NOBODY, 1L);
+    }
+
     for (unsigned int i = 0; i < vGameFiles.size(); ++i)
     {
         gameSpecificConfig conf;
@@ -651,6 +661,22 @@ void Downloader::repair()
             continue;
         }
 
+        // Skip patches published before --patches-since
+        if ((type & GlobalConstants::GFTYPE_PATCH) && curlheader)
+        {
+            long filetime = Util::CurlHandleGetRemoteFileTime(curlheader, downlinkJson["downlink"].asString());
+            if (filetime >= 0 && (std::time_t)filetime < Globals::globalConfig.tPatchesSince)
+            {
+                if (Globals::globalConfig.iMsgLevel >= MSGLEVEL_VERBOSE)
+                    std::cerr << "skipped patch older than --patches-since " << filepath << std::endl;
+                continue;
+            }
+            else if (filetime < 0 && Globals::globalConfig.iMsgLevel >= MSGLEVEL_DEBUG)
+            {
+                std::cerr << "no publish date for patch, repairing anyway " << filepath << std::endl;
+            }
+        }
+
         std::string xml_url;
         if (downlinkJson.isMember("checksum"))
             if (!downlinkJson["checksum"].empty())
@@ -677,6 +703,9 @@ void Downloader::repair()
             std::cout << std::endl;
         }
     }
+
+    if (curlheader)
+        curl_easy_cleanup(curlheader);
 }
 
 void Downloader::download()
@@ -3020,6 +3049,50 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
         boost::filesystem::path local_xml_file = xml_directory + "/" + filenameXML;
 
         vDownloadInfo[tid].setFilename(filepath.filename().string());
+
+        // Refresh Galaxy login if token is expired
+        if (galaxy->isTokenExpired())
+        {
+            if (!galaxy->refreshLogin())
+            {
+                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
+                vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
+                delete galaxy;
+                return;
+            }
+        }
+
+        // Get downlink JSON from Galaxy API
+        Json::Value downlinkJson = galaxy->getResponseJson(gf.galaxy_downlink_json_url);
+
+        if (downlinkJson.empty())
+        {
+            msgQueue.push(Message("Empty JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
+            continue;
+        }
+
+        if (!downlinkJson.isMember("downlink"))
+        {
+            msgQueue.push(Message("Invalid JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
+            continue;
+        }
+
+        // Skip patches published before --patches-since
+        // Publish date is taken from Last-Modified header of the file
+        if ((gf.type & GlobalConstants::GFTYPE_PATCH) && conf.tPatchesSince > 0)
+        {
+            long filetime = Util::CurlHandleGetRemoteFileTime(curlheader, downlinkJson["downlink"].asString());
+            if (filetime >= 0 && (std::time_t)filetime < conf.tPatchesSince)
+            {
+                msgQueue.push(Message("Skipping patch older than --patches-since: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
+                continue;
+            }
+            else if (filetime < 0)
+            {
+                msgQueue.push(Message("No publish date for patch, downloading anyway: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_DEBUG));
+            }
+        }
+
         msgQueue.push(Message("Begin download: " + filepath.filename().string(), MSGTYPE_INFO, msg_prefix, MSGLEVEL_VERBOSE));
 
         // Check that directory exists and create subdirectories
@@ -3053,33 +3126,6 @@ void Downloader::processDownloadQueue(Config conf, const unsigned int& tid)
 
         bool bSameVersion = true; // assume same version
         bool bLocalXMLExists = boost::filesystem::exists(local_xml_file); // This is additional check to see if remote xml should be saved to speed up future version checks
-
-        // Refresh Galaxy login if token is expired
-        if (galaxy->isTokenExpired())
-        {
-            if (!galaxy->refreshLogin())
-            {
-                msgQueue.push(Message("Galaxy API failed to refresh login", MSGTYPE_ERROR, msg_prefix, MSGLEVEL_ALWAYS));
-                vDownloadInfo[tid].setStatus(DLSTATUS_FINISHED);
-                delete galaxy;
-                return;
-            }
-        }
-
-        // Get downlink JSON from Galaxy API
-        Json::Value downlinkJson = galaxy->getResponseJson(gf.galaxy_downlink_json_url);
-
-        if (downlinkJson.empty())
-        {
-            msgQueue.push(Message("Empty JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
-            continue;
-        }
-
-        if (!downlinkJson.isMember("downlink"))
-        {
-            msgQueue.push(Message("Invalid JSON response, skipping file", MSGTYPE_WARNING, msg_prefix, MSGLEVEL_VERBOSE));
-            continue;
-        }
 
         std::string xml;
         bool bFileAlreadyExists = false;

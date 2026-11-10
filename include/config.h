@@ -323,6 +323,7 @@ class Config
         int iMsgLevel;
         unsigned int iListFormat;
         unsigned int iUnitFormat;
+        std::time_t tPatchesSince = 0; // Skip patches older than this (0 = no limit)
 
         Json::Value transformationsJSON;
 };

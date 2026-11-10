@@ -13,6 +13,7 @@
 #include <boost/iostreams/copy.hpp>
 #include <json/json.h>
 #include <fstream>
+#include <algorithm>
 #include <sys/ioctl.h>
 #include <tidy.h>
 #include <tidybuffio.h>
@@ -1036,4 +1037,104 @@ tinyxml2::XMLNode* Util::nextXMLNode(tinyxml2::XMLNode* node)
     }
 
     return node;
+}
+
+/* Parse time limit string to timestamp
+   Accepts relative time (number followed by "y", "m" or "d" for years, months or days before now)
+   or absolute date in "YYYY-MM-DD" format (local time midnight)
+   Returns -1 on invalid input
+   Returns 0 (no limit) for dates before epoch */
+std::time_t Util::parseSinceString(const std::string& str)
+{
+    boost::regex relative_re("^(\\d+)([ymd])$", boost::regex::perl);
+    boost::regex date_re("^(\\d{4})-(\\d{2})-(\\d{2})$", boost::regex::perl);
+    boost::smatch what;
+
+    // Number of days in month (month 0-11, may be out of range)
+    auto daysInMonth = [](int year, int month) -> int {
+        std::tm tm_last = std::tm();
+        tm_last.tm_year = year;
+        tm_last.tm_mon = month + 1;
+        tm_last.tm_mday = 0; // Last day of previous month
+        tm_last.tm_hour = 12;
+        tm_last.tm_isdst = -1;
+        std::mktime(&tm_last);
+        return tm_last.tm_mday;
+    };
+
+    std::time_t now = std::time(nullptr);
+    std::tm tm_since = *std::localtime(&now);
+    tm_since.tm_isdst = -1;
+
+    if (boost::regex_match(str, what, relative_re))
+    {
+        int value;
+        try
+        {
+            value = std::stoi(what[1]);
+        }
+        catch (const std::out_of_range&)
+        {
+            return 0; // Too far in the past, no limit
+        }
+
+        char unit = what[2].str()[0];
+        if (unit == 'd')
+        {
+            tm_since.tm_mday -= value;
+        }
+        else
+        {
+            // Subtract years/months without overflowing into the next month
+            // (e.g. 1 month before March 31 is February 28/29, not March 3)
+            long long months = (long long)tm_since.tm_year * 12 + tm_since.tm_mon - (unit == 'y' ? (long long)value * 12 : value);
+            if (months < 0)
+                return 0; // Before year 1900, no limit
+            tm_since.tm_year = months / 12;
+            tm_since.tm_mon = months % 12;
+            tm_since.tm_mday = std::min(tm_since.tm_mday, daysInMonth(tm_since.tm_year, tm_since.tm_mon));
+        }
+    }
+    else if (boost::regex_match(str, what, date_re))
+    {
+        int year = std::stoi(what[1]);
+        int month = std::stoi(what[2]);
+        int day = std::stoi(what[3]);
+        if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year - 1900, month - 1))
+            return -1;
+
+        tm_since = std::tm();
+        tm_since.tm_year = year - 1900;
+        tm_since.tm_mon = month - 1;
+        tm_since.tm_mday = day;
+        tm_since.tm_isdst = -1;
+    }
+    else
+    {
+        return -1;
+    }
+
+    std::time_t since = std::mktime(&tm_since);
+    if (since < 0) // Before epoch or mktime failure for very old dates
+        since = 0;
+
+    return since;
+}
+
+/* Get Last-Modified time of remote file using HEAD request
+   curlhandle should be set up for HEAD requests (CURLOPT_NOBODY)
+   Returns -1 if time is not available */
+long Util::CurlHandleGetRemoteFileTime(CURL* curlhandle, const std::string& url)
+{
+    std::string response;
+    long filetime = -1;
+
+    curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
+    if (Util::CurlHandleGetResponse(curlhandle, response) == CURLE_OK)
+        curl_easy_getinfo(curlhandle, CURLINFO_FILETIME, &filetime);
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, nullptr);
+
+    return filetime;
 }
