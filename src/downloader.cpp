@@ -3536,7 +3536,7 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
 
         // Print progress information once per 100ms
         std::this_thread::sleep_for(std::chrono::milliseconds(Globals::globalConfig.iProgressInterval));
-        std::cout << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
+        std::cout << "\033[J\r"; // Clear screen from the current line down to the bottom of the screen
 
         // Print messages from message queue first
         Message msg;
