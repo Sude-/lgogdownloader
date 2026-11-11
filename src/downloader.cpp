@@ -3536,14 +3536,14 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
 
         // Print progress information once per 100ms
         std::this_thread::sleep_for(std::chrono::milliseconds(Globals::globalConfig.iProgressInterval));
-        std::cout << "\033[J\r" << std::flush; // Clear screen from the current line down to the bottom of the screen
+        std::cout << "\033[J\r"; // Clear screen from the current line down to the bottom of the screen
 
         // Print messages from message queue first
         Message msg;
         while (msgQueue.try_pop(msg))
         {
             if (msg.getLevel() <= Globals::globalConfig.iMsgLevel)
-                std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << std::endl;
+                std::cout << msg.getFormattedString(Globals::globalConfig.bColor, true) << '\n';
 
             if (Globals::globalConfig.bReport)
             {
@@ -3640,7 +3640,7 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         // Print progress info
         for (unsigned int i = 0; i < vProgressText.size(); ++i)
         {
-            std::cout << vProgressText[i] << std::endl;
+            std::cout << vProgressText[i] << '\n';
         }
 
         // Update window progress bar
@@ -3654,8 +3654,9 @@ template <typename T> void Downloader::printProgress(const ThreadSafeQueue<T>& d
         // Move cursor up by vProgressText.size() rows
         if (dl_status != DLSTATUS_FINISHED)
         {
-            std::cout << "\033[" << vProgressText.size() << "A\r" << std::flush;
+            std::cout << "\033[" << vProgressText.size() << "A\r";
         }
+        std::cout << std::flush;
     }
 
     if (Globals::bWindowProgress.load()) {
