@@ -400,6 +400,25 @@ Select what not to download/list/repair
 .br
 See \fB\-\-include\fR for option values
 .TP
+\fB\-\-patches\-since\fR arg
+Only download patches published since given time
+.br
+Relative time: number followed by y (years), m (months) or d (days).
+For example "1y", "6m" or "30d"
+.br
+Absolute local time: YYYY\-MM\-DD or YYYY\-MM\-DDTHH:MM:SS
+.br
+Empty value disables the filter
+.br
+Publish date is taken from the Last\-Modified header of the file on the
+server. Patches with no date on the server are downloaded
+.br
+Applies to \fB\-\-download\fR and \fB\-\-repair\fR, but not
+\fB\-\-download\-file\fR
+.br
+Skipped patches are still shown by \fB\-\-list\fR and \fB\-\-status\fR,
+and are counted in the total size and free space check before downloading
+.TP
 \fB\-\-automatic\-xml\-creation\fR
 Automatically create XML data after download has completed
 .TP

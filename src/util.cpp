@@ -13,6 +13,8 @@
 #include <boost/iostreams/copy.hpp>
 #include <json/json.h>
 #include <fstream>
+#include <algorithm>
+#include <cctype>
 #include <sys/ioctl.h>
 #include <tidy.h>
 #include <tidybuffio.h>
@@ -1036,4 +1038,89 @@ tinyxml2::XMLNode* Util::nextXMLNode(tinyxml2::XMLNode* node)
     }
 
     return node;
+}
+
+/* Parse time limit string to timestamp
+   Accepts relative time (number followed by "y", "m" or "d" for years, months or days before now)
+   or absolute local time in "YYYY-MM-DD" (midnight) or "YYYY-MM-DDTHH:MM:SS" format
+   Years and months use Boost's calendar arithmetic: 1 month before March 31 is February 28/29,
+   and from the last day of a month the result is the last day of the target month
+   Returns -1 on invalid input, including years before 1400 (not supported by Boost)
+   Returns 0 (no limit) for times before epoch */
+std::time_t Util::parseSinceString(const std::string& str)
+{
+    namespace pt = boost::posix_time;
+    namespace gr = boost::gregorian;
+
+    try
+    {
+        pt::ptime since;
+        char unit = str.empty() ? '\0' : str.back();
+        std::string number = str.empty() ? "" : str.substr(0, str.size() - 1);
+        if ((unit == 'y' || unit == 'm' || unit == 'd') && !number.empty()
+            && std::all_of(number.begin(), number.end(), [](unsigned char c) { return std::isdigit(c); }))
+        {
+            // Values over these limits are well before epoch. Checking them first
+            // keeps calculations within int and Boost's supported years (1400-9999)
+            const int maxValue = (unit == 'y') ? 500 : (unit == 'm') ? 6000 : 180000;
+            size_t firstNonZero = number.find_first_not_of('0');
+            if (firstNonZero != std::string::npos && number.size() - firstNonZero > 6)
+                return 0;
+            int value = (firstNonZero == std::string::npos) ? 0 : std::stoi(number.substr(firstNonZero));
+            if (value > maxValue)
+                return 0;
+
+            pt::ptime now = pt::second_clock::local_time();
+            if (unit == 'y')
+                since = now - gr::years(value);
+            else if (unit == 'm')
+                since = now - gr::months(value);
+            else
+                since = now - gr::days(value);
+        }
+        else
+        {
+            // Add midnight to date without time, which pt::from_iso_extended_string
+            // only accepts since Boost 1.77
+            std::string datetime = (str.size() == 10) ? str + "T00:00:00" : str;
+
+            // Boost parser also accepts other formats and rolls over out of range
+            // time fields (T25:00:00 is 01:00:00 next day), so only accept input
+            // that converts back to the same string
+            since = pt::from_iso_extended_string(datetime);
+            if (pt::to_iso_extended_string(since) != datetime)
+                return -1;
+        }
+
+        // Interpret as local time
+        std::tm tm_since = pt::to_tm(since);
+        tm_since.tm_isdst = -1;
+        std::time_t result = std::mktime(&tm_since);
+        if (result < 0) // Before epoch or mktime failure for very old dates
+            result = 0;
+
+        return result;
+    }
+    catch (const std::exception&)
+    {
+        return -1; // Invalid date (including years before 1400) or unparseable input
+    }
+}
+
+/* Get Last-Modified time of remote file using HEAD request
+   curlhandle should be set up for HEAD requests (CURLOPT_NOBODY)
+   Returns -1 if time is not available */
+long Util::CurlHandleGetRemoteFileTime(CURL* curlhandle, const std::string& url)
+{
+    std::string response;
+    long filetime = -1;
+
+    curl_easy_setopt(curlhandle, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 1L);
+    if (Util::CurlHandleGetResponse(curlhandle, response) == CURLE_OK)
+        curl_easy_getinfo(curlhandle, CURLINFO_FILETIME, &filetime);
+    curl_easy_setopt(curlhandle, CURLOPT_FILETIME, 0L);
+    curl_easy_setopt(curlhandle, CURLOPT_WRITEDATA, nullptr);
+
+    return filetime;
 }
