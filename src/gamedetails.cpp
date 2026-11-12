@@ -16,6 +16,91 @@ gameDetails::~gameDetails()
     //dtor
 }
 
+void gameDetails::filterWithPlatformLanguage(const DownloadConfig& config)
+{
+    filterListWithPlatformLanguage(installers, config);
+    filterListWithPlatformLanguage(patches, config);
+    filterListWithPlatformLanguage(languagepacks, config);
+    for (auto& dlc : dlcs)
+        dlc.filterWithPlatformLanguage(config);
+
+    dlcs.erase(
+        std::remove_if(dlcs.begin(), dlcs.end(), [](const gameDetails& dlc) {
+            return dlc.installers.empty() && dlc.patches.empty() && dlc.extras.empty()
+                && dlc.languagepacks.empty() && dlc.dlcs.empty();
+        }),
+        dlcs.end()
+    );
+}
+
+// galaxyAPI::productInfoJsonToGameDetails walks expanded_dlcs only when the include
+// selection asks for DLCs, and then adds a DLC only if it has a file in one of the
+// selected sections. Reproduce both conditions for details built from the whole
+// catalog, so the download selection is the same either way.
+void gameDetails::filterDlcsWithInclude(const unsigned int& iInclude)
+{
+    if (!(iInclude & GlobalConstants::GFTYPE_DLC))
+    {
+        dlcs.clear();
+        return;
+    }
+
+    for (auto& dlc : dlcs)
+        dlc.filterDlcsWithInclude(iInclude);
+
+    dlcs.erase(
+        std::remove_if(dlcs.begin(), dlcs.end(), [&iInclude](const gameDetails& dlc) {
+            const bool has_selected_section =
+                   ((iInclude & GlobalConstants::GFTYPE_INSTALLER) && !dlc.installers.empty())
+                || ((iInclude & GlobalConstants::GFTYPE_EXTRA) && !dlc.extras.empty())
+                || ((iInclude & GlobalConstants::GFTYPE_PATCH) && !dlc.patches.empty())
+                || ((iInclude & GlobalConstants::GFTYPE_LANGPACK) && !dlc.languagepacks.empty());
+            return !has_selected_section;
+        }),
+        dlcs.end()
+    );
+}
+
+void gameDetails::filterListWithPlatformLanguage(std::vector<gameFile>& list, const DownloadConfig& config)
+{
+    list.erase(
+        std::remove_if(list.begin(), list.end(), [&config](const gameFile& file) {
+            return !(file.platform & config.iInstallerPlatform)
+                || !(file.language & config.iInstallerLanguage);
+        }),
+        list.end()
+    );
+}
+
+void gameDetails::filterDuplicates()
+{
+    filterDuplicateList(installers);
+    filterDuplicateList(patches);
+    filterDuplicateList(extras);
+    filterDuplicateList(languagepacks);
+    for (auto& dlc : dlcs)
+        dlc.filterDuplicates();
+}
+
+void gameDetails::filterDuplicateList(std::vector<gameFile>& list)
+{
+    for (auto file = list.begin(); file != list.end();)
+    {
+        const auto duplicate = std::find_if(list.begin(), file, [&file](const gameFile& existing) {
+            return existing.path == file->path;
+        });
+        if (duplicate == file)
+        {
+            ++file;
+            continue;
+        }
+
+        if (!(file->type & GlobalConstants::GFTYPE_EXTRA))
+            duplicate->language |= file->language;
+        file = list.erase(file);
+    }
+}
+
 void gameDetails::filterWithPriorities(const gameSpecificConfig& config)
 {
     if (config.dlConf.vPlatformPriority.empty() && config.dlConf.vLanguagePriority.empty())
@@ -416,7 +501,7 @@ std::string gameDetails::makeFilepath(const gameFile& gf, const DirectoryConfig&
     return filepath;
 }
 
-std::string gameDetails::makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf)
+std::string gameDetails::makeCustomFilepath(const std::string& filename, const gameDetails& gd, const DirectoryConfig& dirConf, const unsigned int& platform)
 {
     gameFile gf;
     gf.gamename = gd.gamename;
@@ -424,6 +509,7 @@ std::string gameDetails::makeCustomFilepath(const std::string& filename, const g
     gf.title = gd.title;
     gf.gamename_basegame = gd.gamename_basegame;
     gf.title_basegame = gd.title_basegame;
+    gf.platform = platform;
 
     if (gf.gamename_basegame.empty())
         gf.type = GlobalConstants::GFTYPE_CUSTOM_BASE;
